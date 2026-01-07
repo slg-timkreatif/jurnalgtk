@@ -9,16 +9,14 @@
     
     <link rel="icon" type="image/png" href="https://i.imgur.com/7PPoYr5.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/7PPoYr5.png">
-    <meta property="og:title" content="Jurnal Harian GTK">
-    <meta property="og:image" content="https://i.imgur.com/7PPoYr5.png">
-
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#1e3a8a', // Navy Blue Dinas
+                        primary: '#1e3a8a', // Navy Blue
                         primaryDark: '#172554',
                         surface: '#f8fafc',
                         onSurface: '#0f172a',
@@ -298,6 +296,13 @@
                 lucide.createIcons();
             },
 
+            // --- HELPER UNTUK MENGHINDARI ERROR NULL ---
+            el: function(id) { return document.getElementById(id); },
+            safeClassRemove: function(id, cls) { const e=this.el(id); if(e) e.classList.remove(cls); },
+            safeClassAdd: function(id, cls) { const e=this.el(id); if(e) e.classList.add(cls); },
+            safeSetText: function(id, txt) { const e=this.el(id); if(e) e.innerText = txt; },
+            safeSetHtml: function(id, htm) { const e=this.el(id); if(e) e.innerHTML = htm; },
+
             handleAuth: function() {
                 if(!this.isGapiLoaded) return alert("Sistem sedang memuat... Coba 3 detik lagi.");
                 this.tokenClient.requestAccessToken();
@@ -319,15 +324,15 @@
 
             loadApp: async function() {
                 this.showLoading(true, "Sinkronisasi...");
-                document.getElementById('view-login').classList.add('hidden-view');
+                this.safeClassAdd('view-login', 'hidden-view');
                 
                 try {
                     // Cek Profil dulu
                     if(!this.profile.nama) {
                         const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
                         this.user = gPro;
-                        document.getElementById('dash-avatar').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
-                        document.getElementById('profile-pic-lg').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
+                        this.safeSetHtml('dash-avatar', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
+                        this.safeSetHtml('profile-pic-lg', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
                         
                         this.showLoading(false);
                         this.openSetup(); 
@@ -337,21 +342,25 @@
                     await Promise.all([this.ensureDriveFiles(), this.fetchRef()]);
 
                     const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
-                    document.getElementById('dash-avatar').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
-                    document.getElementById('profile-pic-lg').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
+                    this.safeSetHtml('dash-avatar', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
+                    this.safeSetHtml('profile-pic-lg', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
 
                     this.navigate('dashboard');
                     this.fetchData();
 
                 } catch(e) {
                     console.error(e);
-                    const msg = e.result?.error?.message || e.message || JSON.stringify(e);
+                    // PENANGANAN ERROR LEBIH JELAS
+                    let msg = "Terjadi Kesalahan.";
+                    if(e.result && e.result.error && e.result.error.message) msg = e.result.error.message;
+                    else if(e.message) msg = e.message;
+                    
                     if(msg.includes("401") || msg.includes("403")) {
                          alert("Sesi Google Habis. Silakan login ulang.");
                          this.handleSignOut();
                     } else {
                          alert("Error: " + msg);
-                         document.getElementById('view-login').classList.remove('hidden-view');
+                         this.safeClassRemove('view-login', 'hidden-view');
                     }
                 }
                 this.showLoading(false);
@@ -470,7 +479,9 @@
             },
             
             setupAC: function(id, listId, key) {
-                const inp=document.getElementById(id); const list=document.getElementById(listId);
+                const inp=this.el(id); const list=this.el(listId);
+                if(!inp || !list) return; // SAFEGUARD FOR NULL ERROR
+
                 inp.addEventListener('input', () => {
                     const v=inp.value.toLowerCase(); list.innerHTML='';
                     if(!v){list.classList.add('hidden-view');return;}
@@ -511,58 +522,62 @@
                 const p = JSON.parse(localStorage.getItem('jg_profile'));
                 if(p) {
                     this.profile = p;
-                    document.getElementById('dash-name').innerText = p.nama;
-                    document.getElementById('dash-unit').innerText = p.unit;
-                    document.getElementById('profile-name').innerText = p.nama;
-                    document.getElementById('profile-unit').innerText = p.unit;
-                    document.getElementById('setup-nama').value = p.nama;
-                    document.getElementById('setup-nip').value = p.nip;
-                    document.getElementById('setup-pangkat').value = p.pangkat;
-                    document.getElementById('setup-unit').value = p.unit;
-                    document.getElementById('setup-alamat').value = p.alamat;
-                    document.getElementById('setup-kota').value = p.kota;
-                    document.getElementById('setup-ks').value = p.ks;
-                    document.getElementById('setup-nip-ks').value = p.nip_ks;
+                    this.safeSetText('dash-name', p.nama);
+                    this.safeSetText('dash-unit', p.unit);
+                    this.safeSetText('profile-name', p.nama);
+                    this.safeSetText('profile-unit', p.unit);
+                    // Isi form setup
+                    if(this.el('setup-nama')) {
+                        document.getElementById('setup-nama').value = p.nama;
+                        document.getElementById('setup-nip').value = p.nip;
+                        document.getElementById('setup-pangkat').value = p.pangkat;
+                        document.getElementById('setup-unit').value = p.unit;
+                        document.getElementById('setup-alamat').value = p.alamat;
+                        document.getElementById('setup-kota').value = p.kota;
+                        document.getElementById('setup-ks').value = p.ks;
+                        document.getElementById('setup-nip-ks').value = p.nip_ks;
+                    }
                 }
             },
             openSetup: function() { this.navigate('setup'); },
 
             navigate: function(id) {
-                ['login','setup','dashboard','form','profile'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden-view'));
-                document.getElementById('view-'+id).classList.remove('hidden-view');
-                const nav=document.getElementById('bottom-nav');
+                ['login','setup','dashboard','form','profile'].forEach(v => this.safeClassAdd('view-'+v, 'hidden-view'));
+                this.safeClassRemove('view-'+id, 'hidden-view');
+                
+                const nav = this.el('bottom-nav');
                 if(id==='dashboard'||id==='profile') {
-                    nav.classList.remove('hidden-view');
+                    if(nav) nav.classList.remove('hidden-view');
                     document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
                     const target = id==='profile'?'profile':this.currentTab;
                     const btn = document.querySelector(`button[data-target="${target}"]`);
                     if(btn){btn.classList.add('active'); btn.querySelector('i').classList.add('text-primary'); btn.querySelector('span').classList.add('text-primary');}
-                } else nav.classList.add('hidden-view');
+                } else if(nav) nav.classList.add('hidden-view');
             },
             switchTab: function(tab) {
                 this.currentTab=tab;
-                document.getElementById('tab-content-list').classList.toggle('hidden-view', tab!=='list');
-                document.getElementById('tab-content-calendar').classList.toggle('hidden-view', tab!=='calendar');
+                const lst = this.el('tab-content-list'); if(lst) lst.classList.toggle('hidden-view', tab!=='list');
+                const cal = this.el('tab-content-calendar'); if(cal) cal.classList.toggle('hidden-view', tab!=='calendar');
                 this.navigate('dashboard'); this.renderList(); if(tab==='calendar')this.renderCalendar();
             },
             showLoading: function(show, t="Memuat...") {
-                const el=document.getElementById('loading-overlay');
-                if(show){el.classList.remove('hidden-view');document.getElementById('loading-text').innerText=t;}
-                else el.classList.add('hidden-view');
+                const el=this.el('loading-overlay');
+                if(show){if(el) el.classList.remove('hidden-view'); this.safeSetText('loading-text', t);}
+                else if(el) el.classList.add('hidden-view');
             },
             initDateFilters: function() {
-                const m=document.getElementById('filter-month');
-                ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.text=n;if(i===new Date().getMonth())o.selected=true;m.appendChild(o)});
-                const y=document.getElementById('filter-year'); const c=new Date().getFullYear();
-                [c,c-1].forEach(n=>{const o=document.createElement('option');o.value=n;o.text=n;y.appendChild(o)});
+                const m=this.el('filter-month');
+                if(m) ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.text=n;if(i===new Date().getMonth())o.selected=true;m.appendChild(o)});
+                const y=this.el('filter-year'); const c=new Date().getFullYear();
+                if(y) [c,c-1].forEach(n=>{const o=document.createElement('option');o.value=n;o.text=n;y.appendChild(o)});
             },
             
             renderList: function() {
-                const m=document.getElementById('filter-month').value; const y=document.getElementById('filter-year').value;
+                const m=this.el('filter-month').value; const y=this.el('filter-year').value;
                 const d=this.data.filter(x=>{const dt=new Date(x.tanggal);return (dt.getMonth()+1)==m && dt.getFullYear()==y});
-                const c=document.getElementById('tab-content-list'); c.innerHTML='';
-                const e=document.getElementById('empty-state');
-                if(d.length===0){e.classList.remove('hidden-view');return;} e.classList.add('hidden-view');
+                const c=this.el('tab-content-list'); if(c) c.innerHTML='';
+                const e=this.el('empty-state');
+                if(d.length===0){if(e) e.classList.remove('hidden-view');return;} if(e) e.classList.add('hidden-view');
                 d.forEach(i=>{
                     const div=document.createElement('div'); const safe=encodeURIComponent(JSON.stringify(i));
                     const dt=new Date(i.tanggal);
@@ -574,8 +589,8 @@
                 lucide.createIcons();
             },
             renderCalendar: function() {
-                const m=parseInt(document.getElementById('filter-month').value)-1; const y=parseInt(document.getElementById('filter-year').value);
-                const c=document.getElementById('calendar-container'); c.innerHTML='';
+                const m=parseInt(this.el('filter-month').value)-1; const y=parseInt(this.el('filter-year').value);
+                const c=this.el('calendar-container'); if(c) c.innerHTML='';
                 const days=new Date(y,m+1,0).getDate(); const first=new Date(y,m,1).getDay();
                 for(let i=0;i<first;i++)c.appendChild(document.createElement('div'));
                 for(let i=1;i<=days;i++){
@@ -587,7 +602,7 @@
                 }
             },
             renderDayList: function(ds) {
-                const l=document.getElementById('calendar-day-list'); l.innerHTML='';
+                const l=this.el('calendar-day-list'); if(l) l.innerHTML='';
                 this.data.filter(x=>x.tanggal===ds).forEach(i=>{
                     const safe=encodeURIComponent(JSON.stringify(i));
                     const d=document.createElement('div'); d.className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between";
@@ -596,19 +611,19 @@
                 });
                 lucide.createIcons();
             },
-            createNew: function(d){this.resetForm();if(d)document.getElementById('inp-date').value=d;this.navigate('form');},
+            createNew: function(d){this.resetForm();if(d)this.el('inp-date').value=d;this.navigate('form');},
             editItem: function(s){
                 const i=JSON.parse(decodeURIComponent(s)); this.navigate('form');
-                document.getElementById('inp-id').value=i.id; document.getElementById('inp-row-index').value=i.rowIndex;
-                document.getElementById('inp-date').value=i.tanggal; document.getElementById('inp-start').value=i.mulai;
-                document.getElementById('inp-end').value=i.selesai; document.getElementById('inp-activity').value=i.kegiatan;
-                document.getElementById('inp-result').value=i.hasil;
-                if(i.fotoLink){document.getElementById('inp-old-photo').value=JSON.stringify({id:i.fotoId,link:i.fotoLink});document.getElementById('img-preview').src=i.fotoLink;document.getElementById('preview-container').classList.remove('hidden-view');}
+                this.el('inp-id').value=i.id; this.el('inp-row-index').value=i.rowIndex;
+                this.el('inp-date').value=i.tanggal; this.el('inp-start').value=i.mulai;
+                this.el('inp-end').value=i.selesai; this.el('inp-activity').value=i.kegiatan;
+                this.el('inp-result').value=i.hasil;
+                if(i.fotoLink){this.el('inp-old-photo').value=JSON.stringify({id:i.fotoId,link:i.fotoLink});this.el('img-preview').src=i.fotoLink;this.safeClassRemove('preview-container','hidden-view');}
             },
             deleteItem: async function(idx){if(confirm("Hapus?")){await gapi.client.sheets.spreadsheets.values.clear({spreadsheetId:this.files.dbId,range:`Sheet1!A${idx}:H${idx}`});this.fetchData();}},
             
             downloadExcel: function() {
-                const m=document.getElementById('filter-month').value; const y=document.getElementById('filter-year').value;
+                const m=this.el('filter-month').value; const y=this.el('filter-year').value;
                 const d=this.data.filter(x=>{const dt=new Date(x.tanggal);return (dt.getMonth()+1)==m && dt.getFullYear()==y}).reverse();
                 if(d.length===0) return alert("Data kosong");
                 
@@ -626,17 +641,17 @@
             },
             
             resetForm: function() {
-                document.getElementById('inp-id').value=""; document.getElementById('inp-row-index').value="";
-                document.getElementById('inp-date').valueAsDate=new Date(); document.getElementById('inp-activity').value="";
-                document.getElementById('inp-result').value=""; this.clearFile();
-                document.getElementById('form-title').innerText="Isi Jurnal";
+                this.el('inp-id').value=""; this.el('inp-row-index').value="";
+                this.el('inp-date').valueAsDate=new Date(); this.el('inp-activity').value="";
+                this.el('inp-result').value=""; this.clearFile();
+                this.safeSetText('form-title', "Isi Jurnal");
             },
-            clearFile: function() { this.fileToUpload=null; document.getElementById('inp-file').value=""; document.getElementById('preview-container').classList.add('hidden-view'); document.getElementById('inp-old-photo').value=""; },
-            handleFileSelect: function(input) { if(input.files[0]){ this.fileToUpload=input.files[0]; const r=new FileReader(); r.onload=e=>{document.getElementById('img-preview').src=e.target.result; document.getElementById('preview-container').classList.remove('hidden-view');}; r.readAsDataURL(input.files[0]); } },
+            clearFile: function() { this.fileToUpload=null; this.el('inp-file').value=""; this.safeClassAdd('preview-container','hidden-view'); this.el('inp-old-photo').value=""; },
+            handleFileSelect: function(input) { if(input.files[0]){ this.fileToUpload=input.files[0]; const r=new FileReader(); r.onload=e=>{this.el('img-preview').src=e.target.result; this.safeClassRemove('preview-container','hidden-view');}; r.readAsDataURL(input.files[0]); } },
             voice: function(id) {
                 if(!window.webkitSpeechRecognition) return alert("Browser tidak support suara.");
                 const r = new webkitSpeechRecognition(); r.lang = 'id-ID'; r.start();
-                r.onresult = e => { const t=e.results[0][0].transcript; const el=document.getElementById('inp-'+id); el.value += (el.value?' ':'')+t; };
+                r.onresult = e => { const t=e.results[0][0].transcript; const el=this.el('inp-'+id); el.value += (el.value?' ':'')+t; };
             }
         };
         window.onload = () => app.init();
