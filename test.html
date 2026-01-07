@@ -15,6 +15,9 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js"></script>
 
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -250,6 +253,10 @@
                                 <i data-lucide="user-cog" class="w-5 h-5 text-blue-600"></i> Data Laporan
                             </h4>
                             <div class="space-y-4">
+                                <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                    <label class="block text-xs font-bold text-blue-600 mb-1">Nama Lengkap (Gelar)</label>
+                                    <input type="text" id="conf-nama-guru" class="w-full text-sm border-b border-blue-200 py-1 focus:border-blue-500 outline-none bg-transparent font-medium" placeholder="Nama Anda (Jika beda dari Google)">
+                                </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-1">NIP / NUPTK</label>
                                     <input type="text" id="conf-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
@@ -277,7 +284,7 @@
                         <div class="space-y-6">
                             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                                 <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <i data-lucide="printer" class="w-5 h-5 text-blue-600"></i> Cetak Laporan
+                                    <i data-lucide="printer" class="w-5 h-5 text-blue-600"></i> Rekapitulasi & Cetak
                                 </h4>
                                 <div class="space-y-4">
                                     <div class="flex gap-4">
@@ -293,9 +300,10 @@
                                     <button onclick="app.printReport()" class="w-full bg-slate-800 text-white font-medium py-3 rounded-xl hover:bg-slate-700 transition flex items-center justify-center gap-2">
                                         <i data-lucide="printer" class="w-4 h-4"></i> Cetak PDF (A4)
                                     </button>
-                                    <button onclick="app.exportData()" class="w-full bg-green-50 text-green-700 font-medium py-3 rounded-xl hover:bg-green-100 transition flex items-center justify-center gap-2">
-                                        <i data-lucide="sheet" class="w-4 h-4"></i> Download CSV
+                                    <button onclick="app.exportExcel()" class="w-full bg-green-50 text-green-700 font-medium py-3 rounded-xl hover:bg-green-100 transition flex items-center justify-center gap-2">
+                                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel (.xlsx)
                                     </button>
+                                    <p class="text-[10px] text-slate-400 text-center">Format Excel resmi dengan lampiran foto.</p>
                                 </div>
                             </div>
                             
@@ -390,7 +398,7 @@
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="app.closeForm()"></div>
         <div id="form-content" class="absolute bg-white flex flex-col shadow-2xl transition-all duration-300 transform 
             bottom-0 left-0 right-0 rounded-t-3xl max-h-[95vh] translate-y-full
-            md:top-1/2 md:left-1/2 md:bottom-auto md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[600px] md:rounded-3xl md:h-auto md:max-h-[85vh] md:opacity-0 md:scale-95">
+            md:top-1/2 md:left-1/2 md:bottom-auto md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[600px] md:rounded-3xl md:h-auto md:max-h-[85vh] md:scale-95 md:opacity-0">
             
             <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white rounded-t-3xl z-10">
                 <h3 class="font-bold text-slate-800 text-lg" id="form-title">Jurnal Baru</h3>
@@ -438,7 +446,8 @@
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <label class="text-xs font-bold text-slate-400 mb-2 block">KEGIATAN</label>
-                    <textarea id="input-act" rows="3" class="w-full text-base border-none resize-none outline-none bg-transparent" placeholder="Detail kegiatan..."></textarea>
+                    <input type="text" id="input-act" list="suggestions-act" class="w-full text-base border-b border-slate-100 py-2 outline-none bg-transparent" placeholder="Ketik kegiatan...">
+                    <datalist id="suggestions-act"></datalist>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -464,7 +473,8 @@
         const CONFIG = {
             CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com',
             DB_NAME: 'JurnalGuru_Database_v2',
-            SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'
+            SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+            REF_SHEET: '1CD63O0L8jaJnXZBCFrX4eT83uHngs7LOy9jOgr3Nta8'
         };
 
         const utils = {
@@ -487,6 +497,7 @@
             dbId: null,
             data: [],
             calDate: new Date(),
+            suggestions: [],
             
             init: function() {
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
@@ -495,7 +506,6 @@
                 });
                 lucide.createIcons();
                 
-                // Set default print dates
                 const today = new Date();
                 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                 document.getElementById('print-start-date').valueAsDate = firstDay;
@@ -509,6 +519,23 @@
                     this.toggleScreen('login');
                 }
                 this.loadProfileConfig();
+                this.fetchSuggestions();
+            },
+
+            fetchSuggestions: async function() {
+                try {
+                    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.REF_SHEET}/gviz/tq?tqx=out:json`;
+                    const res = await fetch(url).then(r => r.text());
+                    const json = JSON.parse(res.substr(47).slice(0, -2));
+                    this.suggestions = json.table.rows.map(r => r.c[0]?.v).filter(v => v);
+                    const list = document.getElementById('suggestions-act');
+                    list.innerHTML = '';
+                    this.suggestions.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s;
+                        list.appendChild(opt);
+                    });
+                } catch(e) { console.warn("Ref load failed", e); }
             },
 
             handleAuth: function() { this.tokenClient.requestAccessToken(); },
@@ -557,15 +584,14 @@
                 document.getElementById('sidebar-name').innerText = res.given_name;
                 document.getElementById('sidebar-email').innerText = res.email;
                 document.getElementById('sidebar-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
-                // Update Profile View
-                document.getElementById('profile-name').innerText = res.given_name;
-                document.getElementById('profile-email').innerText = res.email;
+                // Update Profile View (Avatar Only)
                 document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover rounded-full">`;
+                
+                // Name handled in loadProfileConfig now to allow override
             },
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
-                // Check if the file still exists (optional validation)
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
                     try {
@@ -597,13 +623,12 @@
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
                 const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
                 
-                // Handle 404 (Sheet Deleted)
                 if(res.error) {
                     if(res.error.code === 404) {
                         localStorage.removeItem('jg_db_id');
                         this.dbId = null;
                         await this.setupDB();
-                        return this.fetchData(); // Retry
+                        return this.fetchData();
                     }
                     throw res.error;
                 }
@@ -628,26 +653,34 @@
                 list.forEach(item => {
                     const d = new Date(item.date);
                     const el = document.createElement('div');
-                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 active:scale-[0.99] transition cursor-pointer hover:shadow-md hover:border-blue-200';
-                    el.onclick = () => this.openForm(item);
+                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition hover:shadow-md group relative';
                     
                     let thumbHtml = '';
                     if (item.img && item.img.startsWith('data:image')) {
                         thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${item.img}')"></div>`;
                     }
 
+                    // Safe strings for onclick
+                    const safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
+
                     el.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-12">
+                        <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-12 cursor-pointer" onclick="app.openForm(${safeItem})">
                             <span class="text-xl font-bold leading-none text-slate-800">${d.getDate()}</span>
                             <span class="text-[10px] font-bold uppercase">${d.toLocaleDateString('id',{month:'short'})}</span>
                         </div>
-                        <div class="flex-1 overflow-hidden min-w-0">
+                        <div class="flex-1 overflow-hidden min-w-0 cursor-pointer" onclick="app.openForm(${safeItem})">
                             <h4 class="font-bold text-sm text-slate-800 truncate mb-1">${item.act}</h4>
                             <div class="flex items-center gap-3 text-xs text-slate-500">
                                 <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}</span>
                             </div>
                         </div>
                         ${thumbHtml}
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex flex-col gap-2 justify-center ml-2 border-l border-slate-100 pl-3">
+                            <button onclick="app.openForm(${safeItem})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="app.quickDelete(${item.idx})" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
                     `;
                     con.appendChild(el);
                 });
@@ -724,12 +757,10 @@
                 const c = document.getElementById('form-content');
                 m.classList.remove('hidden');
                 
-                // Animation Logic
-                if (window.innerWidth >= 768) {
-                    setTimeout(() => { c.classList.remove('opacity-0', 'scale-95'); c.classList.add('opacity-100', 'scale-100'); }, 10);
-                } else {
-                    setTimeout(() => c.classList.remove('translate-y-full'), 10);
-                }
+                // Fix: Ensure visible state is applied after removing hidden
+                setTimeout(() => { 
+                    c.classList.remove('md:opacity-0', 'md:scale-95', 'translate-y-full'); 
+                }, 10);
                 
                 if(data) {
                     document.getElementById('form-title').innerText = 'Edit Jurnal';
@@ -764,9 +795,13 @@
             closeForm: function() {
                 const m = document.getElementById('form-modal');
                 const c = document.getElementById('form-content');
+                
+                // Add hide classes based on viewport
                 if (window.innerWidth >= 768) {
-                    c.classList.remove('opacity-100', 'scale-100'); c.classList.add('opacity-0', 'scale-95');
-                } else { c.classList.add('translate-y-full'); }
+                    c.classList.add('md:opacity-0', 'md:scale-95');
+                } else { 
+                    c.classList.add('translate-y-full'); 
+                }
                 setTimeout(()=> m.classList.add('hidden'), 300);
             },
 
@@ -819,8 +854,16 @@
 
             confirmDelete: async function() {
                 if(!confirm('Hapus jurnal ini?')) return;
+                this.executeDelete(this.currentEditIdx);
+            },
+            
+            quickDelete: function(idx) {
+                if(confirm('Hapus kegiatan ini?')) this.executeDelete(idx);
+            },
+            
+            executeDelete: async function(rowIdx) {
                 try {
-                    const req = { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: this.currentEditIdx - 1, endIndex: this.currentEditIdx } } }] };
+                    const req = { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: rowIdx - 1, endIndex: rowIdx } } }] };
                     await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}:batchUpdate`, {
                         method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                         body: JSON.stringify(req)
@@ -833,15 +876,20 @@
 
             loadProfileConfig: function() {
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
+                document.getElementById('conf-nama-guru').value = c.nama_guru || '';
                 document.getElementById('conf-nip').value = c.nip || '';
                 document.getElementById('conf-jabatan').value = c.jabatan || '';
                 document.getElementById('conf-sekolah').value = c.sekolah || '';
                 document.getElementById('conf-ks-nama').value = c.ks_nama || '';
                 document.getElementById('conf-ks-nip').value = c.ks_nip || '';
+                
+                // Update display name if custom name exists
+                if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
             },
 
             saveProfileConfig: function() {
                 const c = {
+                    nama_guru: document.getElementById('conf-nama-guru').value,
                     nip: document.getElementById('conf-nip').value,
                     jabatan: document.getElementById('conf-jabatan').value,
                     sekolah: document.getElementById('conf-sekolah').value,
@@ -849,24 +897,66 @@
                     ks_nip: document.getElementById('conf-ks-nip').value
                 };
                 localStorage.setItem('jg_profile_config', JSON.stringify(c));
+                
+                if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
                 utils.toast('Profil disimpan');
             },
 
-            exportData: function() {
-                if(this.data.length === 0) return utils.toast('Tidak ada data', 'error');
+            // --- EXPORT EXCEL ---
+            exportExcel: function() {
+                const start = document.getElementById('print-start-date').value;
+                const end = document.getElementById('print-end-date').value;
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse();
+
+                if(filtered.length === 0) return utils.toast('Tidak ada data', 'error');
+                
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
-                const teacherName = this.user?.given_name || 'Guru';
-                let csv = `LAPORAN JURNAL KEGIATAN HARIAN\nSatuan Pendidikan,${c.sekolah || '-'}\nNama Guru,${teacherName}\nNIP,${c.nip || '-'}\n\nNO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT,FOTO\n`;
-                [...this.data].reverse().forEach((d, i) => {
+                const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
+                
+                const wb = XLSX.utils.book_new();
+                
+                // Header Info
+                const ws_data = [
+                    ["LAPORAN KINERJA HARIAN GURU"],
+                    ["Satuan Pendidikan", c.sekolah || '-'],
+                    ["Nama Guru", teacherName],
+                    ["NIP", c.nip || '-'],
+                    ["Periode", `${utils.fmtDate(start)} s/d ${utils.fmtDate(end)}`],
+                    [],
+                    ["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "FOTO DOKUMENTASI"]
+                ];
+
+                filtered.forEach((d, i) => {
                     const cleanAct = d.act.replace(/,/g, ' ').replace(/\n/g, ' ');
                     const cleanRes = d.res.replace(/,/g, ' ').replace(/\n/g, ' ');
-                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}","${d.img?'Terlampir':'-'}"\n`;
+                    ws_data.push([
+                        i + 1,
+                        utils.fmtDate(d.date),
+                        `${d.start} - ${d.end}`,
+                        cleanAct,
+                        cleanRes,
+                        d.img ? "Lihat Foto" : "-"
+                    ]);
                 });
-                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `Laporan_Jurnal_${teacherName}.csv`;
-                link.click();
+                
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                // Add Hyperlinks for Photos
+                filtered.forEach((d, i) => {
+                    if(d.img) {
+                        // Row index offset = 7 (header rows) + i
+                        const cellRef = XLSX.utils.encode_cell({c: 5, r: 7 + i});
+                        if(!ws[cellRef]) ws[cellRef] = {v: "Lihat Foto", t:'s'};
+                        ws[cellRef].l = { Target: d.img };
+                        ws[cellRef].v = "Klik untuk Lihat";
+                    }
+                });
+                
+                // Basic Column Widths
+                ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:15}];
+
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan Jurnal");
+                XLSX.writeFile(wb, `Laporan_Jurnal_${teacherName}.xlsx`);
             },
 
             // --- PRINT REPORT FEATURE ---
@@ -879,7 +969,7 @@
                 if(filtered.length === 0) return utils.toast('Tidak ada data pada periode ini', 'error');
 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
-                const teacherName = this.user?.given_name || 'Guru';
+                const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
 
                 // Update Print View DOM
                 document.getElementById('print-school-name').innerText = c.sekolah || "NAMA SEKOLAH";
