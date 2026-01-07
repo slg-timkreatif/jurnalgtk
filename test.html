@@ -22,9 +22,10 @@
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Calendar Grid */
         .calendar-grid {
@@ -52,12 +53,31 @@
 
         .nav-item.active { color: #2563eb; }
         .nav-item.active svg { fill: #dbeafe; }
+        
+        /* Desktop Sidebar Active State */
+        .sidebar-item.active { background-color: #eff6ff; color: #2563eb; border-right: 3px solid #2563eb; }
+        .sidebar-item.active svg { color: #2563eb; }
 
-        /* Safe Area for iPhone X+ */
+        /* Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+        /* PRINT STYLES */
+        @media print {
+            @page { size: A4; margin: 1cm; }
+            body { background: white; height: auto; overflow: visible; }
+            #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
+            #main-layout { display: block; height: auto; overflow: visible; }
+            #main-container { overflow: visible; height: auto; }
+            #view-home, #view-calendar, #view-profile { display: none !important; }
+            #view-print-report { display: block !important; }
+            
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid black; padding: 5px; }
+            th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 h-screen overflow-hidden flex flex-col items-center justify-center">
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex flex-col">
 
     <!-- ========================================== -->
     <!-- 1. LOADING & LOGIN SCREENS -->
@@ -85,190 +105,292 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- 2. MAIN APP LAYOUT -->
+    <!-- 2. MAIN APP LAYOUT (RESPONSIVE) -->
     <!-- ========================================== -->
 
-    <!-- Added md: classes for desktop "App Shell" feel -->
-    <div id="main-layout" class="flex-1 flex flex-col h-full w-full hidden relative bg-slate-50 md:max-w-[480px] md:h-[95vh] md:max-h-[900px] md:rounded-[32px] md:shadow-2xl md:border-[8px] md:border-slate-800 md:overflow-hidden">
+    <div id="main-layout" class="flex h-full w-full hidden">
         
-        <!-- HEADER -->
-        <header class="bg-white border-b border-slate-200 z-20 flex-shrink-0 px-5 py-4 flex items-center justify-between shadow-sm">
-            <div>
-                <h2 class="font-bold text-slate-800 text-lg leading-tight" id="header-title">Beranda</h2>
-                <p class="text-[10px] text-slate-500 font-medium" id="header-subtitle">Ringkasan Kegiatan</p>
+        <!-- SIDEBAR (DESKTOP ONLY) -->
+        <aside id="sidebar" class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col z-20 shadow-sm">
+            <div class="p-6 flex items-center gap-3 border-b border-slate-100">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-800 leading-none">JurnalGuru</h1>
+                    <span class="text-[10px] text-slate-400 font-medium tracking-wider">PRO VERSION</span>
+                </div>
             </div>
-            <!-- Desktop Refresh/Sync Button -->
-            <button onclick="app.loadApp()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition" title="Refresh Data">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-            </button>
-        </header>
-
-        <!-- CONTENT VIEWS -->
-        <main class="flex-1 overflow-y-auto bg-slate-50 relative w-full scroll-smooth" id="main-container">
             
-            <!-- VIEW: HOME (TIMELINE) -->
-            <div id="view-home" class="p-4 pb-32 max-w-2xl mx-auto w-full fade-in">
-                <!-- Search -->
-                <div class="relative mb-4">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                    <input type="text" onkeyup="app.handleSearch(this.value)" placeholder="Cari kegiatan..." class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none shadow-sm text-base">
-                </div>
+            <div class="p-4 space-y-1 flex-1">
+                <button onclick="app.switchTab('home')" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition text-sm font-medium" data-target="home">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Beranda
+                </button>
+                <button onclick="app.switchTab('calendar')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition text-sm font-medium" data-target="calendar">
+                    <i data-lucide="calendar" class="w-5 h-5"></i> Kalender
+                </button>
+                <button onclick="app.switchTab('profile')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition text-sm font-medium" data-target="profile">
+                    <i data-lucide="user-cog" class="w-5 h-5"></i> Profil & Laporan
+                </button>
+            </div>
 
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 text-white shadow-lg shadow-blue-200">
-                        <p class="text-[10px] uppercase font-bold opacity-80 mb-0.5">Bulan Ini</p>
-                        <p class="text-2xl font-bold" id="stat-month">0</p>
-                        <p class="text-[10px] opacity-80 mt-1">Kegiatan</p>
-                    </div>
-                    <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-                        <p class="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Total Jam</p>
-                        <p class="text-2xl font-bold text-slate-800" id="stat-hours">0</p>
-                        <p class="text-[10px] text-slate-400 mt-1">Estimasi Jam</p>
+            <div class="p-4 border-t border-slate-100">
+                <div class="flex items-center gap-3 px-4 py-2">
+                    <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden"></div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-bold text-slate-700 truncate" id="sidebar-name">Guru</p>
+                        <p class="text-[10px] text-slate-400 truncate" id="sidebar-email">...</p>
                     </div>
                 </div>
+            </div>
+        </aside>
 
-                <!-- Journal List -->
-                <div id="journal-list" class="space-y-3"></div>
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col relative overflow-hidden bg-slate-50">
+            
+            <!-- HEADER -->
+            <header class="bg-white border-b border-slate-200 z-10 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0">
+                <div>
+                    <h2 class="font-bold text-slate-800 text-lg md:text-xl leading-tight" id="header-title">Beranda</h2>
+                    <p class="text-xs text-slate-500 font-medium hidden md:block" id="header-subtitle">Ringkasan Kegiatan</p>
+                </div>
+                <div class="flex items-center gap-3" id="header-actions">
+                    <button onclick="app.loadApp()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition" title="Refresh Data">
+                        <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- SCROLLABLE CONTENT -->
+            <div id="main-container" class="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth">
                 
-                <!-- States -->
-                <div id="loading-skeleton" class="space-y-3 hidden">
-                    <div class="bg-white p-4 h-24 rounded-xl animate-pulse bg-slate-200"></div>
-                    <div class="bg-white p-4 h-24 rounded-xl animate-pulse bg-slate-200"></div>
-                </div>
-                <div id="empty-state" class="hidden flex flex-col items-center justify-center py-10 opacity-60">
-                    <i data-lucide="clipboard-list" class="w-12 h-12 text-slate-300 mb-2"></i>
-                    <p class="text-sm text-slate-500">Belum ada data</p>
-                </div>
-            </div>
-
-            <!-- VIEW: CALENDAR -->
-            <div id="view-calendar" class="p-4 pb-32 max-w-2xl mx-auto w-full hidden fade-in">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
-                    <!-- Calendar Header -->
-                    <div class="flex items-center justify-between mb-4">
-                        <button onclick="app.changeMonth(-1)" class="p-1 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                        <h3 class="font-bold text-slate-800" id="cal-month-year">Januari 2024</h3>
-                        <button onclick="app.changeMonth(1)" class="p-1 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                <!-- VIEW: HOME -->
+                <div id="view-home" class="max-w-4xl mx-auto w-full fade-in pb-24 md:pb-0">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Stats -->
+                        <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-200 flex flex-col justify-between">
+                            <div>
+                                <p class="text-xs uppercase font-bold opacity-70 mb-1">Kegiatan Bulan Ini</p>
+                                <p class="text-4xl font-bold" id="stat-month">0</p>
+                            </div>
+                            <div class="mt-4 flex items-center gap-2 text-sm opacity-90">
+                                <i data-lucide="trending-up" class="w-4 h-4"></i> Produktifitas
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <p class="text-xs uppercase font-bold text-slate-400 mb-1">Total Jam Kerja</p>
+                                <p class="text-4xl font-bold text-slate-800" id="stat-hours">0</p>
+                            </div>
+                            <div class="mt-4 text-xs text-slate-400">Estimasi berdasarkan waktu input</div>
+                        </div>
+                        <!-- Search -->
+                        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-center">
+                            <label class="text-xs font-bold text-slate-400 mb-2">CARI KEGIATAN</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                <input type="text" onkeyup="app.handleSearch(this.value)" placeholder="Ketik kata kunci..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none">
+                            </div>
+                        </div>
                     </div>
-                    <!-- Days Header -->
-                    <div class="calendar-grid mb-2 text-center">
-                        <span class="text-xs font-bold text-slate-400">Min</span>
-                        <span class="text-xs font-bold text-slate-400">Sen</span>
-                        <span class="text-xs font-bold text-slate-400">Sel</span>
-                        <span class="text-xs font-bold text-slate-400">Rab</span>
-                        <span class="text-xs font-bold text-slate-400">Kam</span>
-                        <span class="text-xs font-bold text-slate-400">Jum</span>
-                        <span class="text-xs font-bold text-slate-400">Sab</span>
-                    </div>
-                    <!-- Dates Grid -->
-                    <div id="cal-days" class="calendar-grid text-sm font-medium text-slate-700"></div>
-                </div>
 
-                <div class="flex items-center gap-2 mb-3 px-1">
-                    <i data-lucide="list" class="w-4 h-4 text-blue-600"></i>
-                    <h4 class="font-bold text-sm text-slate-700" id="cal-selected-date-label">Kegiatan Hari Ini</h4>
-                </div>
-                <div id="cal-journal-list" class="space-y-3"></div>
-            </div>
-
-            <!-- VIEW: PROFILE -->
-            <div id="view-profile" class="p-4 pb-32 max-w-2xl mx-auto w-full hidden fade-in">
-                <!-- User Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center text-center mb-4">
-                    <div id="profile-avatar" class="w-20 h-20 rounded-full bg-slate-200 mb-3 border-4 border-slate-50 overflow-hidden"></div>
-                    <h3 class="font-bold text-lg text-slate-800" id="profile-name">Guru</h3>
-                    <p class="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-1" id="profile-email">email@sekolah.id</p>
-                </div>
-
-                <!-- Form Data Diri (Local Storage) -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
-                    <h4 class="font-bold text-sm text-slate-800 mb-4 flex items-center gap-2">
-                        <i data-lucide="user-cog" class="w-4 h-4 text-blue-600"></i> Data Laporan
-                    </h4>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">NIP / NUPTK</label>
-                            <input type="text" id="conf-nip" class="w-full text-base border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition bg-transparent" placeholder="Contoh: 19880101...">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Jabatan / Mapel</label>
-                            <input type="text" id="conf-jabatan" class="w-full text-base border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition bg-transparent" placeholder="Contoh: Guru Kelas 4">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Kerja / Sekolah</label>
-                            <input type="text" id="conf-sekolah" class="w-full text-base border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition bg-transparent" placeholder="Contoh: SD Negeri 1...">
-                        </div>
-                        <div class="pt-2 border-t border-slate-100 mt-2">
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Nama Kepala Sekolah</label>
-                            <input type="text" id="conf-ks-nama" class="w-full text-base border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition bg-transparent" placeholder="Nama Kepala Sekolah">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">NIP Kepala Sekolah</label>
-                            <input type="text" id="conf-ks-nip" class="w-full text-base border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition bg-transparent" placeholder="NIP Kepala Sekolah">
-                        </div>
-                        <button onclick="app.saveProfileConfig()" class="w-full bg-blue-50 text-blue-600 font-medium text-sm py-3 rounded-xl hover:bg-blue-100 transition mt-2 flex items-center justify-center gap-2">
-                            <i data-lucide="save" class="w-4 h-4"></i> Simpan Data Profil
-                        </button>
+                    <h3 class="font-bold text-slate-700 mb-4 text-lg">Riwayat Jurnal</h3>
+                    <div id="journal-list" class="grid grid-cols-1 gap-3"></div>
+                    
+                    <div id="empty-state" class="hidden flex flex-col items-center justify-center py-16 opacity-60">
+                        <i data-lucide="clipboard-list" class="w-16 h-16 text-slate-300 mb-4"></i>
+                        <p class="text-base text-slate-500">Belum ada data jurnal</p>
                     </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-2">
-                    <button onclick="app.exportData()" class="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition text-left">
-                        <div class="bg-green-100 p-2 rounded-lg text-green-600"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
-                        <div>
-                            <h5 class="font-bold text-sm text-slate-700">Download Laporan</h5>
-                            <p class="text-[10px] text-slate-400">Format Excel/CSV lengkap dengan header</p>
+                <!-- VIEW: CALENDAR -->
+                <div id="view-calendar" class="max-w-4xl mx-auto w-full hidden fade-in pb-24 md:pb-0">
+                    <div class="flex flex-col md:flex-row gap-6 h-full">
+                        <div class="md:w-1/2 bg-white rounded-3xl shadow-sm border border-slate-100 p-6 h-fit">
+                            <div class="flex items-center justify-between mb-6">
+                                <button onclick="app.changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                                <h3 class="font-bold text-lg text-slate-800" id="cal-month-year">Januari 2024</h3>
+                                <button onclick="app.changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                            </div>
+                            <div class="calendar-grid mb-4 text-center">
+                                <span class="text-xs font-bold text-slate-400 py-2">MIN</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">SEN</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">SEL</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">RAB</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">KAM</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">JUM</span>
+                                <span class="text-xs font-bold text-slate-400 py-2">SAB</span>
+                            </div>
+                            <div id="cal-days" class="calendar-grid text-sm font-medium text-slate-700"></div>
                         </div>
-                    </button>
-                    <div class="h-px bg-slate-50 my-1"></div>
-                    <button onclick="app.signOut()" class="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-xl transition text-left group">
-                        <div class="bg-red-50 p-2 rounded-lg text-red-500 group-hover:bg-red-100"><i data-lucide="log-out" class="w-5 h-5"></i></div>
-                        <div>
-                            <h5 class="font-bold text-sm text-red-600">Keluar Aplikasi</h5>
-                            <p class="text-[10px] text-red-300">Hapus sesi login dari perangkat ini</p>
+                        <div class="md:w-1/2 flex flex-col">
+                             <div class="flex items-center gap-3 mb-4">
+                                <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i data-lucide="calendar-check" class="w-5 h-5"></i></div>
+                                <h4 class="font-bold text-slate-700" id="cal-selected-date-label">Kegiatan Hari Ini</h4>
+                            </div>
+                            <div id="cal-journal-list" class="space-y-3 flex-1 overflow-y-auto"></div>
                         </div>
-                    </button>
+                    </div>
                 </div>
+
+                <!-- VIEW: PROFILE -->
+                <div id="view-profile" class="max-w-2xl mx-auto w-full hidden fade-in pb-24 md:pb-0">
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 mb-6 text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+                        <div class="relative z-10 flex flex-col items-center">
+                            <div id="profile-avatar" class="w-24 h-24 rounded-full bg-white p-1 shadow-lg mb-4"></div>
+                            <h3 class="font-bold text-2xl text-slate-800" id="profile-name">Guru</h3>
+                            <p class="text-slate-500" id="profile-email">email@sekolah.id</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                            <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="user-cog" class="w-5 h-5 text-blue-600"></i> Data Laporan
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">NIP / NUPTK</label>
+                                    <input type="text" id="conf-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Jabatan / Mapel</label>
+                                    <input type="text" id="conf-jabatan" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Kerja</label>
+                                    <input type="text" id="conf-sekolah" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
+                                </div>
+                                <div class="pt-2">
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nama Kepala Sekolah</label>
+                                    <input type="text" id="conf-ks-nama" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">NIP Kepala Sekolah</label>
+                                    <input type="text" id="conf-ks-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
+                                </div>
+                                <button onclick="app.saveProfileConfig()" class="w-full bg-blue-50 text-blue-600 font-medium text-sm py-2 rounded-lg hover:bg-blue-100 transition mt-2">Simpan Profil</button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                                <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i data-lucide="printer" class="w-5 h-5 text-blue-600"></i> Cetak Laporan
+                                </h4>
+                                <div class="space-y-4">
+                                    <div class="flex gap-4">
+                                        <div class="flex-1">
+                                            <label class="text-[10px] font-bold text-slate-400 block mb-1">DARI</label>
+                                            <input type="date" id="print-start-date" class="w-full text-sm border rounded-lg px-2 py-2">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-[10px] font-bold text-slate-400 block mb-1">SAMPAI</label>
+                                            <input type="date" id="print-end-date" class="w-full text-sm border rounded-lg px-2 py-2">
+                                        </div>
+                                    </div>
+                                    <button onclick="app.printReport()" class="w-full bg-slate-800 text-white font-medium py-3 rounded-xl hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                                        <i data-lucide="printer" class="w-4 h-4"></i> Cetak PDF (A4)
+                                    </button>
+                                    <button onclick="app.exportData()" class="w-full bg-green-50 text-green-700 font-medium py-3 rounded-xl hover:bg-green-100 transition flex items-center justify-center gap-2">
+                                        <i data-lucide="sheet" class="w-4 h-4"></i> Download CSV
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button onclick="app.signOut()" class="w-full bg-red-50 text-red-600 font-medium py-3 rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2 border border-red-100">
+                                <i data-lucide="log-out" class="w-4 h-4"></i> Keluar Aplikasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HIDDEN PRINT VIEW -->
+                <div id="view-print-report" class="hidden">
+                    <div class="text-center mb-6">
+                        <h2 class="font-bold text-lg uppercase tracking-wide">LAPORAN KINERJA HARIAN GURU</h2>
+                        <h3 id="print-school-name" class="font-bold uppercase text-base">SD NEGERI CONTOH</h3>
+                        <p class="text-sm">Periode: <span id="print-period-text">...</span></p>
+                    </div>
+                    <div class="mb-4 text-sm border-b-2 border-black pb-2">
+                        <table class="w-full border-0">
+                            <tr>
+                                <td class="border-0 w-24 font-bold">Nama</td>
+                                <td class="border-0">: <span id="print-t-name"></span></td>
+                                <td class="border-0 w-24 font-bold">Unit Kerja</td>
+                                <td class="border-0">: <span id="print-t-school"></span></td>
+                            </tr>
+                            <tr>
+                                <td class="border-0 font-bold">NIP</td>
+                                <td class="border-0">: <span id="print-t-nip"></span></td>
+                                <td class="border-0 font-bold">Jabatan</td>
+                                <td class="border-0">: <span id="print-t-role"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <table class="w-full mb-8">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="w-[5%]">No</th>
+                                <th class="w-[15%]">Hari/Tanggal</th>
+                                <th class="w-[12%]">Waktu</th>
+                                <th>Kegiatan</th>
+                                <th class="w-[20%]">Hasil/Output</th>
+                                <th class="w-[12%]">Dokumentasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="print-table-body"></tbody>
+                    </table>
+                    <div class="flex justify-between px-8 mt-10 break-inside-avoid">
+                        <div class="text-center w-64">
+                            <p class="mb-16">Mengetahui,<br/>Kepala Sekolah</p>
+                            <p class="font-bold underline" id="print-ks-sign">...</p>
+                            <p class="text-xs">NIP. <span id="print-ks-nip-sign">...</span></p>
+                        </div>
+                        <div class="text-center w-64">
+                            <p class="mb-16">Guru Yang Bersangkutan</p>
+                            <p class="font-bold underline" id="print-t-sign">...</p>
+                            <p class="text-xs">NIP. <span id="print-t-nip-sign">...</span></p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+            
+            <!-- BOTTOM NAVIGATION (MOBILE ONLY) -->
+            <nav id="bottom-nav" class="bg-white border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center z-30 md:hidden">
+                <button onclick="app.switchTab('home')" class="nav-item active flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="home">
+                    <i data-lucide="home" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Beranda</span>
+                </button>
+                <button onclick="app.switchTab('calendar')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="calendar">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Kalender</span>
+                </button>
+                <button onclick="app.switchTab('profile')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="profile">
+                    <i data-lucide="user" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Profil</span>
+                </button>
+            </nav>
 
         </main>
 
-        <!-- BOTTOM NAVIGATION -->
-        <nav class="bg-white border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center z-30 fixed bottom-0 left-0 right-0 h-[80px] md:absolute">
-            <button onclick="app.switchTab('home')" class="nav-item active flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="home">
-                <i data-lucide="home" class="w-6 h-6"></i>
-                <span class="text-[10px] font-medium">Beranda</span>
-            </button>
-            <button onclick="app.switchTab('calendar')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="calendar">
-                <i data-lucide="calendar" class="w-6 h-6"></i>
-                <span class="text-[10px] font-medium">Kalender</span>
-            </button>
-            <button onclick="app.switchTab('profile')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="profile">
-                <i data-lucide="user" class="w-6 h-6"></i>
-                <span class="text-[10px] font-medium">Profil</span>
-            </button>
-        </nav>
-
-        <!-- FLOATING ACTION BUTTON (Adjusted Position) -->
-        <button id="fab-add" onclick="app.openForm()" class="absolute bottom-[110px] right-5 bg-blue-600 text-white w-14 h-14 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center transition-transform active:scale-90 z-40 hover:bg-blue-700">
-            <i data-lucide="plus" class="w-7 h-7"></i>
+        <!-- FLOATING ACTION BUTTON -->
+        <button id="fab-add" onclick="app.openForm()" class="fixed bottom-24 right-5 md:bottom-10 md:right-10 bg-blue-600 text-white w-14 h-14 md:w-16 md:h-16 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center transition-transform active:scale-90 z-40 hover:bg-blue-700">
+            <i data-lucide="plus" class="w-7 h-7 md:w-8 md:h-8"></i>
         </button>
 
     </div>
 
     <!-- ========================================== -->
-    <!-- 3. INPUT FORM MODAL (ADAPTIVE) -->
+    <!-- 3. INPUT FORM MODAL -->
     <!-- ========================================== -->
     <div id="form-modal" class="fixed inset-0 z-50 hidden" style="z-index: 9999;">
-        <!-- Backdrop -->
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="app.closeForm()"></div>
-        
-        <!-- Content: Bottom Sheet on Mobile, Center Modal on Desktop -->
         <div id="form-content" class="absolute bg-white flex flex-col shadow-2xl transition-all duration-300 transform 
             bottom-0 left-0 right-0 rounded-t-3xl max-h-[95vh] translate-y-full
-            md:top-1/2 md:left-1/2 md:bottom-auto md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[500px] md:rounded-3xl md:h-auto md:opacity-0 md:scale-95">
+            md:top-1/2 md:left-1/2 md:bottom-auto md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[600px] md:rounded-3xl md:h-auto md:max-h-[85vh] md:opacity-0 md:scale-95">
             
             <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white rounded-t-3xl z-10">
                 <h3 class="font-bold text-slate-800 text-lg" id="form-title">Jurnal Baru</h3>
@@ -281,53 +403,48 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50">
                 <input type="hidden" id="input-id">
                 
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <label class="text-xs font-bold text-slate-400 mb-1 block">WAKTU PELAKSANAAN</label>
-                    <input type="date" id="input-date" class="w-full text-base font-semibold text-slate-800 border-b border-slate-100 py-2 mb-3 outline-none bg-transparent">
-                    <div class="flex gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <label class="text-xs font-bold text-slate-400 mb-1 block">TANGGAL</label>
+                        <input type="date" id="input-date" class="w-full text-base font-semibold text-slate-800 border-b border-slate-100 py-2 outline-none bg-transparent">
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex gap-4">
                         <div class="flex-1">
-                            <span class="text-[10px] text-slate-400">Mulai</span>
-                            <input type="time" id="input-start" class="w-full text-base font-semibold border-b border-slate-100 py-1 outline-none bg-transparent">
+                            <span class="text-[10px] text-slate-400 font-bold">MULAI</span>
+                            <input type="time" id="input-start" class="w-full text-base font-semibold border-b border-slate-100 py-2 outline-none bg-transparent">
                         </div>
                         <div class="flex-1">
-                            <span class="text-[10px] text-slate-400">Selesai</span>
-                            <input type="time" id="input-end" class="w-full text-base font-semibold border-b border-slate-100 py-1 outline-none bg-transparent">
+                            <span class="text-[10px] text-slate-400 font-bold">SELESAI</span>
+                            <input type="time" id="input-end" class="w-full text-base font-semibold border-b border-slate-100 py-2 outline-none bg-transparent">
                         </div>
                     </div>
                 </div>
                 
-                <!-- NEW: IMAGE ATTACHMENT -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <label class="text-xs font-bold text-slate-400 mb-2 block">LAMPIRAN FOTO (Opsional)</label>
-                    
+                    <label class="text-xs font-bold text-slate-400 mb-2 block">DOKUMENTASI FOTO</label>
                     <input type="file" id="input-file" accept="image/*" class="hidden" onchange="app.handleImageSelect(this)">
                     <input type="hidden" id="input-img-base64">
-
-                    <div id="img-preview-container" class="hidden relative rounded-xl overflow-hidden mb-3 border border-slate-200">
-                        <img id="img-preview" src="" class="w-full h-48 object-cover">
+                    <div id="img-preview-container" class="hidden relative rounded-xl overflow-hidden mb-3 border border-slate-200 bg-slate-100">
+                        <img id="img-preview" src="" class="w-full h-48 object-contain md:object-cover">
                         <button onclick="app.clearImage()" class="absolute top-2 right-2 bg-slate-900/50 text-white p-1 rounded-full backdrop-blur hover:bg-slate-900/70">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
-
                     <button onclick="document.getElementById('input-file').click()" class="w-full border-2 border-dashed border-slate-200 rounded-xl py-3 flex items-center justify-center gap-2 text-slate-500 hover:border-blue-400 hover:text-blue-500 transition active:scale-95">
                         <i data-lucide="camera" class="w-5 h-5"></i>
                         <span class="text-sm font-medium">Ambil Foto / Galeri</span>
                     </button>
-                    <p class="text-[10px] text-slate-400 mt-2 text-center">* Foto akan otomatis dikompres agar ringan.</p>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <label class="text-xs font-bold text-slate-400 mb-2 block">KEGIATAN</label>
-                    <textarea id="input-act" rows="3" class="w-full text-base border-none resize-none outline-none bg-transparent" placeholder="Tuliskan detail kegiatan..."></textarea>
+                    <textarea id="input-act" rows="3" class="w-full text-base border-none resize-none outline-none bg-transparent" placeholder="Detail kegiatan..."></textarea>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <label class="text-xs font-bold text-slate-400 mb-2 block">OUTPUT / HASIL</label>
                     <textarea id="input-res" rows="2" class="w-full text-base border-none resize-none outline-none bg-transparent" placeholder="Hasil yang dicapai..."></textarea>
                 </div>
-                
-                <div class="h-4"></div>
             </div>
             
             <div class="p-5 bg-white border-t border-slate-100 sticky bottom-0 rounded-b-3xl">
@@ -378,7 +495,12 @@
                 });
                 lucide.createIcons();
                 
-                // Persistent Login Check
+                // Set default print dates
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                document.getElementById('print-start-date').valueAsDate = firstDay;
+                document.getElementById('print-end-date').valueAsDate = today;
+
                 const savedToken = localStorage.getItem('jg_token');
                 if (savedToken) {
                     this.token = savedToken;
@@ -386,8 +508,6 @@
                 } else {
                     this.toggleScreen('login');
                 }
-
-                // Load Profile Config
                 this.loadProfileConfig();
             },
 
@@ -423,7 +543,7 @@
                         localStorage.removeItem('jg_token');
                         this.toggleScreen('login');
                     } else {
-                        utils.toast("Gagal memuat data. Periksa koneksi.", 'error');
+                        utils.toast("Gagal memuat data", 'error');
                     }
                 }
             },
@@ -433,34 +553,27 @@
                     headers: {'Authorization': `Bearer ${this.token}`}
                 }).then(r => r.json());
                 this.user = res;
+                // Update Sidebar
+                document.getElementById('sidebar-name').innerText = res.given_name;
+                document.getElementById('sidebar-email').innerText = res.email;
+                document.getElementById('sidebar-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
+                // Update Profile View
                 document.getElementById('profile-name').innerText = res.given_name;
                 document.getElementById('profile-email').innerText = res.email;
-                document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
+                document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover rounded-full">`;
             },
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
-                
-                // --- LOGIKA CROSS DEVICE ---
-                // Selalu cek keberadaan file di Drive dulu jika ID tidak ada atau kita ingin memastikan
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
                     try {
                         const s = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
                             headers: {'Authorization': `Bearer ${this.token}`}
                         }).then(r => r.json());
-
-                        if (s.files && s.files.length > 0) {
-                            // File ditemukan! Pakai yang sudah ada.
-                            id = s.files[0].id;
-                            console.log("Database ditemukan di Drive:", id);
-                        }
-                    } catch (e) {
-                        console.error("Gagal mencari DB:", e);
-                    }
+                        if (s.files && s.files.length > 0) id = s.files[0].id;
+                    } catch (e) {}
                 }
-
-                // Jika benar-benar tidak ada di Drive, baru buat baru.
                 if (!id) {
                     const c = await fetch('https://www.googleapis.com/drive/v3/files', {
                         method: 'POST',
@@ -468,38 +581,22 @@
                         body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
                     }).then(r => r.json());
                     id = c.id;
-                    
-                    // Inisialisasi Header (Sekarang 7 kolom dengan IMAGE)
                     await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
                         method: 'PUT',
                         headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                         body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL','IMAGE']]})
                     });
-                    console.log("Database baru dibuat:", id);
                 }
-                
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
             },
 
             fetchData: async function() {
                 if(!this.dbId) await this.setupDB();
-                
-                // Fetch A to G (G is Image)
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
                 const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
-                
-                if (res.error) throw res.error;
-
                 this.data = (res.values || []).map((r, i) => ({
-                    idx: i+2, 
-                    id: r[0], 
-                    date: r[1], 
-                    start: r[2], 
-                    end: r[3], 
-                    act: r[4], 
-                    res: r[5],
-                    img: r[6] || null // Image Base64 string
+                    idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5], img: r[6] || null
                 })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
                 
                 this.renderList(this.data);
@@ -518,30 +615,26 @@
                 list.forEach(item => {
                     const d = new Date(item.date);
                     const el = document.createElement('div');
-                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-3 active:scale-[0.98] transition cursor-pointer hover:shadow-md';
+                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 active:scale-[0.99] transition cursor-pointer hover:shadow-md hover:border-blue-200';
                     el.onclick = () => this.openForm(item);
                     
-                    // Logic thumbnail
                     let thumbHtml = '';
                     if (item.img && item.img.startsWith('data:image')) {
-                        thumbHtml = `<div class="mt-2 h-20 w-full rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200" style="background-image: url('${item.img}')"></div>`;
+                        thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${item.img}')"></div>`;
                     }
 
                     el.innerHTML = `
-                        <div class="bg-blue-50 w-12 h-12 rounded-lg flex flex-col items-center justify-center text-blue-600 shrink-0">
-                            <span class="text-lg font-bold leading-none">${d.getDate()}</span>
+                        <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-12">
+                            <span class="text-xl font-bold leading-none text-slate-800">${d.getDate()}</span>
                             <span class="text-[10px] font-bold uppercase">${d.toLocaleDateString('id',{month:'short'})}</span>
                         </div>
-                        <div class="overflow-hidden flex-1">
-                            <div class="flex justify-between items-start">
-                                <h4 class="font-bold text-sm text-slate-800 truncate mb-1 pr-2">${item.act}</h4>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        <div class="flex-1 overflow-hidden min-w-0">
+                            <h4 class="font-bold text-sm text-slate-800 truncate mb-1">${item.act}</h4>
+                            <div class="flex items-center gap-3 text-xs text-slate-500">
+                                <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}</span>
                             </div>
-                            <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                                <i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}
-                            </div>
-                            ${thumbHtml}
                         </div>
+                        ${thumbHtml}
                     `;
                     con.appendChild(el);
                 });
@@ -553,30 +646,19 @@
                 if (input.files && input.files[0]) {
                     const file = input.files[0];
                     const reader = new FileReader();
-                    
                     reader.onload = (e) => {
                         const img = new Image();
                         img.src = e.target.result;
                         img.onload = () => {
-                            // Compress Image via Canvas
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
-                            const MAX_WIDTH = 600; // Resize to max 600px width
+                            const MAX_WIDTH = 600; 
                             let width = img.width;
                             let height = img.height;
-
-                            if (width > MAX_WIDTH) {
-                                height *= MAX_WIDTH / width;
-                                width = MAX_WIDTH;
-                            }
-
-                            canvas.width = width;
-                            canvas.height = height;
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                            canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
-
-                            // Convert to Base64 JPEG with low quality
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                            
                             document.getElementById('input-img-base64').value = dataUrl;
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
@@ -585,7 +667,6 @@
                     reader.readAsDataURL(file);
                 }
             },
-
             clearImage: function() {
                 document.getElementById('input-file').value = '';
                 document.getElementById('input-img-base64').value = '';
@@ -593,50 +674,35 @@
                 document.getElementById('img-preview-container').classList.add('hidden');
             },
 
-            // --- CALENDAR LOGIC ---
+            // --- CALENDAR ---
             renderCalendar: function() {
                 const y = this.calDate.getFullYear(), m = this.calDate.getMonth();
                 document.getElementById('cal-month-year').innerText = new Date(y, m).toLocaleDateString('id', {month:'long', year:'numeric'});
-                
                 const firstDay = new Date(y, m, 1).getDay();
                 const daysInMonth = new Date(y, m + 1, 0).getDate();
                 const grid = document.getElementById('cal-days');
                 grid.innerHTML = '';
-
                 for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
-
                 for(let d=1; d<=daysInMonth; d++) {
                     const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                     const hasData = this.data.some(x => x.date === dateStr);
                     const isSelected = dateStr === this.calSelectedDate;
-                    
                     const el = document.createElement('button');
                     el.className = `h-10 rounded-lg text-sm font-medium flex flex-col items-center justify-center relative transition ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-50 text-slate-700'}`;
                     el.innerText = d;
-                    if(hasData && !isSelected) {
-                        el.innerHTML += `<div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-0.5"></div>`;
-                    }
+                    if(hasData && !isSelected) el.innerHTML += `<div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-0.5"></div>`;
                     el.onclick = () => this.selectCalDate(dateStr);
                     grid.appendChild(el);
                 }
             },
-            
-            changeMonth: function(delta) {
-                this.calDate.setMonth(this.calDate.getMonth() + delta);
-                this.renderCalendar();
-            },
-
+            changeMonth: function(delta) { this.calDate.setMonth(this.calDate.getMonth() + delta); this.renderCalendar(); },
             selectCalDate: function(dateStr) {
                 this.calSelectedDate = dateStr;
                 this.renderCalendar();
                 const daily = this.data.filter(x => x.date === dateStr);
-                
                 document.getElementById('cal-selected-date-label').innerText = `Kegiatan ${utils.fmtDate(dateStr)}`;
                 this.renderList(daily, 'cal-journal-list');
-                
-                if(daily.length === 0) {
-                    document.getElementById('cal-journal-list').innerHTML = `<p class="text-center text-sm text-slate-400 py-4 italic">Tidak ada kegiatan</p>`;
-                }
+                if(daily.length === 0) document.getElementById('cal-journal-list').innerHTML = `<p class="text-center text-sm text-slate-400 py-4 italic">Tidak ada kegiatan</p>`;
             },
 
             // --- FORM & SAVING ---
@@ -645,7 +711,7 @@
                 const c = document.getElementById('form-content');
                 m.classList.remove('hidden');
                 
-                // Animasi Mobile vs Desktop
+                // Animation Logic
                 if (window.innerWidth >= 768) {
                     setTimeout(() => { c.classList.remove('opacity-0', 'scale-95'); c.classList.add('opacity-100', 'scale-100'); }, 10);
                 } else {
@@ -661,16 +727,11 @@
                     document.getElementById('input-end').value = data.end;
                     document.getElementById('input-act').value = data.act;
                     document.getElementById('input-res').value = data.res;
-                    
-                    // Load Image
                     if (data.img) {
                         document.getElementById('input-img-base64').value = data.img;
                         document.getElementById('img-preview').src = data.img;
                         document.getElementById('img-preview-container').classList.remove('hidden');
-                    } else {
-                        this.clearImage();
-                    }
-
+                    } else { this.clearImage(); }
                     this.currentEditIdx = data.idx;
                 } else {
                     document.getElementById('form-title').innerText = 'Jurnal Baru';
@@ -692,16 +753,12 @@
                 const c = document.getElementById('form-content');
                 if (window.innerWidth >= 768) {
                     c.classList.remove('opacity-100', 'scale-100'); c.classList.add('opacity-0', 'scale-95');
-                } else {
-                    c.classList.add('translate-y-full');
-                }
+                } else { c.classList.add('translate-y-full'); }
                 setTimeout(()=> m.classList.add('hidden'), 300);
             },
 
             saveJournal: async function() {
-                // Safety check DB ID
                 if (!this.dbId) await this.setupDB();
-
                 const id = document.getElementById('input-id').value || utils.id();
                 const row = [
                     id,
@@ -710,7 +767,7 @@
                     document.getElementById('input-end').value,
                     document.getElementById('input-act').value,
                     document.getElementById('input-res').value,
-                    document.getElementById('input-img-base64').value // Simpan base64 string
+                    document.getElementById('input-img-base64').value
                 ];
 
                 if(!row[1] || !row[4]) return utils.toast('Lengkapi data!', 'error');
@@ -720,18 +777,14 @@
                 btn.disabled = true; spin.classList.remove('hidden');
 
                 try {
-                    // Cek sheet ranges. Jika Sheet1!A:F maka harus update range ke A:G
                     const rangeEnd = 'G'; 
-                    
                     if(this.currentEditIdx) {
-                        // Update
                         const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     } else {
-                        // Append
                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
@@ -740,10 +793,7 @@
                     this.closeForm();
                     this.fetchData();
                     utils.toast('Berhasil disimpan');
-                } catch(e) {
-                    console.error(e);
-                    utils.toast('Gagal menyimpan. Cek koneksi.', 'error');
-                }
+                } catch(e) { utils.toast('Gagal menyimpan.', 'error'); }
                 btn.disabled = false; spin.classList.add('hidden');
             },
 
@@ -761,7 +811,6 @@
                 } catch(e) { utils.toast('Gagal hapus', 'error'); }
             },
 
-            // --- PROFILE & SETTINGS ---
             loadProfileConfig: function() {
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 document.getElementById('conf-nip').value = c.nip || '';
@@ -780,38 +829,19 @@
                     ks_nip: document.getElementById('conf-ks-nip').value
                 };
                 localStorage.setItem('jg_profile_config', JSON.stringify(c));
-                utils.toast('Profil disimpan di HP');
+                utils.toast('Profil disimpan');
             },
 
             exportData: function() {
                 if(this.data.length === 0) return utils.toast('Tidak ada data', 'error');
-                
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = this.user?.given_name || 'Guru';
-                
-                // Construct CSV with Header
-                let csv = `LAPORAN JURNAL KEGIATAN HARIAN\n`;
-                csv += `Satuan Pendidikan,${c.sekolah || '-'}\n`;
-                csv += `Nama Guru,${teacherName}\n`;
-                csv += `NIP,${c.nip || '-'}\n`;
-                csv += `Bulan,${new Date().toLocaleDateString('id',{month:'long', year:'numeric'})}\n\n`;
-                
-                csv += "NO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT,FOTO\n";
-                
-                // Rows (Reverse to Oldest first for report usually)
+                let csv = `LAPORAN JURNAL KEGIATAN HARIAN\nSatuan Pendidikan,${c.sekolah || '-'}\nNama Guru,${teacherName}\nNIP,${c.nip || '-'}\n\nNO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT,FOTO\n`;
                 [...this.data].reverse().forEach((d, i) => {
                     const cleanAct = d.act.replace(/,/g, ' ').replace(/\n/g, ' ');
                     const cleanRes = d.res.replace(/,/g, ' ').replace(/\n/g, ' ');
-                    // Excel doesn't support images in CSV, so we leave it or put "Terlampir"
-                    const photoStatus = d.img ? "Terlampir" : "-";
-                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}","${photoStatus}"\n`;
+                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}","${d.img?'Terlampir':'-'}"\n`;
                 });
-
-                // Signature Footer
-                csv += `\n\nMengetahui,\nKepala Sekolah,,Guru Yang Bersangkutan\n\n\n`;
-                csv += `${c.ks_nama || '(...................)'},,${teacherName}\n`;
-                csv += `NIP. ${c.ks_nip || '-'},,NIP. ${c.nip || '-'}\n`;
-
                 const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
@@ -819,10 +849,55 @@
                 link.click();
             },
 
-            // --- UI HELPERS ---
+            // --- PRINT REPORT FEATURE ---
+            printReport: function() {
+                const start = document.getElementById('print-start-date').value;
+                const end = document.getElementById('print-end-date').value;
+                if(!start || !end) return utils.toast('Pilih tanggal awal dan akhir', 'error');
+
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse(); // Oldest first
+                if(filtered.length === 0) return utils.toast('Tidak ada data pada periode ini', 'error');
+
+                const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
+                const teacherName = this.user?.given_name || 'Guru';
+
+                // Update Print View DOM
+                document.getElementById('print-school-name').innerText = c.sekolah || "NAMA SEKOLAH";
+                document.getElementById('print-period-text').innerText = `${utils.fmtDate(start)} s/d ${utils.fmtDate(end)}`;
+                
+                document.getElementById('print-t-name').innerText = teacherName;
+                document.getElementById('print-t-nip').innerText = c.nip || '-';
+                document.getElementById('print-t-school').innerText = c.sekolah || '-';
+                document.getElementById('print-t-role').innerText = c.jabatan || 'Guru';
+
+                document.getElementById('print-ks-sign').innerText = c.ks_nama || '................';
+                document.getElementById('print-ks-nip-sign').innerText = c.ks_nip || '................';
+                document.getElementById('print-t-sign').innerText = teacherName;
+                document.getElementById('print-t-nip-sign').innerText = c.nip || '-';
+
+                const tbody = document.getElementById('print-table-body');
+                tbody.innerHTML = '';
+                filtered.forEach((item, i) => {
+                    const tr = document.createElement('tr');
+                    let imgHtml = '-';
+                    if(item.img) imgHtml = `<img src="${item.img}" style="max-height:80px; max-width:100px;">`;
+                    tr.innerHTML = `
+                        <td style="text-align:center">${i+1}</td>
+                        <td>${utils.fmtDate(item.date)}</td>
+                        <td style="text-align:center">${item.start} - ${item.end}</td>
+                        <td>${item.act}</td>
+                        <td>${item.res}</td>
+                        <td style="text-align:center">${imgHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                window.print();
+            },
+
             switchTab: function(tab) {
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                document.querySelector(`.nav-item[data-target="${tab}"]`).classList.add('active');
+                document.querySelectorAll('.nav-item, .sidebar-item').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll(`[data-target="${tab}"]`).forEach(el => el.classList.add('active'));
                 
                 ['home', 'calendar', 'profile'].forEach(v => {
                     const el = document.getElementById(`view-${v}`);
@@ -834,22 +909,18 @@
                         el.classList.remove('fade-in');
                     }
                 });
-
-                // Update Header
+                
+                // Header update
                 const titles = {home: 'Beranda', calendar: 'Kalender', profile: 'Profil Saya'};
                 const subs = {home: 'Ringkasan Kegiatan', calendar: 'Jadwal Bulanan', profile: 'Pengaturan Akun'};
                 document.getElementById('header-title').innerText = titles[tab];
                 document.getElementById('header-subtitle').innerText = subs[tab];
                 
-                // Handle FAB
+                if(tab === 'calendar') this.selectCalDate(new Date().toISOString().split('T')[0]);
+                
+                // FAB visibility
                 const fab = document.getElementById('fab-add');
-                if(tab === 'profile') fab.classList.add('scale-0');
-                else fab.classList.remove('scale-0');
-
-                // If Calendar, Render it
-                if(tab === 'calendar') {
-                    this.selectCalDate(new Date().toISOString().split('T')[0]);
-                }
+                if(tab === 'profile') fab.classList.add('scale-0'); else fab.classList.remove('scale-0');
             },
 
             toggleScreen: function(name) {
@@ -868,8 +939,6 @@
                 const now = new Date();
                 const thisMonth = this.data.filter(x => new Date(x.date).getMonth() === now.getMonth());
                 document.getElementById('stat-month').innerText = thisMonth.length;
-                
-                // Simple Hour Estimate (assuming 1 activity = 1 hour for now, or calc diff)
                 let mins = 0;
                 thisMonth.forEach(x => {
                     const [h1, m1] = x.start.split(':').map(Number);
