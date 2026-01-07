@@ -359,7 +359,7 @@
             </div>
             
             <!-- BOTTOM NAVIGATION (MOBILE ONLY) -->
-            <nav id="bottom-nav" class="bg-white border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center z-30 md:hidden">
+            <nav id="bottom-nav" class="bg-white border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center z-30 md:hidden fixed bottom-0 left-0 right-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <button onclick="app.switchTab('home')" class="nav-item active flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="home">
                     <i data-lucide="home" class="w-6 h-6"></i>
                     <span class="text-[10px] font-medium">Beranda</span>
@@ -565,6 +565,7 @@
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
+                // Check if the file still exists (optional validation)
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
                     try {
@@ -595,6 +596,18 @@
                 if(!this.dbId) await this.setupDB();
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
                 const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
+                
+                // Handle 404 (Sheet Deleted)
+                if(res.error) {
+                    if(res.error.code === 404) {
+                        localStorage.removeItem('jg_db_id');
+                        this.dbId = null;
+                        await this.setupDB();
+                        return this.fetchData(); // Retry
+                    }
+                    throw res.error;
+                }
+
                 this.data = (res.values || []).map((r, i) => ({
                     idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5], img: r[6] || null
                 })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -778,22 +791,29 @@
 
                 try {
                     const rangeEnd = 'G'; 
+                    let res;
                     if(this.currentEditIdx) {
                         const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                        res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        });
+                        }).then(r => r.json());
                     } else {
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
+                        res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        });
+                        }).then(r => r.json());
                     }
+                    
+                    if(res.error) throw res.error;
+
                     this.closeForm();
                     this.fetchData();
                     utils.toast('Berhasil disimpan');
-                } catch(e) { utils.toast('Gagal menyimpan.', 'error'); }
+                } catch(e) { 
+                    console.error(e);
+                    utils.toast('Gagal menyimpan: ' + (e.message || 'Unknown Error'), 'error'); 
+                }
                 btn.disabled = false; spin.classList.add('hidden');
             },
 
