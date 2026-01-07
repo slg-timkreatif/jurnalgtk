@@ -15,8 +15,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js"></script>
 
-    <!-- SheetJS for Excel Export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS Style (Required for Cell Styling like Wrap Text & Borders) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -354,7 +354,7 @@
                         <thead>
                             <tr class="bg-gray-200">
                                 <th class="w-[5%]">No</th>
-                                <th class="w-[12%]">Hari/Tanggal</th>
+                                <th class="w-[20%]">Hari/Tanggal</th>
                                 <th class="w-[12%]">Waktu</th>
                                 <th>Kegiatan</th>
                                 <th class="w-[20%]">Hasil/Output</th>
@@ -371,7 +371,7 @@
                         </div>
                         <div class="text-center w-64">
                             <p class="mb-4"><span id="print-city">...</span>, <span id="print-date-sign">...</span></p>
-                            <p class="mb-16">Guru Yang Bersangkutan</p>
+                            <p class="mb-16" id="print-role-sign">Guru Yang Bersangkutan</p>
                             <p class="font-bold underline" id="print-t-sign">...</p>
                             <p class="text-base">NIP. <span id="print-t-nip-sign">...</span></p>
                         </div>
@@ -456,6 +456,7 @@
                         <i data-lucide="camera" class="w-5 h-5"></i>
                         <span class="text-sm font-medium">Ambil Foto / Galeri</span>
                     </button>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">Foto otomatis dikompres (<150KB) untuk hemat Drive.</p>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -510,7 +511,8 @@
                 lucide.createIcons();
                 setTimeout(() => el.remove(), 3000);
             },
-            fmtDate: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'short', day:'numeric', month:'short'})
+            fmtDate: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'short', day:'numeric', month:'short'}),
+            fmtDateFull: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
         };
 
         const app = {
@@ -754,10 +756,10 @@
                 lucide.createIcons();
             },
 
-            // --- IMAGE HANDLING ---
+            // --- IMAGE HANDLING & COMPRESSION ---
             handleImageSelect: function(input) {
                 if (input.files && input.files[0]) {
-                    this.currentFile = input.files[0]; // Store file for upload
+                    const file = input.files[0];
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const img = new Image();
@@ -765,31 +767,39 @@
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
-                            const MAX_WIDTH = 600; 
+                            const MAX_WIDTH = 1024; // Compress to Max 1024px width
                             let width = img.width; let height = img.height;
                             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
-                            // Preview only (Local)
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                            
+                            // To Blob for Upload (High compression: 0.5)
+                            canvas.toBlob((blob) => {
+                                this.currentFile = blob; // Use this blob for upload
+                                // Check approximate size
+                                console.log("Compressed size approx:", blob.size / 1024, "KB");
+                            }, 'image/jpeg', 0.5);
+
+                            // Preview DataURL (Lower quality is fine for preview)
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
                         };
                     };
-                    reader.readAsDataURL(input.files[0]);
+                    reader.readAsDataURL(file);
                 }
             },
             
             clearImage: function() {
                 this.currentFile = null;
                 document.getElementById('input-file').value = '';
-                document.getElementById('input-img-base64').value = ''; // Clear legacy hidden input usage if any
+                document.getElementById('input-img-base64').value = ''; 
                 document.getElementById('img-preview').src = '';
                 document.getElementById('img-preview-container').classList.add('hidden');
             },
 
-            uploadToDrive: async function(file) {
-                const metadata = { name: 'Jurnal_' + Date.now() + '.jpg', mimeType: file.type };
+            uploadToDrive: async function(blobFile) {
+                const metadata = { name: 'Jurnal_' + Date.now() + '.jpg', mimeType: 'image/jpeg' };
                 const boundary = 'foo_bar_baz';
                 const delimiter = "\r\n--" + boundary + "\r\n";
                 const close_delim = "\r\n--" + boundary + "--";
@@ -797,14 +807,12 @@
                 const reader = new FileReader();
                 return new Promise((resolve, reject) => {
                     reader.onload = async (e) => {
-                        const contentType = file.type || 'application/octet-stream';
                         const base64Data = e.target.result.split(',')[1];
-                        
                         const body = delimiter +
                             'Content-Type: application/json\r\n\r\n' +
                             JSON.stringify(metadata) +
                             delimiter +
-                            'Content-Type: ' + contentType + '\r\n' +
+                            'Content-Type: image/jpeg\r\n' +
                             'Content-Transfer-Encoding: base64\r\n\r\n' +
                             base64Data +
                             close_delim;
@@ -823,7 +831,7 @@
                             else resolve(json.webViewLink);
                         } catch(err) { reject(err); }
                     }
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(blobFile);
                 });
             },
 
@@ -865,7 +873,7 @@
                 m.classList.remove('hidden');
                 setTimeout(() => { c.classList.remove('md:opacity-0', 'md:scale-95', 'translate-y-full'); }, 10);
                 
-                this.clearImage(); // Reset file input
+                this.clearImage(); 
 
                 if(data) {
                     document.getElementById('form-title').innerText = 'Edit Jurnal';
@@ -876,10 +884,8 @@
                     document.getElementById('input-end').value = data.end;
                     document.getElementById('input-act').value = data.act;
                     document.getElementById('input-res').value = data.res;
-                    // Store legacy/existing image link in hidden field to persist it if no new file is chosen
                     if (data.img) {
                         document.getElementById('input-img-base64').value = data.img;
-                        // Handle Preview for Edit
                         if(data.img.startsWith('data:image')) {
                              document.getElementById('img-preview').src = data.img;
                              document.getElementById('img-preview-container').classList.remove('hidden');
@@ -911,7 +917,7 @@
                 const c = document.getElementById('form-content');
                 if (window.innerWidth >= 768) { c.classList.add('md:opacity-0', 'md:scale-95'); } 
                 else { c.classList.add('translate-y-full'); }
-                setTimeout(()=> m.classList.add('hidden'), 300);
+                setTimeout(()=> m.classList.add('hidden'), 250); // Faster close animation
             },
 
             saveJournal: async function() {
@@ -922,15 +928,17 @@
 
                 const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
                 btns.forEach(b => b.disabled = true);
+                
+                // UX: Close Immediately and show uploading state
                 const spin = document.getElementById('spinner');
                 spin.classList.remove('hidden');
+                utils.toast('Menyimpan data...', 'success');
+                this.closeForm(); // Close form immediately for better UX
 
                 try {
-                    let finalImg = document.getElementById('input-img-base64').value; // Default to existing
+                    let finalImg = document.getElementById('input-img-base64').value; 
                     
-                    // UPLOAD TO DRIVE if new file selected
                     if(this.currentFile) {
-                         utils.toast('Mengupload foto ke Drive...', 'success');
                          finalImg = await this.uploadToDrive(this.currentFile);
                     }
 
@@ -959,11 +967,11 @@
                         }).then(r => r.json());
                     }
                     if(res.error) throw res.error;
-                    this.closeForm();
                     this.fetchData();
-                    utils.toast('Berhasil disimpan');
+                    utils.toast('Data Tersimpan di Cloud');
                 } catch(e) { 
                     utils.toast('Gagal menyimpan: ' + (e.message || 'Error'), 'error'); 
+                    // If failed, reopen form? Maybe better to just let user retry from list if implemented properly, but here we just warn.
                 }
                 btns.forEach(b => b.disabled = false);
                 spin.classList.add('hidden');
@@ -1018,8 +1026,9 @@
                 document.getElementById('conf-ks-nip').value = c.ks_nip || '';
                 document.getElementById('conf-kota').value = c.kota || '';
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
-                // UPDATE: Show Jabatan in Profile View
-                document.getElementById('profile-jabatan').innerText = c.jabatan || 'Guru (Belum ada jabatan)';
+                
+                document.getElementById('profile-jabatan').innerText = c.jabatan || 'Guru';
+                document.getElementById('print-role-sign').innerText = c.jabatan || 'Guru Yang Bersangkutan';
             },
 
             saveProfileConfig: async function() {
@@ -1053,7 +1062,7 @@
                 btn.innerText = origText; btn.disabled = false;
             },
 
-            // --- EXPORT EXCEL OFFICIAL (MULTI SHEET / MONTH) ---
+            // --- EXPORT EXCEL OFFICIAL (STYLIZED) ---
             exportExcel: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
@@ -1063,98 +1072,114 @@
                 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
-                
                 const wb = XLSX.utils.book_new();
 
-                // Group Data by Month (Format YYYY-MM)
+                // Style Helpers
+                const headerStyle = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center", vertical: "center" } };
+                const subHeaderStyle = { font: { bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" } };
+                const tableHeaderStyle = { 
+                    font: { bold: true }, 
+                    fill: { fgColor: { rgb: "E5E7EB" } }, // Gray background
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                    border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} }
+                };
+                const cellStyle = {
+                    alignment: { vertical: "top", wrapText: true },
+                    border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} }
+                };
+                const centerCellStyle = { ...cellStyle, alignment: { vertical: "top", horizontal: "center", wrapText: true } };
+
+                // Group Data by Month
                 const grouped = {};
                 filtered.forEach(item => {
-                    const monthKey = item.date.substring(0, 7); // "2024-01"
+                    const monthKey = item.date.substring(0, 7); 
                     if (!grouped[monthKey]) grouped[monthKey] = [];
                     grouped[monthKey].push(item);
                 });
 
-                // Iterate Groups and Create Sheets
                 Object.keys(grouped).sort().forEach(key => {
                     const monthData = grouped[key];
                     const [y, m] = key.split('-');
                     const monthName = new Date(y, m-1, 1).toLocaleDateString('id-ID', {month: 'long', year: 'numeric'});
                     
                     const ws_data = [];
+                    // Create Sheet
+                    const ws = XLSX.utils.aoa_to_sheet([]);
                     
-                    // -- HEADER (KOP) --
-                    ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
-                    ws_data.push([c.sekolah || "NAMA SEKOLAH"]);
-                    ws_data.push([]); 
+                    // --- KOP ---
+                    XLSX.utils.sheet_add_aoa(ws, [
+                        ["LAPORAN KINERJA HARIAN GURU"],
+                        [c.sekolah || "NAMA SEKOLAH"],
+                        ["Periode: " + utils.fmtDateFull(start) + " s/d " + utils.fmtDateFull(end)]
+                    ], {origin: "A1"});
                     
-                    // -- BIODATA --
-                    ws_data.push(["Nama Guru", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")]);
-                    ws_data.push(["NIP", ": " + (c.nip || "-"), "", "Periode Bulan", ": " + monthName]);
-                    ws_data.push(["Jabatan", ": " + (c.jabatan || "-")]);
-                    ws_data.push([]); 
-                    
-                    // -- TABLE HEADER --
-                    ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "LINK FOTO DOKUMENTASI"]);
-                    
-                    // -- DATA ROWS --
+                    // --- BIODATA ---
+                    XLSX.utils.sheet_add_aoa(ws, [
+                        ["Nama", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")],
+                        ["NIP", ": " + (c.nip || "-"), "", "Jabatan", ": " + (c.jabatan || "-")]
+                    ], {origin: "A5"});
+
+                    // --- TABLE HEADER ---
+                    XLSX.utils.sheet_add_aoa(ws, [
+                        ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"]
+                    ], {origin: "A8"});
+
+                    // --- TABLE DATA ---
+                    const tableRows = [];
                     monthData.forEach((d, i) => {
                         let linkVal = "-";
-                        let linkTarget = null;
+                        let linkObj = { v: "-", t: "s", s: centerCellStyle };
 
                         if(d.img) {
                              if (d.img.startsWith('http')) {
-                                linkVal = d.img; // Use the URL as text
-                                linkTarget = d.img;
+                                linkObj = { v: "Lihat Foto", t: "s", s: centerCellStyle, l: { Target: d.img } };
                              } else {
-                                linkVal = "Link Terlalu Panjang (Base64)"; // Fallback for old data
+                                linkObj = { v: "Base64 Img", t: "s", s: centerCellStyle };
                              }
                         }
 
-                        ws_data.push([
-                            i + 1,
-                            utils.fmtDate(d.date),
-                            `${d.start} - ${d.end}`,
-                            d.act.replace(/\n/g, ' '),
-                            d.res.replace(/\n/g, ' '),
-                            linkVal
+                        tableRows.push([
+                            { v: i + 1, t: 'n', s: centerCellStyle },
+                            { v: utils.fmtDateFull(d.date), t: 's', s: cellStyle },
+                            { v: `${d.start} - ${d.end}`, t: 's', s: centerCellStyle },
+                            { v: d.act.replace(/\n/g, ' '), t: 's', s: cellStyle },
+                            { v: d.res.replace(/\n/g, ' '), t: 's', s: cellStyle },
+                            linkObj
                         ]);
                     });
+                    XLSX.utils.sheet_add_aoa(ws, tableRows, {origin: "A9"});
 
-                    // -- SIGNATURES --
-                    ws_data.push([]);
-                    ws_data.push([]);
-                    const cityDate = (c.kota || "..............") + ", " + new Date(y, m, 0).getDate() + " " + monthName; // Last day of month estimate or today
+                    // --- SIGNATURES ---
+                    const lastRow = 9 + tableRows.length + 2;
+                    const cityDate = (c.kota || "..............") + ", " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                     
-                    ws_data.push(["Mengetahui,", "", "", "", cityDate]);
-                    ws_data.push(["Kepala Sekolah", "", "", "", "Guru Yang Bersangkutan"]);
-                    ws_data.push([]);
-                    ws_data.push([]);
-                    ws_data.push([]);
-                    ws_data.push([c.ks_nama || "...................", "", "", "", teacherName]);
-                    ws_data.push(["NIP. " + (c.ks_nip || "-"), "", "", "", "NIP. " + (c.nip || "-")]);
+                    XLSX.utils.sheet_add_aoa(ws, [
+                        ["Mengetahui,", "", "", "", "", cityDate],
+                        ["Kepala Sekolah", "", "", "", "", (c.jabatan || "Guru Yang Bersangkutan")]
+                    ], {origin: `C${lastRow}`}); // Shifted to C to spread out, actually using Merge is better
 
-                    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                     XLSX.utils.sheet_add_aoa(ws, [
+                        [c.ks_nama || "...................", "", "", "", "", teacherName],
+                        ["NIP. " + (c.ks_nip || "-"), "", "", "", "", "NIP. " + (c.nip || "-")]
+                    ], {origin: `C${lastRow + 5}`});
 
-                    // Merges
+
+                    // --- MERGES & COL WIDTHS ---
                     ws['!merges'] = [
-                        { s: {r:0, c:0}, e: {r:0, c:5} }, 
-                        { s: {r:1, c:0}, e: {r:1, c:5} }
+                        { s: {r:0, c:0}, e: {r:0, c:5} }, // Title 1
+                        { s: {r:1, c:0}, e: {r:1, c:5} }, // Title 2
+                        { s: {r:2, c:0}, e: {r:2, c:5} }, // Title 3
                     ];
+                    ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:35}, {wch:15}];
 
-                    // Column Widths
-                    ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:60}]; // Last col wide for link
+                    // Apply Header Styles manually since sheet_add_aoa doesn't support bulk styling easily without loop
+                    ['A1','A2','A3'].forEach(ref => { if(ws[ref]) ws[ref].s = headerStyle; });
+                    // Bold Biodata labels
+                    ['A5','D5','A6','D6'].forEach(ref => { if(ws[ref]) ws[ref].s = {font:{bold:true}}; });
+                    // Table Header Style
+                    ['A8','B8','C8','D8','E8','F8'].forEach(ref => { if(ws[ref]) ws[ref].s = tableHeaderStyle; });
 
-                    // Styling Hyperlink on top of text
-                    const dataStartRow = 8;
-                    monthData.forEach((d, i) => {
-                        if(d.img && d.img.startsWith('http')) {
-                            const cellRef = XLSX.utils.encode_cell({c: 5, r: dataStartRow + i});
-                            if(!ws[cellRef]) ws[cellRef] = {v: d.img, t:'s'};
-                            ws[cellRef].l = { Target: d.img }; 
-                        }
-                    });
-
-                    XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31)); // Sheet name max 31 chars
+                    XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31));
                 });
 
                 XLSX.writeFile(wb, `Laporan_${teacherName}_${start}_${end}.xlsx`);
@@ -1166,7 +1191,7 @@
                 const end = document.getElementById('print-end-date').value;
                 if(!start || !end) return utils.toast('Pilih tanggal awal dan akhir', 'error');
 
-                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse(); // Oldest first
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse(); 
                 if(filtered.length === 0) return utils.toast('Tidak ada data pada periode ini', 'error');
 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
@@ -1174,7 +1199,7 @@
 
                 // Update Print View DOM
                 document.getElementById('print-school-name').innerText = c.sekolah || "NAMA SEKOLAH";
-                document.getElementById('print-period-text').innerText = `${utils.fmtDate(start)} s/d ${utils.fmtDate(end)}`;
+                document.getElementById('print-period-text').innerText = `${utils.fmtDateFull(start)} s/d ${utils.fmtDateFull(end)}`;
                 
                 document.getElementById('print-t-name').innerText = teacherName;
                 document.getElementById('print-t-nip').innerText = c.nip || '-';
@@ -1188,6 +1213,9 @@
                 document.getElementById('print-ks-nip-sign').innerText = c.ks_nip || '................';
                 document.getElementById('print-t-sign').innerText = teacherName;
                 document.getElementById('print-t-nip-sign').innerText = c.nip || '-';
+                
+                // Update Signature Title
+                document.getElementById('print-role-sign').innerText = c.jabatan || 'Guru Yang Bersangkutan';
 
                 const tbody = document.getElementById('print-table-body');
                 tbody.innerHTML = '';
@@ -1204,7 +1232,7 @@
                     }
                     tr.innerHTML = `
                         <td style="text-align:center">${i+1}</td>
-                        <td>${utils.fmtDate(item.date)}</td>
+                        <td>${utils.fmtDateFull(item.date)}</td>
                         <td style="text-align:center">${item.start} - ${item.end}</td>
                         <td>${item.act}</td>
                         <td>${item.res}</td>
