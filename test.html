@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <title>Jurnal Harian GTK</title>
-    <meta name="description" content="Aplikasi Jurnal Harian Guru & Tenaga Kependidikan Terintegrasi Google Drive">
+    <meta name="description" content="Aplikasi Jurnal Harian Guru & Tenaga Kependidikan">
     
     <link rel="icon" type="image/png" href="https://i.imgur.com/7PPoYr5.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/7PPoYr5.png">
-    
     <meta property="og:title" content="Jurnal Harian GTK">
-    <meta property="og:description" content="Aplikasi Administrasi Guru Mandiri">
     <meta property="og:image" content="https://i.imgur.com/7PPoYr5.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,11 +18,10 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#1e3a8a', // Navy Blue
+                        primary: '#1e3a8a', // Navy Blue Dinas
                         primaryDark: '#172554',
-                        onPrimary: '#ffffff',
                         surface: '#f8fafc',
-                        surfaceVariant: '#e2e8f0',
+                        onSurface: '#0f172a',
                     },
                     fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Times New Roman', 'serif'] }
                 }
@@ -42,16 +39,21 @@
         body { font-family: 'Inter', sans-serif; }
         .hidden-view { display: none !important; }
         .hide-scroll::-webkit-scrollbar { display: none; }
+        
+        /* CALENDAR STYLE */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.9rem; cursor: pointer; background: white; border: 1px solid #e2e8f0; }
-        .calendar-day.has-data { font-weight: bold; border-color: #1e3a8a; color: #1e3a8a; }
+        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.9rem; cursor: pointer; background: white; border: 1px solid #e2e8f0; transition: all 0.2s; }
+        .calendar-day:active { transform: scale(0.95); }
+        .calendar-day.has-data { font-weight: bold; border-color: #1e3a8a; color: #1e3a8a; background-color: #eff6ff; }
         .calendar-day.selected { background-color: #1e3a8a; color: white; border-color: #1e3a8a; }
-        .autocomplete-items { position: absolute; border: 1px solid #e2e8f0; z-index: 99; top: 100%; left: 0; right: 0; background: white; max-height: 200px; overflow-y: auto; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
-        .autocomplete-item:hover { background-color: #f8fafc; }
+        
+        /* AUTOCOMPLETE STYLE */
+        .autocomplete-items { position: absolute; border: 1px solid #cbd5e1; z-index: 99; top: 100%; left: 0; right: 0; background: white; max-height: 200px; overflow-y: auto; border-radius: 0 0 8px 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .autocomplete-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155; }
+        .autocomplete-item:hover { background-color: #f1f5f9; color: #1e3a8a; }
     </style>
 </head>
-<body class="bg-surface text-slate-800 min-h-screen">
+<body class="bg-surface text-onSurface min-h-screen pb-20">
 
     <div id="loading-overlay" class="hidden-view fixed inset-0 bg-white/95 z-[70] flex flex-col items-center justify-center p-6 text-center">
         <div class="w-12 h-12 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
@@ -59,113 +61,133 @@
     </div>
 
     <div id="view-login" class="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 relative">
-        <div class="w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-6 p-4">
+        <div class="w-32 h-32 bg-white rounded-3xl shadow-xl flex items-center justify-center mb-8 p-4">
             <img src="https://i.imgur.com/7PPoYr5.png" class="w-full h-full object-contain" alt="Logo GTK">
         </div>
-        <h1 class="text-2xl font-bold text-primaryDark mb-1">Jurnal Harian GTK</h1>
-        <p class="text-gray-500 text-sm mb-12 text-center">Administrasi Terintegrasi & Mandiri</p>
+        <h1 class="text-2xl font-bold text-primaryDark mb-2">Jurnal Harian GTK</h1>
+        <p class="text-gray-500 text-sm mb-12 text-center max-w-xs">Aplikasi Administrasi Mandiri<br>Terintegrasi Google Drive</p>
         
         <button onclick="app.handleAuth()" class="w-full max-w-sm h-14 bg-white border border-gray-300 rounded-xl font-medium text-gray-700 shadow-sm hover:shadow-md transition flex items-center justify-center gap-3">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
             Masuk dengan Google
         </button>
-        <div class="mt-8 text-[10px] text-gray-400 text-center max-w-xs">
-            Jika muncul "Unverified App", klik <b>Advanced</b> > <b>Go to Jurnal Guru (unsafe)</b>.
-        </div>
+        <p class="mt-8 text-[10px] text-gray-400 text-center max-w-xs leading-relaxed">
+            Saat pertama kali, jika muncul peringatan "Unverified App",<br>klik <b>Advanced</b> lalu <b>Go to Jurnal Guru (unsafe)</b>.
+        </p>
     </div>
 
-    <div id="view-setup" class="hidden-view min-h-screen bg-white flex flex-col">
-        <div class="p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-            <h1 class="text-xl font-bold text-primaryDark">Data Kepegawaian</h1>
+    <div id="view-setup" class="hidden-view min-h-screen bg-white flex flex-col z-50">
+        <div class="p-5 border-b border-gray-100 bg-white sticky top-0 z-10 shadow-sm">
+            <h1 class="text-lg font-bold text-primaryDark">Data Kepegawaian</h1>
             <p class="text-xs text-gray-500">Lengkapi data untuk KOP Laporan.</p>
         </div>
-        <div class="flex-1 overflow-y-auto p-6 space-y-5 pb-24">
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nama Lengkap & Gelar</label><input type="text" id="setup-nama" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-5 pb-24">
+             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nama Lengkap & Gelar</label><input type="text" id="setup-nama" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm" placeholder="Contoh: Budi, S.Pd."></div>
              <div class="grid grid-cols-2 gap-4">
-                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">NIP</label><input type="text" id="setup-nip" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
-                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pangkat/Gol</label><input type="text" id="setup-pangkat" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
+                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">NIP</label><input type="text" id="setup-nip" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm"></div>
+                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pangkat/Gol</label><input type="text" id="setup-pangkat" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm" placeholder="-"></div>
              </div>
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Unit Kerja</label><input type="text" id="setup-unit" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Alamat Sekolah</label><textarea id="setup-alamat" rows="2" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></textarea></div>
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota/Kab</label><input type="text" id="setup-kota" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
-             <hr>
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nama KS</label><input type="text" id="setup-ks" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
-             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">NIP KS</label><input type="text" id="setup-nip-ks" class="input-field w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none"></div>
-             <button onclick="app.saveProfile(true)" class="w-full py-4 mt-2 bg-primary text-white rounded-xl font-bold shadow hover:bg-primaryDark transition">SIMPAN DATA</button>
+             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Unit Kerja</label><input type="text" id="setup-unit" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm" placeholder="SD Negeri..."></div>
+             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Alamat Sekolah (KOP)</label><textarea id="setup-alamat" rows="2" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm" placeholder="Jl. Merdeka No. 1..."></textarea></div>
+             <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota / Kabupaten</label><input type="text" id="setup-kota" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm" placeholder="Wonogiri"></div>
+             <div class="border-t pt-4 mt-2">
+                 <h3 class="text-xs font-bold text-primary mb-3">Data Kepala Sekolah</h3>
+                 <div class="space-y-3">
+                    <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nama KS</label><input type="text" id="setup-ks" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm"></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">NIP KS</label><input type="text" id="setup-nip-ks" class="w-full p-3 bg-gray-50 rounded-lg border focus:border-primary outline-none text-sm"></div>
+                 </div>
+             </div>
+             <button onclick="app.saveProfile(true)" class="w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg hover:bg-primaryDark transition mt-4">SIMPAN DATA</button>
         </div>
     </div>
 
     <div id="view-dashboard" class="hidden-view pb-24 max-w-2xl mx-auto min-h-screen flex flex-col bg-surface">
-        <div class="bg-primary px-5 pt-8 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10">
+        <div class="bg-primary px-6 pt-10 pb-16 rounded-b-[2.5rem] shadow-xl relative z-10">
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h1 class="text-xl font-bold text-white">Halo,</h1>
-                    <p class="text-sm text-blue-100 mt-1 font-medium" id="dash-name">Guru</p>
-                    <p class="text-[10px] text-blue-200 bg-blue-900/30 inline-block px-2 py-0.5 rounded mt-1" id="dash-unit">Unit Kerja</p>
+                    <h1 class="text-xl font-bold text-white">Selamat Datang,</h1>
+                    <p class="text-sm text-blue-100 mt-1 font-medium truncate w-48" id="dash-name">Guru</p>
+                    <p class="text-[10px] text-blue-200 bg-blue-900/40 inline-block px-3 py-1 rounded-full mt-2" id="dash-unit">Unit Kerja</p>
                 </div>
-                <div id="dash-avatar" class="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 overflow-hidden"></div>
+                <div id="dash-avatar" class="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 overflow-hidden shadow-sm"></div>
             </div>
         </div>
 
-        <div class="px-4 -mt-8 relative z-20">
-            <div class="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2">
-                <select id="filter-month" onchange="app.renderViews()" class="flex-1 bg-transparent text-sm px-3 py-2 outline-none font-bold text-gray-700"></select>
-                <div class="w-px bg-gray-200 my-1"></div>
-                <select id="filter-year" onchange="app.renderViews()" class="w-20 bg-transparent text-sm px-2 py-2 outline-none font-bold text-gray-700"></select>
+        <div class="px-6 -mt-8 relative z-20">
+            <div class="bg-white p-2 rounded-2xl shadow-md border border-slate-100 flex gap-2 items-center">
+                <select id="filter-month" onchange="app.renderViews()" class="flex-1 bg-transparent text-sm px-4 py-3 outline-none font-bold text-slate-700 cursor-pointer"></select>
+                <div class="h-6 w-px bg-slate-200"></div>
+                <select id="filter-year" onchange="app.renderViews()" class="w-24 bg-transparent text-sm px-4 py-3 outline-none font-bold text-slate-700 cursor-pointer"></select>
             </div>
         </div>
 
-        <div class="p-4 flex-1">
+        <div class="p-5 flex-1">
             <div id="tab-content-list" class="space-y-3"></div>
+            
             <div id="tab-content-calendar" class="hidden-view">
-                 <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-4">
-                    <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-bold text-gray-400 uppercase"><div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div></div>
+                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-5">
+                    <div class="grid grid-cols-7 mb-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest"><div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div></div>
                     <div id="calendar-container" class="calendar-grid"></div>
                 </div>
-                <div class="flex justify-between items-center mb-2"><h3 class="text-sm font-bold text-gray-700" id="cal-date-label">Detail</h3><button onclick="app.createNew(app.selectedDate)" class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full font-bold">+ Input</button></div>
+                <div class="flex justify-between items-center mb-3 px-1">
+                    <h3 class="text-sm font-bold text-slate-700" id="cal-date-label">Detail Kegiatan</h3>
+                    <button onclick="app.createNew(app.selectedDate)" class="text-xs bg-primary/10 text-primary px-4 py-2 rounded-full font-bold hover:bg-primary hover:text-white transition">+ Input</button>
+                </div>
                 <div id="calendar-day-list" class="space-y-2"></div>
             </div>
-            <div id="empty-state" class="hidden-view flex flex-col items-center justify-center py-12 text-gray-400">
-                <i data-lucide="file-x" width="32" class="opacity-40 mb-2"></i><p class="text-xs">Belum ada data</p>
+
+            <div id="empty-state" class="hidden-view flex flex-col items-center justify-center py-16 text-slate-400">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                    <i data-lucide="clipboard-list" width="32" class="opacity-40"></i>
+                </div>
+                <p class="text-xs font-medium">Belum ada jurnal bulan ini</p>
             </div>
         </div>
     </div>
 
     <div id="view-form" class="hidden-view fixed inset-0 z-50 bg-slate-50 flex flex-col">
-        <div class="px-4 py-3 bg-white border-b flex items-center gap-3 sticky top-0 z-10">
-            <button onclick="app.navigate('dashboard')" class="p-2 -ml-2 rounded-full hover:bg-gray-100"><i data-lucide="arrow-left" class="text-gray-700"></i></button>
+        <div class="px-5 py-4 bg-white border-b flex items-center gap-4 sticky top-0 z-10 shadow-sm">
+            <button onclick="app.navigate('dashboard')" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-600"><i data-lucide="arrow-left"></i></button>
             <h2 class="font-bold text-lg flex-1 text-primaryDark" id="form-title">Isi Jurnal</h2>
-            <button onclick="app.saveJournal()" class="text-white font-bold text-xs px-4 py-2 bg-primary rounded-lg shadow">SIMPAN</button>
+            <button onclick="app.saveJournal()" class="text-white font-bold text-xs px-5 py-2.5 bg-primary rounded-xl shadow hover:bg-primaryDark transition flex items-center gap-2"><i data-lucide="save" width="16"></i> SIMPAN</button>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-5 pb-24">
             <input type="hidden" id="inp-id"><input type="hidden" id="inp-row-index">
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
-                <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tanggal</label><input type="date" id="inp-date" class="w-full mt-1 p-2 border-b font-medium outline-none"></div>
-                <div class="flex gap-4">
-                    <div class="flex-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Mulai</label><input type="time" id="inp-start" class="w-full mt-1 p-2 border-b font-medium outline-none"></div>
-                    <div class="flex-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Selesai</label><input type="time" id="inp-end" class="w-full mt-1 p-2 border-b font-medium outline-none"></div>
+            
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase">Tanggal Kegiatan</label><input type="date" id="inp-date" class="w-full mt-1 p-2 border-b border-slate-200 font-medium text-slate-700 outline-none focus:border-primary transition"></div>
+                <div class="flex gap-5">
+                    <div class="flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Mulai</label><input type="time" id="inp-start" class="w-full mt-1 p-2 border-b border-slate-200 font-medium text-slate-700 outline-none focus:border-primary transition"></div>
+                    <div class="flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Selesai</label><input type="time" id="inp-end" class="w-full mt-1 p-2 border-b border-slate-200 font-medium text-slate-700 outline-none focus:border-primary transition"></div>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                 <div class="relative autocomplete">
-                    <div class="flex justify-between mb-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Uraian Kegiatan</label><button onclick="app.voice('activity')" class="text-primary"><i data-lucide="mic" width="14"></i></button></div>
-                    <textarea id="inp-activity" rows="3" class="w-full p-3 bg-gray-50 rounded-lg border-none text-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Ketik untuk cari referensi..."></textarea>
+                    <div class="flex justify-between mb-2"><label class="text-[10px] font-bold text-slate-400 uppercase">Uraian Kegiatan</label><button onclick="app.voice('activity')" class="text-primary bg-primary/5 p-1.5 rounded-lg hover:bg-primary/10 transition"><i data-lucide="mic" width="16"></i></button></div>
+                    <textarea id="inp-activity" rows="3" class="w-full p-4 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-primary/20 outline-none text-slate-700 placeholder:text-slate-400" placeholder="Ketik untuk mencari referensi..."></textarea>
                     <div id="list-activity" class="autocomplete-items hidden-view"></div>
                 </div>
                 <div class="relative autocomplete">
-                    <div class="flex justify-between mb-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Hasil / Output</label><button onclick="app.voice('result')" class="text-primary"><i data-lucide="mic" width="14"></i></button></div>
-                    <textarea id="inp-result" rows="2" class="w-full p-3 bg-gray-50 rounded-lg border-none text-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Hasil..."></textarea>
+                    <div class="flex justify-between mb-2"><label class="text-[10px] font-bold text-slate-400 uppercase">Hasil / Output</label><button onclick="app.voice('result')" class="text-primary bg-primary/5 p-1.5 rounded-lg hover:bg-primary/10 transition"><i data-lucide="mic" width="16"></i></button></div>
+                    <textarea id="inp-result" rows="2" class="w-full p-4 bg-slate-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-primary/20 outline-none text-slate-700 placeholder:text-slate-400" placeholder="Hasil yang dicapai..."></textarea>
                     <div id="list-result" class="autocomplete-items hidden-view"></div>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Dokumentasi</label>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <label class="text-[10px] font-bold text-slate-400 uppercase mb-3 block">Dokumentasi</label>
                 <input type="file" id="inp-file" accept="image/*" class="hidden" onchange="app.handleFileSelect(this)">
-                <div id="upload-placeholder" onclick="document.getElementById('inp-file').click()" class="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer">
-                    <i data-lucide="camera" class="mb-1" width="20"></i><span class="text-[10px]">Ambil Foto</span>
+                
+                <div id="upload-placeholder" onclick="document.getElementById('inp-file').click()" class="w-full h-32 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:bg-slate-50 hover:border-primary transition group">
+                    <div class="bg-slate-100 p-3 rounded-full mb-2 group-hover:bg-blue-50 group-hover:text-primary transition"><i data-lucide="camera" width="24"></i></div>
+                    <span class="text-xs font-medium">Ketuk untuk ambil foto</span>
                 </div>
-                <div id="preview-container" class="hidden-view relative mt-2">
-                    <img id="img-preview" class="w-full h-40 object-cover rounded-lg"><button onclick="app.clearFile()" class="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1"><i data-lucide="x" width="14"></i></button>
+
+                <div id="preview-container" class="hidden-view relative mt-3">
+                    <img id="img-preview" class="w-full h-48 object-cover rounded-xl shadow-md bg-slate-100">
+                    <button onclick="app.clearFile()" class="absolute top-3 right-3 bg-white/90 text-red-500 rounded-full p-1.5 shadow-sm hover:bg-white transition"><i data-lucide="x" width="16"></i></button>
                     <input type="hidden" id="inp-old-photo">
                 </div>
             </div>
@@ -173,25 +195,63 @@
     </div>
 
     <div id="view-profile" class="hidden-view pb-24 max-w-2xl mx-auto min-h-screen bg-slate-50">
-        <div class="bg-white p-6 border-b border-gray-100 flex items-center gap-4">
-             <div id="profile-pic-lg" class="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow"></div>
-             <div><h2 class="font-bold text-lg text-gray-800" id="profile-name">...</h2><p class="text-xs text-gray-500" id="profile-unit">...</p></div>
+        <div class="bg-white p-6 border-b border-slate-100 flex items-center gap-5 sticky top-0">
+             <div id="profile-pic-lg" class="w-20 h-20 rounded-full bg-slate-200 overflow-hidden border-4 border-white shadow-md"></div>
+             <div>
+                 <h2 class="font-bold text-lg text-slate-800" id="profile-name">...</h2>
+                 <p class="text-xs text-slate-500 mt-1" id="profile-unit">...</p>
+                 <span class="inline-block mt-2 text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Akun Aktif</span>
+             </div>
         </div>
-        <div class="p-4 space-y-3">
-             <button onclick="app.openSetup()" class="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                 <div class="flex items-center gap-3"><div class="bg-blue-50 text-blue-600 p-2 rounded-lg"><i data-lucide="user-cog" width="18"></i></div><div class="text-left"><div class="text-sm font-bold text-gray-700">Edit Data Kepegawaian</div><div class="text-[10px] text-gray-400">Nama, NIP, KOP Surat</div></div></div>
-                 <i data-lucide="chevron-right" width="16" class="text-gray-300"></i>
-             </button>
-             <button onclick="app.downloadExcel()" class="w-full py-3 bg-green-600 text-white rounded-lg font-bold shadow-sm flex items-center justify-center gap-2"><i data-lucide="printer" width="18"></i> Download Laporan (Excel)</button>
-             <button onclick="app.handleSignOut()" class="w-full py-3 mt-4 text-red-600 font-bold bg-red-50 rounded-xl border border-red-100">Keluar Aplikasi</button>
+
+        <div class="p-5 space-y-4">
+             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                 <button onclick="app.openSetup()" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition border-b border-slate-100">
+                     <div class="flex items-center gap-4">
+                         <div class="bg-blue-50 text-blue-600 p-2.5 rounded-xl"><i data-lucide="user-cog" width="20"></i></div>
+                         <div class="text-left">
+                             <div class="text-sm font-bold text-slate-700">Edit Data Kepegawaian</div>
+                             <div class="text-[10px] text-slate-400 mt-0.5">Nama, NIP, Alamat Sekolah</div>
+                         </div>
+                     </div>
+                     <i data-lucide="chevron-right" width="18" class="text-slate-300"></i>
+                 </button>
+             </div>
+
+             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                 <h3 class="text-[10px] font-bold text-slate-400 uppercase mb-4 tracking-wider">Laporan</h3>
+                 <button onclick="app.downloadExcel()" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-md hover:bg-green-700 flex items-center justify-center gap-3 transition active:scale-95">
+                     <i data-lucide="printer" width="20"></i> Download Laporan (Excel)
+                 </button>
+                 <p class="text-[10px] text-slate-400 text-center mt-3">Format otomatis dengan KOP & Tanda Tangan.</p>
+             </div>
+
+             <button onclick="app.handleSignOut()" class="w-full py-4 mt-6 text-red-600 font-bold bg-white rounded-xl border border-red-100 hover:bg-red-50 transition shadow-sm">Keluar Aplikasi</button>
+             <p class="text-[10px] text-center text-slate-300 mt-4">Jurnal Harian GTK v1.2</p>
         </div>
     </div>
 
-    <nav id="bottom-nav" class="hidden-view fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex justify-around items-center z-40 max-w-2xl mx-auto">
-        <button onclick="app.switchTab('list')" class="nav-item group w-16 flex flex-col items-center gap-1" data-target="list"><i data-lucide="layout-list" width="20" class="text-gray-400 group-[.active]:text-primary"></i><span class="text-[10px] text-gray-400 group-[.active]:text-primary">Jurnal</span></button>
-        <button onclick="app.createNew()" class="relative -top-5 bg-primary text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center"><i data-lucide="plus" width="24"></i></button>
-        <button onclick="app.switchTab('calendar')" class="nav-item group w-16 flex flex-col items-center gap-1" data-target="calendar"><i data-lucide="calendar" width="20" class="text-gray-400 group-[.active]:text-primary"></i><span class="text-[10px] text-gray-400 group-[.active]:text-primary">Kalender</span></button>
-        <button onclick="app.navigate('profile')" class="nav-item group w-16 flex flex-col items-center gap-1 absolute right-4" data-target="profile"><i data-lucide="user" width="20" class="text-gray-400 group-[.active]:text-primary"></i><span class="text-[10px] text-gray-400 group-[.active]:text-primary">Profil</span></button>
+    <nav id="bottom-nav" class="hidden-view fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-slate-100 flex justify-around items-center z-40 max-w-2xl mx-auto shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] pb-2">
+        <button onclick="app.switchTab('list')" class="nav-item group w-16 flex flex-col items-center gap-1" data-target="list">
+            <i data-lucide="layout-list" width="22" class="text-slate-300 group-[.active]:text-primary transition-colors"></i>
+            <span class="text-[10px] font-medium text-slate-300 group-[.active]:text-primary transition-colors">Jurnal</span>
+        </button>
+        
+        <div class="relative -top-6">
+            <button onclick="app.createNew()" class="bg-primary text-white w-14 h-14 rounded-2xl shadow-lg shadow-blue-900/30 flex items-center justify-center transform active:scale-90 transition hover:bg-primaryDark">
+                <i data-lucide="plus" width="28"></i>
+            </button>
+        </div>
+
+        <button onclick="app.switchTab('calendar')" class="nav-item group w-16 flex flex-col items-center gap-1" data-target="calendar">
+            <i data-lucide="calendar" width="22" class="text-slate-300 group-[.active]:text-primary transition-colors"></i>
+            <span class="text-[10px] font-medium text-slate-300 group-[.active]:text-primary transition-colors">Kalender</span>
+        </button>
+        
+        <button onclick="app.navigate('profile')" class="nav-item group w-16 flex flex-col items-center gap-1 absolute right-6 top-0 h-full pt-1" data-target="profile">
+            <i data-lucide="user" width="22" class="text-slate-300 group-[.active]:text-primary transition-colors"></i>
+            <span class="text-[10px] font-medium text-slate-300 group-[.active]:text-primary transition-colors">Profil</span>
+        </button>
     </nav>
 
     <script>
@@ -218,17 +278,19 @@
                 });
 
                 gapi.load('client', async () => {
-                    await gapi.client.init({
-                        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest", "https://sheets.googleapis.com/$discovery/rest?version=v4"],
-                    });
-                    this.isGapiLoaded = true;
-                    
-                    const saved = sessionStorage.getItem('g_token');
-                    if(saved) {
-                        gapi.client.setToken({ access_token: saved });
-                        this.accessToken = saved;
-                        this.loadApp();
-                    }
+                    try {
+                        await gapi.client.init({
+                            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest", "https://sheets.googleapis.com/$discovery/rest?version=v4"],
+                        });
+                        this.isGapiLoaded = true;
+                        
+                        const saved = sessionStorage.getItem('g_token');
+                        if(saved) {
+                            gapi.client.setToken({ access_token: saved });
+                            this.accessToken = saved;
+                            this.loadApp();
+                        }
+                    } catch(e) { console.error("GAPI Error", e); }
                 });
                 
                 this.setupAC('inp-activity', 'list-activity', 'kegiatan');
@@ -250,7 +312,6 @@
             },
 
             handleSignOut: function() {
-                // HANYA Hapus Sesi & Cache File ID, TAPI JANGAN Hapus Profil User
                 sessionStorage.clear(); 
                 localStorage.removeItem('jg_files'); 
                 location.reload();
@@ -263,25 +324,18 @@
                 try {
                     // Cek Profil dulu
                     if(!this.profile.nama) {
-                        // Coba ambil dari Google Profile dulu buat basic
                         const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
                         this.user = gPro;
-                        // Isi data awal biar gak kosong banget
                         document.getElementById('dash-avatar').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
                         document.getElementById('profile-pic-lg').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
                         
                         this.showLoading(false);
-                        this.openSetup(); // Suruh isi profil lengkap
+                        this.openSetup(); 
                         return;
                     }
 
-                    // Paralel: Drive & Referensi
-                    await Promise.all([
-                        this.ensureDriveFiles(),
-                        this.fetchRef()
-                    ]);
+                    await Promise.all([this.ensureDriveFiles(), this.fetchRef()]);
 
-                    // Update Avatar (jika sudah login sebelumnya)
                     const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
                     document.getElementById('dash-avatar').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
                     document.getElementById('profile-pic-lg').innerHTML = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
@@ -291,7 +345,6 @@
 
                 } catch(e) {
                     console.error(e);
-                    // Bedah Error Object {}
                     const msg = e.result?.error?.message || e.message || JSON.stringify(e);
                     if(msg.includes("401") || msg.includes("403")) {
                          alert("Sesi Google Habis. Silakan login ulang.");
@@ -305,18 +358,12 @@
             },
 
             ensureDriveFiles: async function() {
-                // Cek cache dulu
                 const cached = JSON.parse(localStorage.getItem('jg_files'));
                 if (cached && cached.dbId && cached.folderId) {
-                    // Validasi apakah file masih ada?
-                    try {
-                        await gapi.client.drive.files.get({ fileId: cached.dbId });
-                        this.files = cached;
-                        return;
-                    } catch(e) { console.log("Cache invalid, cari ulang..."); }
+                    try { await gapi.client.drive.files.get({ fileId: cached.dbId }); this.files = cached; return; } 
+                    catch(e) { console.log("Cache invalid"); }
                 }
 
-                // Cari File di Drive
                 const qDb = `name = '${DB_FILE}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
                 const resDb = await gapi.client.drive.files.list({ q: qDb });
                 
@@ -331,7 +378,6 @@
                     });
                 }
 
-                // Cari Folder
                 const qF = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
                 const resF = await gapi.client.drive.files.list({ q: qF });
                 if (resF.result.files.length > 0) this.files.folderId = resF.result.files[0].id;
@@ -367,7 +413,6 @@
                 if(!form.date || !form.act) return alert("Wajib isi Tanggal & Kegiatan");
                 this.showLoading(true, "Menyimpan...");
 
-                // Simpan history lokal
                 let hist = JSON.parse(localStorage.getItem('jg_hist')||"[]");
                 if(!hist.find(x=>x.kegiatan===form.act)) { hist.push({kegiatan:form.act, hasil:form.res}); localStorage.setItem('jg_hist', JSON.stringify(hist)); this.refData.push({kegiatan:form.act, hasil:form.res}); }
 
@@ -386,7 +431,6 @@
                             method: 'POST', headers: new Headers({'Authorization': 'Bearer ' + this.accessToken}), body: formData
                         }).then(r => r.json());
 
-                        // Auto-Repair Folder 404
                         if(up.error && up.error.code === 404) {
                             localStorage.removeItem('jg_files'); 
                             await this.ensureDriveFiles(); 
@@ -415,16 +459,16 @@
                 this.showLoading(false);
             },
 
-            // --- REFERENSI ---
             fetchRef: async function() {
                 try {
-                    const res = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: REF_ID, range: 'Sheet1!A2:B500' });
+                    // UPDATED RANGE: Read up to 5000 rows
+                    const res = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: REF_ID, range: 'Sheet1!A2:B5000' });
                     this.refData = (res.result.values || []).map(r => ({ kegiatan: r[0]||"", hasil: r[1]||"" }));
-                    // Gabung lokal
                     const hist = JSON.parse(localStorage.getItem('jg_hist')||"[]");
                     this.refData = [...this.refData, ...hist];
                 } catch(e) { console.log("Ref offline"); }
             },
+            
             setupAC: function(id, listId, key) {
                 const inp=document.getElementById(id); const list=document.getElementById(listId);
                 inp.addEventListener('input', () => {
@@ -447,7 +491,6 @@
                 document.addEventListener('click', e=>{if(e.target!==inp)list.classList.add('hidden-view')});
             },
 
-            // --- PROFIL ---
             saveProfile: function(redir) {
                 const p = {
                     nama: document.getElementById('setup-nama').value,
@@ -472,7 +515,6 @@
                     document.getElementById('dash-unit').innerText = p.unit;
                     document.getElementById('profile-name').innerText = p.nama;
                     document.getElementById('profile-unit').innerText = p.unit;
-                    // Isi form setup
                     document.getElementById('setup-nama').value = p.nama;
                     document.getElementById('setup-nip').value = p.nip;
                     document.getElementById('setup-pangkat').value = p.pangkat;
@@ -485,7 +527,6 @@
             },
             openSetup: function() { this.navigate('setup'); },
 
-            // --- HELPERS ---
             navigate: function(id) {
                 ['login','setup','dashboard','form','profile'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden-view'));
                 document.getElementById('view-'+id).classList.remove('hidden-view');
@@ -515,7 +556,7 @@
                 const y=document.getElementById('filter-year'); const c=new Date().getFullYear();
                 [c,c-1].forEach(n=>{const o=document.createElement('option');o.value=n;o.text=n;y.appendChild(o)});
             },
-            // --- UI RENDER (List & Calendar) ---
+            
             renderList: function() {
                 const m=document.getElementById('filter-month').value; const y=document.getElementById('filter-year').value;
                 const d=this.data.filter(x=>{const dt=new Date(x.tanggal);return (dt.getMonth()+1)==m && dt.getFullYear()==y});
@@ -525,9 +566,9 @@
                 d.forEach(i=>{
                     const div=document.createElement('div'); const safe=encodeURIComponent(JSON.stringify(i));
                     const dt=new Date(i.tanggal);
-                    div.className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4";
-                    div.innerHTML=`<div class="text-center w-12 pt-1"><div class="text-[10px] font-bold text-gray-400 uppercase">${dt.toLocaleDateString('id',{weekday:'short'})}</div><div class="text-xl font-bold text-primary">${dt.getDate()}</div></div>
-                    <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">${i.mulai}-${i.selesai}</span><div class="flex gap-2"><button onclick="app.editItem('${safe}')"><i data-lucide="pencil" width="14" class="text-gray-400 hover:text-blue-500"></i></button><button onclick="app.deleteItem(${i.rowIndex})"><i data-lucide="trash-2" width="14" class="text-gray-400 hover:text-red-500"></i></button></div></div><h3 class="font-bold text-gray-800 text-sm mt-1 truncate">${i.kegiatan}</h3><p class="text-xs text-gray-500 truncate">${i.hasil}</p></div>`;
+                    div.className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition active:scale-95";
+                    div.innerHTML=`<div class="text-center w-12 pt-1"><div class="text-[10px] font-bold text-slate-400 uppercase">${dt.toLocaleDateString('id',{weekday:'short'})}</div><div class="text-xl font-bold text-primary">${dt.getDate()}</div></div>
+                    <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">${i.mulai}-${i.selesai}</span><div class="flex gap-3"><button onclick="app.editItem('${safe}')"><i data-lucide="pencil" width="14" class="text-slate-400 hover:text-blue-500"></i></button><button onclick="app.deleteItem(${i.rowIndex})"><i data-lucide="trash-2" width="14" class="text-slate-400 hover:text-red-500"></i></button></div></div><h3 class="font-bold text-slate-800 text-sm mt-1 truncate">${i.kegiatan}</h3><p class="text-xs text-slate-500 truncate">${i.hasil}</p></div>`;
                     c.appendChild(div);
                 });
                 lucide.createIcons();
@@ -549,8 +590,8 @@
                 const l=document.getElementById('calendar-day-list'); l.innerHTML='';
                 this.data.filter(x=>x.tanggal===ds).forEach(i=>{
                     const safe=encodeURIComponent(JSON.stringify(i));
-                    const d=document.createElement('div'); d.className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between";
-                    d.innerHTML=`<div><div class="text-[10px] font-bold text-primary">${i.mulai}-${i.selesai}</div><div class="text-xs font-bold truncate w-48">${i.kegiatan}</div></div><button onclick="app.editItem('${safe}')"><i data-lucide="chevron-right" width="16"></i></button>`;
+                    const d=document.createElement('div'); d.className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between";
+                    d.innerHTML=`<div><div class="text-[10px] font-bold text-primary">${i.mulai}-${i.selesai}</div><div class="text-xs font-bold truncate w-48 text-slate-700">${i.kegiatan}</div></div><button onclick="app.editItem('${safe}')"><i data-lucide="chevron-right" width="16" class="text-slate-400"></i></button>`;
                     l.appendChild(d);
                 });
                 lucide.createIcons();
@@ -582,6 +623,20 @@
                 const ws=XLSX.utils.aoa_to_sheet([...head, ...body, ...foot]);
                 const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Laporan");
                 XLSX.writeFile(wb, `Laporan_${p.nama}_${m}_${y}.xlsx`);
+            },
+            
+            resetForm: function() {
+                document.getElementById('inp-id').value=""; document.getElementById('inp-row-index').value="";
+                document.getElementById('inp-date').valueAsDate=new Date(); document.getElementById('inp-activity').value="";
+                document.getElementById('inp-result').value=""; this.clearFile();
+                document.getElementById('form-title').innerText="Isi Jurnal";
+            },
+            clearFile: function() { this.fileToUpload=null; document.getElementById('inp-file').value=""; document.getElementById('preview-container').classList.add('hidden-view'); document.getElementById('inp-old-photo').value=""; },
+            handleFileSelect: function(input) { if(input.files[0]){ this.fileToUpload=input.files[0]; const r=new FileReader(); r.onload=e=>{document.getElementById('img-preview').src=e.target.result; document.getElementById('preview-container').classList.remove('hidden-view');}; r.readAsDataURL(input.files[0]); } },
+            voice: function(id) {
+                if(!window.webkitSpeechRecognition) return alert("Browser tidak support suara.");
+                const r = new webkitSpeechRecognition(); r.lang = 'id-ID'; r.start();
+                r.onresult = e => { const t=e.results[0][0].transcript; const el=document.getElementById('inp-'+id); el.value += (el.value?' ':'')+t; };
             }
         };
         window.onload = () => app.init();
