@@ -278,7 +278,13 @@
                                     <label class="block text-xs font-semibold text-slate-400 mb-1">NIP Kepala Sekolah</label>
                                     <input type="text" id="conf-ks-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent">
                                 </div>
-                                <button onclick="app.saveProfileConfig()" class="w-full bg-blue-50 text-blue-600 font-medium text-sm py-2 rounded-lg hover:bg-blue-100 transition mt-2">Simpan Profil</button>
+                                <div class="pt-2">
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Kota (Untuk TTD)</label>
+                                    <input type="text" id="conf-kota" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent" placeholder="Contoh: Jakarta">
+                                </div>
+                                <button onclick="app.saveProfileConfig()" id="btn-save-profile" class="w-full bg-blue-50 text-blue-600 font-medium text-sm py-2 rounded-lg hover:bg-blue-100 transition mt-2 flex justify-center items-center gap-2">
+                                    <span>Simpan Profil & Sinkronisasi</span>
+                                </button>
                             </div>
                         </div>
 
@@ -358,6 +364,7 @@
                             <p class="text-xs">NIP. <span id="print-ks-nip-sign">...</span></p>
                         </div>
                         <div class="text-center w-64">
+                            <p class="mb-4"><span id="print-city">...</span>, <span id="print-date-sign">...</span></p>
                             <p class="mb-16">Guru Yang Bersangkutan</p>
                             <p class="font-bold underline" id="print-t-sign">...</p>
                             <p class="text-xs">NIP. <span id="print-t-nip-sign">...</span></p>
@@ -409,7 +416,7 @@
                 </div>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50">
+            <div class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50 pb-24 md:pb-6">
                 <input type="hidden" id="input-id">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -455,10 +462,18 @@
                     <label class="text-xs font-bold text-slate-400 mb-2 block">OUTPUT / HASIL</label>
                     <textarea id="input-res" rows="2" class="w-full text-base border-none resize-none outline-none bg-transparent" placeholder="Hasil yang dicapai..."></textarea>
                 </div>
+                
+                <!-- Desktop Button Location (Static) -->
+                <div class="hidden md:block pt-2">
+                     <button onclick="app.saveJournal()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition flex justify-center items-center gap-2 hover:bg-blue-700">
+                        <span>SIMPAN JURNAL</span>
+                    </button>
+                </div>
             </div>
             
-            <div class="p-5 bg-white border-t border-slate-100 sticky bottom-0 rounded-b-3xl">
-                <button id="btn-save" onclick="app.saveJournal()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition flex justify-center items-center gap-2 hover:bg-blue-700">
+            <!-- Mobile Sticky Button -->
+            <div class="md:hidden p-5 bg-white border-t border-slate-100 sticky bottom-0 rounded-b-3xl">
+                <button id="btn-save-mobile" onclick="app.saveJournal()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition flex justify-center items-center gap-2 hover:bg-blue-700">
                     <span>SIMPAN JURNAL</span>
                     <div id="spinner" class="loader w-4 h-4 border-white border-t-transparent hidden"></div>
                 </button>
@@ -519,7 +534,7 @@
                 } else {
                     this.toggleScreen('login');
                 }
-                this.loadProfileConfig();
+                this.loadProfileConfig(); // Load local first
                 this.fetchSuggestions();
             },
 
@@ -540,7 +555,6 @@
             },
 
             handleAuth: function() { 
-                // Force consent to ensure we get fresh refresh tokens and proper scopes
                 this.tokenClient.requestAccessToken({prompt: 'consent'}); 
             },
             
@@ -564,15 +578,15 @@
                 try {
                     await this.fetchProfile();
                     await this.setupDB();
+                    // Load Profile Config from Cloud
+                    await this.fetchProfileConfig();
                     await this.fetchData();
                     this.toggleScreen('main');
                     this.renderCalendar();
                 } catch (e) {
                     console.error("Load Error:", e);
-                    // Critical error handler
                     if (e.code === 401 || e.status === 401 || e.code === 403 || e.status === 403) {
                         utils.toast("Sesi habis, login ulang...", 'error');
-                        // Clear Token AND DB ID to prevent loops with bad data
                         localStorage.removeItem('jg_token');
                         localStorage.removeItem('jg_db_id'); 
                         this.dbId = null;
@@ -588,63 +602,38 @@
                     const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                         headers: {'Authorization': `Bearer ${this.token}`}
                     });
-                    
-                    if (!response.ok) {
-                        // Soft fail: Just log it and return. Do not throw.
-                        console.warn("Profile fetch failed, continuing without profile data.", response.status);
-                        return;
-                    }
-
+                    if (!response.ok) return;
                     const res = await response.json();
                     this.user = res;
-                    // Update Sidebar
                     document.getElementById('sidebar-name').innerText = res.given_name || 'Guru';
                     document.getElementById('sidebar-email').innerText = res.email || '';
                     document.getElementById('sidebar-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
-                    // Update Profile View (Avatar Only)
                     document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover rounded-full">`;
-                } catch(e) {
-                    console.warn("Profile fetch error (Network/Parse)", e);
-                    // Do not re-throw
-                }
+                } catch(e) {}
             },
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
-                // Check if file exists - STRICT CHECK
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
                         headers: {'Authorization': `Bearer ${this.token}`}
                     });
-                    
-                    if (!res.ok) {
-                        // Throw immediately on 401/403 so loadApp catches it
-                        const err = await res.json().catch(()=>({}));
-                        throw { code: res.status, message: "Drive Search Failed", ...err.error };
-                    }
-                    
+                    if (!res.ok) { const err = await res.json().catch(()=>({})); throw { code: res.status, ...err.error }; }
                     const s = await res.json();
                     if (s.files && s.files.length > 0) id = s.files[0].id;
                 }
                 
-                // Create if not found - STRICT CHECK
                 if (!id) {
                     const resCreate = await fetch('https://www.googleapis.com/drive/v3/files', {
                         method: 'POST',
                         headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                         body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
                     });
-                    
-                    if (!resCreate.ok) {
-                        const err = await resCreate.json().catch(()=>({}));
-                        throw { code: resCreate.status, message: "Create DB Failed", ...err.error };
-                    }
-
+                    if (!resCreate.ok) { const err = await resCreate.json().catch(()=>({})); throw { code: resCreate.status, ...err.error }; }
                     const c = await resCreate.json();
                     id = c.id;
 
-                    // Initialize Header
                     await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
                         method: 'PUT',
                         headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
@@ -652,6 +641,30 @@
                     });
                 }
                 
+                // Check if 'Config' sheet exists, if not create it
+                try {
+                    const meta = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {
+                        headers: { 'Authorization': `Bearer ${this.token}` }
+                    }).then(r => r.json());
+                    
+                    if(!meta.sheets.some(s => s.properties.title === 'Config')) {
+                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                requests: [{ addSheet: { properties: { title: 'Config', gridProperties: { columnCount: 10, rowCount: 5 } } } }]
+                            })
+                        });
+                        // Init Headers
+                        const headers = ['NAMA_GURU','NIP','JABATAN','SEKOLAH','KS_NAMA','KS_NIP','KOTA'];
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Config!A1:G1?valueInputOption=RAW`, {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ values: [headers] })
+                        });
+                    }
+                } catch(e) { console.warn("Config setup warning", e); }
+
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
             },
@@ -663,23 +676,13 @@
                 
                 if(res.error) {
                     if(res.error.code === 404) {
-                        // Logic to handle deleted sheet: Clear ID and retry ONCE
                         localStorage.removeItem('jg_db_id');
                         this.dbId = null;
                         await this.setupDB(); 
-                        // We do not recurse return this.fetchData() to avoid infinite loops, 
-                        // just let the next refresh handle it or do one explicit fetch
-                        const url2 = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
-                        const res2 = await fetch(url2, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
-                         if(res2.error) throw res2.error;
-                         this.data = this.parseValues(res2.values);
-                         this.renderList(this.data);
-                         this.updateStats();
-                         return;
+                        return this.fetchData();
                     }
                     throw res.error;
                 }
-
                 this.data = this.parseValues(res.values);
                 this.renderList(this.data);
                 this.updateStats();
@@ -703,16 +706,11 @@
                 list.forEach(item => {
                     const d = new Date(item.date);
                     const el = document.createElement('div');
-                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition hover:shadow-md group relative';
-                    
-                    let thumbHtml = '';
-                    if (item.img && item.img.startsWith('data:image')) {
-                        thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${item.img}')"></div>`;
-                    }
-
-                    // Safe strings for onclick
                     const safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
+                    let thumbHtml = '';
+                    if (item.img && item.img.startsWith('data:image')) thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${item.img}')"></div>`;
 
+                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition hover:shadow-md group relative';
                     el.innerHTML = `
                         <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-12 cursor-pointer" onclick="app.openForm(${safeItem})">
                             <span class="text-xl font-bold leading-none text-slate-800">${d.getDate()}</span>
@@ -725,8 +723,6 @@
                             </div>
                         </div>
                         ${thumbHtml}
-                        
-                        <!-- Action Buttons -->
                         <div class="flex flex-col gap-2 justify-center ml-2 border-l border-slate-100 pl-3">
                             <button onclick="app.openForm(${safeItem})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                             <button onclick="app.quickDelete(${item.idx})" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
@@ -749,8 +745,7 @@
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
                             const MAX_WIDTH = 600; 
-                            let width = img.width;
-                            let height = img.height;
+                            let width = img.width; let height = img.height;
                             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
@@ -806,11 +801,7 @@
                 const m = document.getElementById('form-modal');
                 const c = document.getElementById('form-content');
                 m.classList.remove('hidden');
-                
-                // Fix: Ensure visible state is applied after removing hidden
-                setTimeout(() => { 
-                    c.classList.remove('md:opacity-0', 'md:scale-95', 'translate-y-full'); 
-                }, 10);
+                setTimeout(() => { c.classList.remove('md:opacity-0', 'md:scale-95', 'translate-y-full'); }, 10);
                 
                 if(data) {
                     document.getElementById('form-title').innerText = 'Edit Jurnal';
@@ -845,13 +836,8 @@
             closeForm: function() {
                 const m = document.getElementById('form-modal');
                 const c = document.getElementById('form-content');
-                
-                // Add hide classes based on viewport
-                if (window.innerWidth >= 768) {
-                    c.classList.add('md:opacity-0', 'md:scale-95');
-                } else { 
-                    c.classList.add('translate-y-full'); 
-                }
+                if (window.innerWidth >= 768) { c.classList.add('md:opacity-0', 'md:scale-95'); } 
+                else { c.classList.add('translate-y-full'); }
                 setTimeout(()=> m.classList.add('hidden'), 300);
             },
 
@@ -867,12 +853,12 @@
                     document.getElementById('input-res').value,
                     document.getElementById('input-img-base64').value
                 ];
-
                 if(!row[1] || !row[4]) return utils.toast('Lengkapi data!', 'error');
 
-                const btn = document.getElementById('btn-save');
+                const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
+                btns.forEach(b => b.disabled = true);
                 const spin = document.getElementById('spinner');
-                btn.disabled = true; spin.classList.remove('hidden');
+                spin.classList.remove('hidden');
 
                 try {
                     const rangeEnd = 'G'; 
@@ -889,17 +875,15 @@
                             body: JSON.stringify({values: [row]})
                         }).then(r => r.json());
                     }
-                    
                     if(res.error) throw res.error;
-
                     this.closeForm();
                     this.fetchData();
                     utils.toast('Berhasil disimpan');
                 } catch(e) { 
-                    console.error(e);
-                    utils.toast('Gagal menyimpan: ' + (e.message || 'Unknown Error'), 'error'); 
+                    utils.toast('Gagal menyimpan: ' + (e.message || 'Error'), 'error'); 
                 }
-                btn.disabled = false; spin.classList.add('hidden');
+                btns.forEach(b => b.disabled = false);
+                spin.classList.add('hidden');
             },
 
             confirmDelete: async function() {
@@ -924,6 +908,23 @@
                 } catch(e) { utils.toast('Gagal hapus', 'error'); }
             },
 
+            // --- PROFILE SYNC ---
+            fetchProfileConfig: async function() {
+                if(!this.dbId) return;
+                try {
+                    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2`, {
+                        headers: {'Authorization': `Bearer ${this.token}`}
+                    }).then(r => r.json());
+                    
+                    if(res.values && res.values[0]) {
+                        const v = res.values[0];
+                        const c = { nama_guru: v[0], nip: v[1], jabatan: v[2], sekolah: v[3], ks_nama: v[4], ks_nip: v[5], kota: v[6] };
+                        localStorage.setItem('jg_profile_config', JSON.stringify(c));
+                        this.loadProfileConfig(); // Refresh UI
+                    }
+                } catch(e) { console.warn("Fetch Config Error", e); }
+            },
+
             loadProfileConfig: function() {
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 document.getElementById('conf-nama-guru').value = c.nama_guru || '';
@@ -932,27 +933,41 @@
                 document.getElementById('conf-sekolah').value = c.sekolah || '';
                 document.getElementById('conf-ks-nama').value = c.ks_nama || '';
                 document.getElementById('conf-ks-nip').value = c.ks_nip || '';
-                
-                // Update display name if custom name exists
+                document.getElementById('conf-kota').value = c.kota || '';
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
             },
 
-            saveProfileConfig: function() {
+            saveProfileConfig: async function() {
                 const c = {
                     nama_guru: document.getElementById('conf-nama-guru').value,
                     nip: document.getElementById('conf-nip').value,
                     jabatan: document.getElementById('conf-jabatan').value,
                     sekolah: document.getElementById('conf-sekolah').value,
                     ks_nama: document.getElementById('conf-ks-nama').value,
-                    ks_nip: document.getElementById('conf-ks-nip').value
+                    ks_nip: document.getElementById('conf-ks-nip').value,
+                    kota: document.getElementById('conf-kota').value
                 };
                 localStorage.setItem('jg_profile_config', JSON.stringify(c));
-                
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
-                utils.toast('Profil disimpan');
+                
+                // Sync to Cloud
+                const btn = document.getElementById('btn-save-profile');
+                const origText = btn.innerText;
+                btn.innerText = "Menyimpan ke Cloud..."; btn.disabled = true;
+                
+                try {
+                    if(!this.dbId) await this.setupDB();
+                    const row = [c.nama_guru, c.nip, c.jabatan, c.sekolah, c.ks_nama, c.ks_nip, c.kota];
+                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2?valueInputOption=USER_ENTERED`, {
+                        method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        body: JSON.stringify({values: [row]})
+                    });
+                    utils.toast('Profil disimpan & disinkronkan');
+                } catch(e) { utils.toast('Simpan lokal OK, Sync Gagal', 'error'); }
+                btn.innerText = origText; btn.disabled = false;
             },
 
-            // --- EXPORT EXCEL ---
+            // --- EXPORT EXCEL OFFICIAL ---
             exportExcel: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
@@ -963,50 +978,74 @@
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
                 
-                const wb = XLSX.utils.book_new();
+                // Construct Data Array
+                const ws_data = [];
                 
-                // Header Info
-                const ws_data = [
-                    ["LAPORAN KINERJA HARIAN GURU"],
-                    ["Satuan Pendidikan", c.sekolah || '-'],
-                    ["Nama Guru", teacherName],
-                    ["NIP", c.nip || '-'],
-                    ["Periode", `${utils.fmtDate(start)} s/d ${utils.fmtDate(end)}`],
-                    [],
-                    ["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "FOTO DOKUMENTASI"]
-                ];
-
+                // Title & Header (Official Format)
+                ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
+                ws_data.push([c.sekolah || "NAMA SEKOLAH"]);
+                ws_data.push([]); // Spacer
+                
+                // Identity
+                ws_data.push(["Nama Guru", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")]);
+                ws_data.push(["NIP", ": " + (c.nip || "-"), "", "Periode", ": " + utils.fmtDate(start) + " s/d " + utils.fmtDate(end)]);
+                ws_data.push(["Jabatan", ": " + (c.jabatan || "-")]);
+                ws_data.push([]); // Spacer
+                
+                // Table Header
+                ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "FOTO"]);
+                
+                // Table Data
                 filtered.forEach((d, i) => {
-                    const cleanAct = d.act.replace(/,/g, ' ').replace(/\n/g, ' ');
-                    const cleanRes = d.res.replace(/,/g, ' ').replace(/\n/g, ' ');
                     ws_data.push([
                         i + 1,
                         utils.fmtDate(d.date),
                         `${d.start} - ${d.end}`,
-                        cleanAct,
-                        cleanRes,
-                        d.img ? "Lihat Foto" : "-"
+                        d.act.replace(/\n/g, ' '),
+                        d.res.replace(/\n/g, ' '),
+                        d.img ? "Lihat" : "-"
                     ]);
                 });
+
+                // Signature Section
+                ws_data.push([]);
+                ws_data.push([]);
+                const cityDate = (c.kota || "..............") + ", " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 
+                // Signature Layout: Left (Kepsek), Right (Guru)
+                // Using empty cells for spacing
+                ws_data.push(["Mengetahui,", "", "", "", cityDate]);
+                ws_data.push(["Kepala Sekolah", "", "", "", "Guru Yang Bersangkutan"]);
+                ws_data.push([]);
+                ws_data.push([]);
+                ws_data.push([]);
+                ws_data.push([c.ks_nama || "...................", "", "", "", teacherName]);
+                ws_data.push(["NIP. " + (c.ks_nip || "-"), "", "", "", "NIP. " + (c.nip || "-")]);
+
+                const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
+                // Merges for Title
+                ws['!merges'] = [
+                    { s: {r:0, c:0}, e: {r:0, c:5} }, // Title centered
+                    { s: {r:1, c:0}, e: {r:1, c:5} }  // School Name centered
+                ];
+
+                // Column Widths
+                ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:10}];
+
                 // Add Hyperlinks for Photos
+                const dataStartRow = 8; // Row index where data starts (0-based)
                 filtered.forEach((d, i) => {
                     if(d.img) {
-                        // Row index offset = 7 (header rows) + i
-                        const cellRef = XLSX.utils.encode_cell({c: 5, r: 7 + i});
-                        if(!ws[cellRef]) ws[cellRef] = {v: "Lihat Foto", t:'s'};
+                        const cellRef = XLSX.utils.encode_cell({c: 5, r: dataStartRow + i});
+                        if(!ws[cellRef]) ws[cellRef] = {v: "Lihat", t:'s'};
                         ws[cellRef].l = { Target: d.img };
-                        ws[cellRef].v = "Klik untuk Lihat";
                     }
                 });
-                
-                // Basic Column Widths
-                ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:15}];
 
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan Jurnal");
-                XLSX.writeFile(wb, `Laporan_Jurnal_${teacherName}.xlsx`);
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan Kinerja");
+                XLSX.writeFile(wb, `Laporan_${teacherName}_${start}_${end}.xlsx`);
             },
 
             // --- PRINT REPORT FEATURE ---
@@ -1029,6 +1068,9 @@
                 document.getElementById('print-t-nip').innerText = c.nip || '-';
                 document.getElementById('print-t-school').innerText = c.sekolah || '-';
                 document.getElementById('print-t-role').innerText = c.jabatan || 'Guru';
+                
+                document.getElementById('print-city').innerText = c.kota || '..........';
+                document.getElementById('print-date-sign').innerText = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
 
                 document.getElementById('print-ks-sign').innerText = c.ks_nama || '................';
                 document.getElementById('print-ks-nip-sign').innerText = c.ks_nip || '................';
