@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Jurnal GTK - Aplikasi Jurnal Kinerja Guru Otomatis</title>
+    <meta name="description" content="Aplikasi pencatat jurnal harian guru, laporan kinerja otomatis, simpan di Google Drive, dan cetak laporan format resmi dengan mudah.">
+    <meta name="keywords" content="Jurnal Guru, E-Kinerja, Laporan Guru, Aplikasi Guru, Administrasi Sekolah">
+    <meta name="author" content="Tim Kreatif Selogiri">
+    <meta property="og:title" content="Jurnal GTK - Solusi Administrasi Guru">
+    <meta property="og:description" content="Catat kinerja harian, simpan di Cloud, cetak laporan otomatis.">
+    <meta property="og:image" content="https://slg-timkreatif.github.io/jurnalgtk/icon.png">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hero-pattern {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .mockup-shadow { box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.25); }
+        .step-number {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-700">
+
+    <nav class="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 p-1.5 rounded-lg text-white">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-bold text-lg tracking-tight text-slate-900">Jurnal<span class="text-blue-600">GTK</span></span>
+                </div>
+                <div class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
+                    <a href="#fitur" class="hover:text-blue-600 transition">Fitur Unggulan</a>
+                    <a href="#panduan" class="hover:text-blue-600 transition">Panduan Pengguna</a>
+                    <a href="#keamanan" class="hover:text-blue-600 transition">Keamanan Data</a>
+                </div>
+                <a href="https://slg-timkreatif.github.io/jurnalgtk/" target="_blank" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-full text-sm font-medium transition shadow-lg shadow-slate-200 flex items-center gap-2">
+                    Buka Aplikasi <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="pt-32 pb-20 lg:pt-48 lg:pb-32 hero-pattern relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                <div class="lg:w-1/2 text-center lg:text-left">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold mb-6 animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                        VERSI TERBARU 2026
+                    </div>
+                    <h1 class="text-4xl lg:text-6xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+                        Administrasi Guru <br>
+                        <span class="text-blue-600">Lebih Modern & Praktis</span>
+                    </h1>
+                    <p class="text-lg text-slate-500 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                        Tidak perlu lagi mencatat manual. Isi jurnal harian lewat HP, simpan foto dokumentasi di Google Drive, dan cetak laporan kinerja format resmi dalam hitungan detik.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        <a href="https://slg-timkreatif.github.io/jurnalgtk/" target="_blank" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xl shadow-blue-200 transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                            <i data-lucide="smartphone" class="w-5 h-5"></i>
+                            Mulai Gunakan Gratis
+                        </a>
+                        <a href="#panduan" class="px-8 py-4 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                            <i data-lucide="play-circle" class="w-5 h-5 text-slate-400"></i>
+                            Lihat Cara Kerja
+                        </a>
+                    </div>
+                    <p class="mt-6 text-xs text-slate-400 font-medium">
+                        * Membutuhkan Akun Google (Gmail) untuk penyimpanan data.
+                    </p>
+                </div>
+                
+                <div class="lg:w-1/2 w-full perspective-1000">
+                    <div class="relative bg-white rounded-3xl p-4 shadow-2xl border border-slate-200 transform rotate-y-12 rotate-z-2 hover:rotate-0 transition duration-500 ease-out mockup-shadow max-w-sm mx-auto lg:max-w-md">
+                        <div class="flex items-center justify-between mb-6 px-2">
+                            <div>
+                                <div class="h-4 w-32 bg-slate-200 rounded mb-2"></div>
+                                <div class="h-3 w-20 bg-slate-100 rounded"></div>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                <div class="w-6 h-6 bg-blue-600 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-blue-600 rounded-2xl p-4 h-32 flex flex-col justify-between">
+                                <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                                <div class="h-8 w-16 bg-white rounded"></div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 h-32 flex flex-col justify-between">
+                                <div class="w-8 h-8 bg-slate-200 rounded-lg"></div>
+                                <div class="h-8 w-16 bg-slate-200 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
+                                <div class="w-12 h-12 bg-slate-100 rounded-lg shrink-0"></div>
+                                <div class="flex-1">
+                                    <div class="h-3 w-3/4 bg-slate-200 rounded mb-2"></div>
+                                    <div class="h-2 w-1/2 bg-slate-100 rounded"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 bg-white border border-slate-100 p-3 rounded-xl shadow-sm opacity-60">
+                                <div class="w-12 h-12 bg-slate-100 rounded-lg shrink-0"></div>
+                                <div class="flex-1">
+                                    <div class="h-3 w-3/4 bg-slate-200 rounded mb-2"></div>
+                                    <div class="h-2 w-1/2 bg-slate-100 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/40 flex items-center justify-center text-white">
+                            <i data-lucide="plus" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="fitur" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4">Kenapa Guru Memilih JurnalGTK?</h2>
+                <p class="text-slate-500 max-w-2xl mx-auto">Kami memahami kesibukan Bapak/Ibu Guru. Aplikasi ini didesain sesimpel mungkin namun menghasilkan laporan yang lengkap.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 hover:shadow-lg transition group">
+                    <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 text-blue-600 group-hover:scale-110 transition">
+                        <i data-lucide="database" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">Database Google Drive</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">
+                        Data Anda 100% milik Anda. Tersimpan otomatis di Google Sheets dan Drive pribadi Anda. Tidak ada server pihak ketiga.
+                    </p>
+                </div>
+
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 hover:shadow-lg transition group">
+                    <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 text-green-600 group-hover:scale-110 transition">
+                        <i data-lucide="file-spreadsheet" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">Ekspor Excel & PDF</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">
+                        Sekali klik untuk cetak laporan bulanan. Format sudah disesuaikan dengan standar laporan kinerja guru (termasuk link foto).
+                    </p>
+                </div>
+
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 hover:shadow-lg transition group">
+                    <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 text-purple-600 group-hover:scale-110 transition">
+                        <i data-lucide="image" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">Kompresi Foto Cerdas</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">
+                        Upload foto kegiatan tanpa takut Google Drive penuh. Aplikasi otomatis memperkecil ukuran foto namun tetap jelas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="panduan" class="py-20 bg-slate-900 text-white overflow-hidden relative">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-20"></div>
+        
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16">
+                <span class="text-blue-400 font-bold tracking-wider text-xs uppercase mb-2 block">Langkah Mudah</span>
+                <h2 class="text-3xl lg:text-4xl font-bold mb-4">Cara Memulai Aplikasi</h2>
+                <p class="text-slate-400">Ikuti panduan ini untuk penggunaan pertama kali. Hanya butuh 2 menit.</p>
+            </div>
+
+            <div class="space-y-12">
+                <div class="flex flex-col md:flex-row gap-8 items-center">
+                    <div class="w-full md:w-1/2 flex justify-center">
+                        <div class="bg-white text-slate-900 p-6 rounded-2xl shadow-xl w-full max-w-sm">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
+                                <span class="font-bold text-sm">Masuk dengan Google</span>
+                            </div>
+                            <div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                "JurnalGuru meminta akses ke Akun Google Anda..."
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <div class="flex items-center gap-4 mb-4">
+                            <span class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">1</span>
+                            <h3 class="text-xl font-bold">Login & Otorisasi</h3>
+                        </div>
+                        <p class="text-slate-400 leading-relaxed">
+                            Klik tombol <strong>"Masuk dengan Google"</strong>. Gunakan akun Gmail pribadi atau Belajar.id. Karena aplikasi ini gratis dan belum diverifikasi Google, Anda mungkin melihat peringatan keamanan.
+                        </p>
+                        <div class="mt-4 p-4 bg-yellow-900/30 border border-yellow-700/50 rounded-xl">
+                            <p class="text-yellow-400 text-xs font-bold mb-1"><i data-lucide="alert-triangle" class="w-3 h-3 inline mr-1"></i> PENTING:</p>
+                            <p class="text-yellow-200/80 text-xs">Pastikan mencentang <strong>semua kotak izin</strong> (Google Drive & Sheets) agar aplikasi bisa menyimpan data jurnal Anda.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row-reverse gap-8 items-center">
+                    <div class="w-full md:w-1/2 flex justify-center">
+                        <div class="bg-white text-slate-900 p-6 rounded-2xl shadow-xl w-full max-w-sm relative">
+                            <div class="absolute -top-3 -right-3 bg-blue-600 text-white p-2 rounded-lg shadow-lg animate-bounce">
+                                <i data-lucide="user-cog" class="w-5 h-5"></i>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="h-8 bg-slate-100 rounded w-full"></div>
+                                <div class="h-8 bg-slate-100 rounded w-full"></div>
+                                <div class="h-8 bg-blue-50 border border-blue-200 rounded w-full flex items-center px-3 text-xs text-blue-600 font-bold">Nama Kepala Sekolah...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <div class="flex items-center gap-4 mb-4">
+                            <span class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">2</span>
+                            <h3 class="text-xl font-bold">Lengkapi Profil</h3>
+                        </div>
+                        <p class="text-slate-400 leading-relaxed">
+                            Masuk ke menu <strong>Profil</strong>. Isi data diri (NIP, Unit Kerja) dan Data Kepala Sekolah. Data ini akan otomatis muncul di Kop Surat dan Kolom Tanda Tangan saat laporan dicetak.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-8 items-center">
+                    <div class="w-full md:w-1/2 flex justify-center">
+                        <div class="bg-white text-slate-900 p-4 rounded-2xl shadow-xl w-full max-w-sm">
+                            <div class="border-2 border-dashed border-slate-300 rounded-xl h-32 flex flex-col items-center justify-center text-slate-400 mb-4">
+                                <i data-lucide="camera" class="w-8 h-8 mb-2"></i>
+                                <span class="text-xs">Foto Kegiatan</span>
+                            </div>
+                            <div class="h-10 bg-blue-600 rounded-lg w-full"></div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <div class="flex items-center gap-4 mb-4">
+                            <span class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">3</span>
+                            <h3 class="text-xl font-bold">Isi Jurnal Harian</h3>
+                        </div>
+                        <p class="text-slate-400 leading-relaxed">
+                            Klik tombol <strong>(+)</strong>. Masukkan jam, kegiatan, hasil, dan upload foto. Foto langsung dikompres agar ringan. Klik Simpan, dan data langsung aman di Cloud.
+                        </p>
+                    </div>
+                </div>
+                
+                 <div class="flex flex-col md:flex-row-reverse gap-8 items-center">
+                    <div class="w-full md:w-1/2 flex justify-center">
+                         <div class="bg-white text-slate-900 p-2 rounded-2xl shadow-xl w-full max-w-sm rotate-1">
+                             <div class="border border-slate-200 p-4">
+                                 <div class="text-center font-bold text-xs mb-4 border-b pb-2">LAPORAN KINERJA</div>
+                                 <div class="space-y-2">
+                                     <div class="h-2 bg-slate-100 w-full"></div>
+                                     <div class="h-2 bg-slate-100 w-full"></div>
+                                     <div class="h-2 bg-slate-100 w-full"></div>
+                                 </div>
+                                 <div class="flex justify-between mt-6 px-4">
+                                     <div class="h-8 w-16 bg-slate-100"></div>
+                                     <div class="h-8 w-16 bg-slate-100"></div>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <div class="flex items-center gap-4 mb-4">
+                            <span class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">4</span>
+                            <h3 class="text-xl font-bold">Cetak & Laporkan</h3>
+                        </div>
+                        <p class="text-slate-400 leading-relaxed">
+                            Di akhir bulan, masuk ke menu Profil. Pilih rentang tanggal, lalu klik <strong>Cetak PDF</strong> untuk print langsung, atau <strong>Export Excel</strong> jika ingin diserahkan dalam bentuk softcopy.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="keamanan" class="py-20 bg-blue-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-2xl font-bold text-slate-900 mb-8">Pertanyaan Umum</h2>
+            <div class="grid gap-6 text-left">
+                <div class="bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-2 mb-2">
+                        <i data-lucide="lock" class="w-4 h-4 text-blue-500"></i> Apakah data saya aman?
+                    </h4>
+                    <p class="text-slate-600 text-sm">Sangat aman. Aplikasi ini bekerja "Serverless". Artinya, data jurnal, foto, dan profil Anda tersimpan langsung di Google Drive akun Anda sendiri. Pengembang aplikasi tidak memiliki akses ke data Anda.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-2 mb-2">
+                        <i data-lucide="wifi-off" class="w-4 h-4 text-blue-500"></i> Bisa dipakai offline?
+                    </h4>
+                    <p class="text-slate-600 text-sm">Aplikasi membutuhkan koneksi internet untuk memuat data dari Google Drive dan mengunggah foto. Namun, aplikasi sangat ringan dan hemat kuota.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-white border-t border-slate-200 pt-12 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="bg-slate-900 p-1.5 rounded-lg text-white">
+                            <i data-lucide="book-open" class="w-4 h-4"></i>
+                        </div>
+                        <span class="font-bold text-slate-900">JurnalGTK</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Bantu guru administrasi lebih rapi.</p>
+                </div>
+                <div class="flex gap-6">
+                    <a href="#" class="text-slate-400 hover:text-slate-600"><i data-lucide="github" class="w-5 h-5"></i></a>
+                    <a href="#" class="text-slate-400 hover:text-slate-600"><i data-lucide="mail" class="w-5 h-5"></i></a>
+                </div>
+            </div>
+            <div class="border-t border-slate-100 pt-8 text-center md:text-left">
+                <p class="text-sm text-slate-400">
+                    &copy; 2026 | <span class="font-semibold text-slate-600">Tim Kreatif Selogiri</span>. Dibuat dengan <i data-lucide="heart" class="w-3 h-3 inline text-red-400 fill-current"></i> untuk Pendidikan Indonesia.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
