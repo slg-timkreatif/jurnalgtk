@@ -250,7 +250,6 @@
                         <div class="relative z-10 flex flex-col items-center">
                             <div id="profile-avatar" class="w-24 h-24 rounded-full bg-white p-1 shadow-lg mb-4"></div>
                             <h3 class="font-bold text-2xl text-slate-800" id="profile-name">Guru</h3>
-                            <!-- CHANGED: Now displays Job Title (Jabatan) instead of email -->
                             <p class="text-slate-600 font-medium bg-blue-50 px-3 py-1 rounded-full text-sm" id="profile-jabatan">Guru</p>
                         </div>
                     </div>
@@ -317,7 +316,7 @@
                                     <button onclick="app.exportExcel()" class="w-full bg-green-50 text-green-700 font-medium py-3 rounded-xl hover:bg-green-100 transition flex items-center justify-center gap-2">
                                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel (.xlsx)
                                     </button>
-                                    <p class="text-[10px] text-slate-400 text-center">Format Excel resmi dengan lampiran foto.</p>
+                                    <p class="text-[10px] text-slate-400 text-center">Format Excel resmi dengan lampiran link foto.</p>
                                 </div>
                             </div>
                             
@@ -521,6 +520,7 @@
             data: [],
             calDate: new Date(),
             suggestions: [],
+            currentFile: null,
             
             init: function() {
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
@@ -712,8 +712,24 @@
                     const d = new Date(item.date);
                     const el = document.createElement('div');
                     const safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
+                    
                     let thumbHtml = '';
-                    if (item.img && item.img.startsWith('data:image')) thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${item.img}')"></div>`;
+                    if (item.img) {
+                        let src = item.img;
+                        // Handle Google Drive Links for thumbnails
+                        if(src.includes('drive.google.com') && src.includes('/d/')) {
+                            // Try to extract ID for thumbnail hack, otherwise just show icon
+                            const match = src.match(/\/d\/(.+?)\//);
+                            if(match && match[1]) {
+                                src = `https://lh3.googleusercontent.com/d/${match[1]}=s220`; // Google Thumbnail API
+                                thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${src}')"></div>`;
+                            } else {
+                                thumbHtml = `<div class="w-16 h-16 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-500"><i data-lucide="image" class="w-6 h-6"></i></div>`;
+                            }
+                        } else if(src.startsWith('data:image')) {
+                             thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${src}')"></div>`;
+                        }
+                    }
 
                     el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition hover:shadow-md group relative';
                     el.innerHTML = `
@@ -741,7 +757,7 @@
             // --- IMAGE HANDLING ---
             handleImageSelect: function(input) {
                 if (input.files && input.files[0]) {
-                    const file = input.files[0];
+                    this.currentFile = input.files[0]; // Store file for upload
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const img = new Image();
@@ -754,20 +770,61 @@
                             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
+                            // Preview only (Local)
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                            document.getElementById('input-img-base64').value = dataUrl;
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
                         };
                     };
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(input.files[0]);
                 }
             },
+            
             clearImage: function() {
+                this.currentFile = null;
                 document.getElementById('input-file').value = '';
-                document.getElementById('input-img-base64').value = '';
+                document.getElementById('input-img-base64').value = ''; // Clear legacy hidden input usage if any
                 document.getElementById('img-preview').src = '';
                 document.getElementById('img-preview-container').classList.add('hidden');
+            },
+
+            uploadToDrive: async function(file) {
+                const metadata = { name: 'Jurnal_' + Date.now() + '.jpg', mimeType: file.type };
+                const boundary = 'foo_bar_baz';
+                const delimiter = "\r\n--" + boundary + "\r\n";
+                const close_delim = "\r\n--" + boundary + "--";
+
+                const reader = new FileReader();
+                return new Promise((resolve, reject) => {
+                    reader.onload = async (e) => {
+                        const contentType = file.type || 'application/octet-stream';
+                        const base64Data = e.target.result.split(',')[1];
+                        
+                        const body = delimiter +
+                            'Content-Type: application/json\r\n\r\n' +
+                            JSON.stringify(metadata) +
+                            delimiter +
+                            'Content-Type: ' + contentType + '\r\n' +
+                            'Content-Transfer-Encoding: base64\r\n\r\n' +
+                            base64Data +
+                            close_delim;
+
+                        try {
+                            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer ' + this.token,
+                                    'Content-Type': 'multipart/related; boundary=' + boundary
+                                },
+                                body: body
+                            });
+                            const json = await res.json();
+                            if(json.error) reject(json.error);
+                            else resolve(json.webViewLink);
+                        } catch(err) { reject(err); }
+                    }
+                    reader.readAsDataURL(file);
+                });
             },
 
             // --- CALENDAR ---
@@ -808,6 +865,8 @@
                 m.classList.remove('hidden');
                 setTimeout(() => { c.classList.remove('md:opacity-0', 'md:scale-95', 'translate-y-full'); }, 10);
                 
+                this.clearImage(); // Reset file input
+
                 if(data) {
                     document.getElementById('form-title').innerText = 'Edit Jurnal';
                     document.getElementById('btn-delete').classList.remove('hidden');
@@ -817,11 +876,21 @@
                     document.getElementById('input-end').value = data.end;
                     document.getElementById('input-act').value = data.act;
                     document.getElementById('input-res').value = data.res;
+                    // Store legacy/existing image link in hidden field to persist it if no new file is chosen
                     if (data.img) {
                         document.getElementById('input-img-base64').value = data.img;
-                        document.getElementById('img-preview').src = data.img;
-                        document.getElementById('img-preview-container').classList.remove('hidden');
-                    } else { this.clearImage(); }
+                        // Handle Preview for Edit
+                        if(data.img.startsWith('data:image')) {
+                             document.getElementById('img-preview').src = data.img;
+                             document.getElementById('img-preview-container').classList.remove('hidden');
+                        } else if(data.img.includes('drive.google.com')) {
+                             const match = data.img.match(/\/d\/(.+?)\//);
+                             if(match) {
+                                 document.getElementById('img-preview').src = `https://lh3.googleusercontent.com/d/${match[1]}=s400`;
+                                 document.getElementById('img-preview-container').classList.remove('hidden');
+                             }
+                        }
+                    }
                     this.currentEditIdx = data.idx;
                 } else {
                     document.getElementById('form-title').innerText = 'Jurnal Baru';
@@ -833,7 +902,6 @@
                     document.getElementById('input-end').value = now;
                     document.getElementById('input-act').value = '';
                     document.getElementById('input-res').value = '';
-                    this.clearImage();
                     this.currentEditIdx = null;
                 }
             },
@@ -849,16 +917,8 @@
             saveJournal: async function() {
                 if (!this.dbId) await this.setupDB();
                 const id = document.getElementById('input-id').value || utils.id();
-                const row = [
-                    id,
-                    document.getElementById('input-date').value,
-                    document.getElementById('input-start').value,
-                    document.getElementById('input-end').value,
-                    document.getElementById('input-act').value,
-                    document.getElementById('input-res').value,
-                    document.getElementById('input-img-base64').value
-                ];
-                if(!row[1] || !row[4]) return utils.toast('Lengkapi data!', 'error');
+                if(!document.getElementById('input-date').value || !document.getElementById('input-act').value) 
+                    return utils.toast('Lengkapi data!', 'error');
 
                 const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
                 btns.forEach(b => b.disabled = true);
@@ -866,6 +926,24 @@
                 spin.classList.remove('hidden');
 
                 try {
+                    let finalImg = document.getElementById('input-img-base64').value; // Default to existing
+                    
+                    // UPLOAD TO DRIVE if new file selected
+                    if(this.currentFile) {
+                         utils.toast('Mengupload foto ke Drive...', 'success');
+                         finalImg = await this.uploadToDrive(this.currentFile);
+                    }
+
+                    const row = [
+                        id,
+                        document.getElementById('input-date').value,
+                        document.getElementById('input-start').value,
+                        document.getElementById('input-end').value,
+                        document.getElementById('input-act').value,
+                        document.getElementById('input-res').value,
+                        finalImg
+                    ];
+
                     const rangeEnd = 'G'; 
                     let res;
                     if(this.currentEditIdx) {
@@ -1016,19 +1094,21 @@
                     ws_data.push([]); 
                     
                     // -- TABLE HEADER --
-                    ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "LINK / FOTO"]);
+                    ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "LINK FOTO DOKUMENTASI"]);
                     
                     // -- DATA ROWS --
                     monthData.forEach((d, i) => {
-                        // Logic for "Long Link": If Base64 is too long, warn, otherwise just text.
-                        // Ideally we put the image data or a link. Since this app uses Base64, 
-                        // we will put the Base64 text if the user really wants to copy it, 
-                        // but usually it is too big for a single cell (32k char limit).
-                        // I will put a text "Salin Data Gambar" containing the base64 if it fits, or the hyperlink logic.
-                        // Given the request "agar bisa di copy text", I'll prioritize the Hyperlink property but also display text.
-                        
-                        let photoText = "-";
-                        if(d.img) photoText = d.img; // Put the actual Base64 string so it can be copied.
+                        let linkVal = "-";
+                        let linkTarget = null;
+
+                        if(d.img) {
+                             if (d.img.startsWith('http')) {
+                                linkVal = d.img; // Use the URL as text
+                                linkTarget = d.img;
+                             } else {
+                                linkVal = "Link Terlalu Panjang (Base64)"; // Fallback for old data
+                             }
+                        }
 
                         ws_data.push([
                             i + 1,
@@ -1036,7 +1116,7 @@
                             `${d.start} - ${d.end}`,
                             d.act.replace(/\n/g, ' '),
                             d.res.replace(/\n/g, ' '),
-                            photoText // The full string
+                            linkVal
                         ]);
                     });
 
@@ -1062,15 +1142,13 @@
                     ];
 
                     // Column Widths
-                    ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:50}]; // Last col wide for link
+                    ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:60}]; // Last col wide for link
 
-                    // Styling Hyperlink on top of text (so user can click OR copy text)
+                    // Styling Hyperlink on top of text
                     const dataStartRow = 8;
                     monthData.forEach((d, i) => {
-                        if(d.img) {
+                        if(d.img && d.img.startsWith('http')) {
                             const cellRef = XLSX.utils.encode_cell({c: 5, r: dataStartRow + i});
-                            // We leave the Value as the Base64 string (per request "agar bisa di copy"), 
-                            // but add a hyperlink so it's clickable too.
                             if(!ws[cellRef]) ws[cellRef] = {v: d.img, t:'s'};
                             ws[cellRef].l = { Target: d.img }; 
                         }
@@ -1116,7 +1194,14 @@
                 filtered.forEach((item, i) => {
                     const tr = document.createElement('tr');
                     let imgHtml = '-';
-                    if(item.img) imgHtml = `<img src="${item.img}" style="max-height:80px; max-width:100px;">`;
+                    if(item.img) {
+                        if(item.img.startsWith('data:')) imgHtml = `<img src="${item.img}" style="max-height:80px; max-width:100px;">`;
+                        else if(item.img.includes('drive.google.com')) {
+                             const match = item.img.match(/\/d\/(.+?)\//);
+                             if(match) imgHtml = `<img src="https://lh3.googleusercontent.com/d/${match[1]}=s200" style="max-height:80px; max-width:100px;">`;
+                             else imgHtml = `<a href="${item.img}" target="_blank" style="font-size:10px; text-decoration:underline;">Lihat Foto</a>`;
+                        }
+                    }
                     tr.innerHTML = `
                         <td style="text-align:center">${i+1}</td>
                         <td>${utils.fmtDate(item.date)}</td>
