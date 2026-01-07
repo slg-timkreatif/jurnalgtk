@@ -98,7 +98,7 @@
                 <p class="text-[10px] text-slate-500 font-medium" id="header-subtitle">Ringkasan Kegiatan</p>
             </div>
             <!-- Desktop Refresh/Sync Button -->
-            <button onclick="app.fetchData()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition" title="Refresh Data">
+            <button onclick="app.loadApp()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition" title="Refresh Data">
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
         </header>
@@ -107,7 +107,7 @@
         <main class="flex-1 overflow-y-auto bg-slate-50 relative w-full scroll-smooth" id="main-container">
             
             <!-- VIEW: HOME (TIMELINE) -->
-            <div id="view-home" class="p-4 pb-28 max-w-2xl mx-auto w-full fade-in">
+            <div id="view-home" class="p-4 pb-32 max-w-2xl mx-auto w-full fade-in">
                 <!-- Search -->
                 <div class="relative mb-4">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
@@ -143,7 +143,7 @@
             </div>
 
             <!-- VIEW: CALENDAR -->
-            <div id="view-calendar" class="p-4 pb-28 max-w-2xl mx-auto w-full hidden fade-in">
+            <div id="view-calendar" class="p-4 pb-32 max-w-2xl mx-auto w-full hidden fade-in">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
                     <!-- Calendar Header -->
                     <div class="flex items-center justify-between mb-4">
@@ -173,7 +173,7 @@
             </div>
 
             <!-- VIEW: PROFILE -->
-            <div id="view-profile" class="p-4 pb-28 max-w-2xl mx-auto w-full hidden fade-in">
+            <div id="view-profile" class="p-4 pb-32 max-w-2xl mx-auto w-full hidden fade-in">
                 <!-- User Card -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center text-center mb-4">
                     <div id="profile-avatar" class="w-20 h-20 rounded-full bg-slate-200 mb-3 border-4 border-slate-50 overflow-hidden"></div>
@@ -251,8 +251,8 @@
             </button>
         </nav>
 
-        <!-- FLOATING ACTION BUTTON (Not on Profile) -->
-        <button id="fab-add" onclick="app.openForm()" class="absolute bottom-24 right-5 bg-blue-600 text-white w-14 h-14 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center transition-transform active:scale-90 z-40 hover:bg-blue-700">
+        <!-- FLOATING ACTION BUTTON (Adjusted Position) -->
+        <button id="fab-add" onclick="app.openForm()" class="absolute bottom-[110px] right-5 bg-blue-600 text-white w-14 h-14 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center transition-transform active:scale-90 z-40 hover:bg-blue-700">
             <i data-lucide="plus" class="w-7 h-7"></i>
         </button>
 
@@ -267,7 +267,7 @@
         
         <!-- Content: Bottom Sheet on Mobile, Center Modal on Desktop -->
         <div id="form-content" class="absolute bg-white flex flex-col shadow-2xl transition-all duration-300 transform 
-            bottom-0 left-0 right-0 rounded-t-3xl max-h-[90vh] translate-y-full
+            bottom-0 left-0 right-0 rounded-t-3xl max-h-[95vh] translate-y-full
             md:top-1/2 md:left-1/2 md:bottom-auto md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[500px] md:rounded-3xl md:h-auto md:opacity-0 md:scale-95">
             
             <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white rounded-t-3xl z-10">
@@ -294,6 +294,27 @@
                             <input type="time" id="input-end" class="w-full text-base font-semibold border-b border-slate-100 py-1 outline-none bg-transparent">
                         </div>
                     </div>
+                </div>
+                
+                <!-- NEW: IMAGE ATTACHMENT -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <label class="text-xs font-bold text-slate-400 mb-2 block">LAMPIRAN FOTO (Opsional)</label>
+                    
+                    <input type="file" id="input-file" accept="image/*" class="hidden" onchange="app.handleImageSelect(this)">
+                    <input type="hidden" id="input-img-base64">
+
+                    <div id="img-preview-container" class="hidden relative rounded-xl overflow-hidden mb-3 border border-slate-200">
+                        <img id="img-preview" src="" class="w-full h-48 object-cover">
+                        <button onclick="app.clearImage()" class="absolute top-2 right-2 bg-slate-900/50 text-white p-1 rounded-full backdrop-blur hover:bg-slate-900/70">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="document.getElementById('input-file').click()" class="w-full border-2 border-dashed border-slate-200 rounded-xl py-3 flex items-center justify-center gap-2 text-slate-500 hover:border-blue-400 hover:text-blue-500 transition active:scale-95">
+                        <i data-lucide="camera" class="w-5 h-5"></i>
+                        <span class="text-sm font-medium">Ambil Foto / Galeri</span>
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">* Foto akan otomatis dikompres agar ringan.</p>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -402,7 +423,7 @@
                         localStorage.removeItem('jg_token');
                         this.toggleScreen('login');
                     } else {
-                        utils.toast("Koneksi Error", 'error');
+                        utils.toast("Gagal memuat data. Periksa koneksi.", 'error');
                     }
                 }
             },
@@ -419,37 +440,66 @@
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
-                if(!id) {
+                
+                // --- LOGIKA CROSS DEVICE ---
+                // Selalu cek keberadaan file di Drive dulu jika ID tidak ada atau kita ingin memastikan
+                if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
-                    const s = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-                        headers: {'Authorization': `Bearer ${this.token}`}
-                    }).then(r=>r.json());
-                    
-                    if(s.files?.length > 0) id = s.files[0].id;
-                    else {
-                        const c = await fetch('https://www.googleapis.com/drive/v3/files', {
-                            method: 'POST',
-                            headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
-                            body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
-                        }).then(r=>r.json());
-                        id = c.id;
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:F1?valueInputOption=RAW`, {
-                            method: 'PUT',
-                            headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
-                            body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL']]})
-                        });
+                    try {
+                        const s = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+                            headers: {'Authorization': `Bearer ${this.token}`}
+                        }).then(r => r.json());
+
+                        if (s.files && s.files.length > 0) {
+                            // File ditemukan! Pakai yang sudah ada.
+                            id = s.files[0].id;
+                            console.log("Database ditemukan di Drive:", id);
+                        }
+                    } catch (e) {
+                        console.error("Gagal mencari DB:", e);
                     }
-                    localStorage.setItem('jg_db_id', id);
                 }
+
+                // Jika benar-benar tidak ada di Drive, baru buat baru.
+                if (!id) {
+                    const c = await fetch('https://www.googleapis.com/drive/v3/files', {
+                        method: 'POST',
+                        headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
+                    }).then(r => r.json());
+                    id = c.id;
+                    
+                    // Inisialisasi Header (Sekarang 7 kolom dengan IMAGE)
+                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
+                        method: 'PUT',
+                        headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL','IMAGE']]})
+                    });
+                    console.log("Database baru dibuat:", id);
+                }
+                
+                localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
             },
 
             fetchData: async function() {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:F1000`;
-                const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r=>r.json());
+                if(!this.dbId) await this.setupDB();
                 
+                // Fetch A to G (G is Image)
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
+                const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
+                
+                if (res.error) throw res.error;
+
                 this.data = (res.values || []).map((r, i) => ({
-                    idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5]
+                    idx: i+2, 
+                    id: r[0], 
+                    date: r[1], 
+                    start: r[2], 
+                    end: r[3], 
+                    act: r[4], 
+                    res: r[5],
+                    img: r[6] || null // Image Base64 string
                 })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
                 
                 this.renderList(this.data);
@@ -470,6 +520,13 @@
                     const el = document.createElement('div');
                     el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-3 active:scale-[0.98] transition cursor-pointer hover:shadow-md';
                     el.onclick = () => this.openForm(item);
+                    
+                    // Logic thumbnail
+                    let thumbHtml = '';
+                    if (item.img && item.img.startsWith('data:image')) {
+                        thumbHtml = `<div class="mt-2 h-20 w-full rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200" style="background-image: url('${item.img}')"></div>`;
+                    }
+
                     el.innerHTML = `
                         <div class="bg-blue-50 w-12 h-12 rounded-lg flex flex-col items-center justify-center text-blue-600 shrink-0">
                             <span class="text-lg font-bold leading-none">${d.getDate()}</span>
@@ -480,14 +537,60 @@
                                 <h4 class="font-bold text-sm text-slate-800 truncate mb-1 pr-2">${item.act}</h4>
                                 <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
                             </div>
-                            <div class="flex items-center gap-2 text-xs text-slate-500">
+                            <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
                                 <i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}
                             </div>
+                            ${thumbHtml}
                         </div>
                     `;
                     con.appendChild(el);
                 });
                 lucide.createIcons();
+            },
+
+            // --- IMAGE HANDLING ---
+            handleImageSelect: function(input) {
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = () => {
+                            // Compress Image via Canvas
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const MAX_WIDTH = 600; // Resize to max 600px width
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            // Convert to Base64 JPEG with low quality
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                            
+                            document.getElementById('input-img-base64').value = dataUrl;
+                            document.getElementById('img-preview').src = dataUrl;
+                            document.getElementById('img-preview-container').classList.remove('hidden');
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+
+            clearImage: function() {
+                document.getElementById('input-file').value = '';
+                document.getElementById('input-img-base64').value = '';
+                document.getElementById('img-preview').src = '';
+                document.getElementById('img-preview-container').classList.add('hidden');
             },
 
             // --- CALENDAR LOGIC ---
@@ -544,13 +647,8 @@
                 
                 // Animasi Mobile vs Desktop
                 if (window.innerWidth >= 768) {
-                    // Desktop Animation (Fade + Scale)
-                    setTimeout(() => {
-                        c.classList.remove('opacity-0', 'scale-95');
-                        c.classList.add('opacity-100', 'scale-100');
-                    }, 10);
+                    setTimeout(() => { c.classList.remove('opacity-0', 'scale-95'); c.classList.add('opacity-100', 'scale-100'); }, 10);
                 } else {
-                    // Mobile Animation (Slide Up)
                     setTimeout(() => c.classList.remove('translate-y-full'), 10);
                 }
                 
@@ -563,6 +661,16 @@
                     document.getElementById('input-end').value = data.end;
                     document.getElementById('input-act').value = data.act;
                     document.getElementById('input-res').value = data.res;
+                    
+                    // Load Image
+                    if (data.img) {
+                        document.getElementById('input-img-base64').value = data.img;
+                        document.getElementById('img-preview').src = data.img;
+                        document.getElementById('img-preview-container').classList.remove('hidden');
+                    } else {
+                        this.clearImage();
+                    }
+
                     this.currentEditIdx = data.idx;
                 } else {
                     document.getElementById('form-title').innerText = 'Jurnal Baru';
@@ -574,6 +682,7 @@
                     document.getElementById('input-end').value = now;
                     document.getElementById('input-act').value = '';
                     document.getElementById('input-res').value = '';
+                    this.clearImage();
                     this.currentEditIdx = null;
                 }
             },
@@ -581,18 +690,18 @@
             closeForm: function() {
                 const m = document.getElementById('form-modal');
                 const c = document.getElementById('form-content');
-                
                 if (window.innerWidth >= 768) {
-                    c.classList.remove('opacity-100', 'scale-100');
-                    c.classList.add('opacity-0', 'scale-95');
+                    c.classList.remove('opacity-100', 'scale-100'); c.classList.add('opacity-0', 'scale-95');
                 } else {
                     c.classList.add('translate-y-full');
                 }
-
                 setTimeout(()=> m.classList.add('hidden'), 300);
             },
 
             saveJournal: async function() {
+                // Safety check DB ID
+                if (!this.dbId) await this.setupDB();
+
                 const id = document.getElementById('input-id').value || utils.id();
                 const row = [
                     id,
@@ -600,7 +709,8 @@
                     document.getElementById('input-start').value,
                     document.getElementById('input-end').value,
                     document.getElementById('input-act').value,
-                    document.getElementById('input-res').value
+                    document.getElementById('input-res').value,
+                    document.getElementById('input-img-base64').value // Simpan base64 string
                 ];
 
                 if(!row[1] || !row[4]) return utils.toast('Lengkapi data!', 'error');
@@ -610,16 +720,19 @@
                 btn.disabled = true; spin.classList.remove('hidden');
 
                 try {
+                    // Cek sheet ranges. Jika Sheet1!A:F maka harus update range ke A:G
+                    const rangeEnd = 'G'; 
+                    
                     if(this.currentEditIdx) {
                         // Update
-                        const range = `Sheet1!A${this.currentEditIdx}:F${this.currentEditIdx}`;
+                        const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     } else {
                         // Append
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED`, {
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
@@ -628,7 +741,8 @@
                     this.fetchData();
                     utils.toast('Berhasil disimpan');
                 } catch(e) {
-                    utils.toast('Gagal menyimpan', 'error');
+                    console.error(e);
+                    utils.toast('Gagal menyimpan. Cek koneksi.', 'error');
                 }
                 btn.disabled = false; spin.classList.add('hidden');
             },
@@ -682,13 +796,15 @@
                 csv += `NIP,${c.nip || '-'}\n`;
                 csv += `Bulan,${new Date().toLocaleDateString('id',{month:'long', year:'numeric'})}\n\n`;
                 
-                csv += "NO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT\n";
+                csv += "NO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT,FOTO\n";
                 
                 // Rows (Reverse to Oldest first for report usually)
                 [...this.data].reverse().forEach((d, i) => {
                     const cleanAct = d.act.replace(/,/g, ' ').replace(/\n/g, ' ');
                     const cleanRes = d.res.replace(/,/g, ' ').replace(/\n/g, ' ');
-                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}"\n`;
+                    // Excel doesn't support images in CSV, so we leave it or put "Terlampir"
+                    const photoStatus = d.img ? "Terlampir" : "-";
+                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}","${photoStatus}"\n`;
                 });
 
                 // Signature Footer
