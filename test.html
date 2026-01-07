@@ -23,12 +23,21 @@
             -webkit-backdrop-filter: blur(10px);
         }
         .loader {
-            border: 3px solid #f3f3f3;
+            border: 3px solid #e2e8f0;
             border-radius: 50%;
-            border-top: 3px solid #1e3a8a;
+            border-top: 3px solid #1e40af;
             width: 24px;
             height: 24px;
             -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        .loader-lg {
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top: 4px solid #1e40af;
+            width: 48px;
+            height: 48px;
+            -webkit-animation: spin 1s linear infinite;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
@@ -42,7 +51,13 @@
     <!-- App Container -->
     <div id="app" class="flex-1 flex flex-col h-full relative overflow-hidden">
         
-        <!-- Login Screen (Hidden by default) -->
+        <!-- 1. Initial Loading Screen (Default Visible) -->
+        <div id="initial-loader" class="absolute inset-0 z-[60] bg-slate-50 flex flex-col items-center justify-center">
+            <div class="loader-lg mb-4"></div>
+            <p class="text-slate-500 font-medium animate-pulse">Memuat Aplikasi...</p>
+        </div>
+
+        <!-- 2. Login Screen (Hidden by default) -->
         <div id="login-screen" class="absolute inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-6 hidden">
             <div class="text-center max-w-md w-full">
                 <div class="bg-blue-100 p-4 rounded-full inline-flex mb-6">
@@ -59,7 +74,7 @@
             </div>
         </div>
 
-        <!-- Main Layout (Dashboard) -->
+        <!-- 3. Main Layout (Dashboard) (Hidden by default) -->
         <div id="main-layout" class="flex-1 flex flex-col h-full hidden">
             <!-- Header -->
             <header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm z-10">
@@ -86,7 +101,7 @@
                     <p class="text-slate-400 text-sm mt-1">Tap tombol + untuk mulai menulis</p>
                 </div>
 
-                <!-- Loading Spinner -->
+                <!-- Data Loading Spinner -->
                 <div id="loading-indicator" class="flex flex-col items-center justify-center py-10 hidden">
                     <div class="loader mb-2"></div>
                     <p class="text-xs text-slate-500">Menyingkronkan data...</p>
@@ -102,7 +117,7 @@
             </button>
         </div>
 
-        <!-- Form Modal (Slide Up) -->
+        <!-- 4. Form Modal (Slide Up) -->
         <div id="form-modal" class="fixed inset-0 z-40 hidden">
             <!-- Backdrop -->
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" id="form-backdrop"></div>
@@ -181,7 +196,7 @@
             </div>
         </div>
 
-        <!-- Toast Notification -->
+        <!-- 5. Toast Notification -->
         <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 z-50 transition-all duration-300 translate-y-20 opacity-0">
             <i id="toast-icon" data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
             <span id="toast-message" class="text-sm font-medium">Berhasil disimpan</span>
@@ -189,19 +204,15 @@
 
     </div>
 
-    <!-- Scripts -->
-    <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://accounts.google.com/gsi/client" defer></script>
+    <!-- MAIN SCRIPT -->
     <script>
         // --- Configuration ---
-        // PENTING: Ganti string di bawah ini dengan API KEY Anda sendiri jika di-deploy ke GitHub Pages
-        const ENV_API_KEY = (typeof process !== 'undefined' && process.env && process.env.API_KEY) 
-            ? process.env.API_KEY 
-            : 'ISI_API_KEY_ANDA_DISINI'; 
+        // GANTI API KEY DI SINI jika belum diset.
+        const APP_API_KEY = ''; // Contoh: 'AIzaSyA...'
 
         const CONFIG = {
           CLIENT_ID: '937175233633-pv3133863484814981881.apps.googleusercontent.com', 
-          API_KEY: ENV_API_KEY, 
+          API_KEY: APP_API_KEY, 
           SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
           DB_FILENAME: 'JurnalGuru_Database_v2',
           FOLDER_NAME: 'JurnalGuru_Foto_v2'
@@ -224,6 +235,7 @@
         // --- DOM Elements ---
         const els = {
           app: document.getElementById('app'),
+          initialLoader: document.getElementById('initial-loader'),
           loginScreen: document.getElementById('login-screen'),
           mainLayout: document.getElementById('main-layout'),
           btnLogin: document.getElementById('btn-login'),
@@ -271,7 +283,7 @@
         const getTodayString = () => new Date().toISOString().split('T')[0];
         const getTimeString = () => new Date().toTimeString().slice(0, 5);
 
-        // --- Utility: Image Compression (The Fix) ---
+        // --- Utility: Image Compression ---
         async function compressImage(file) {
           return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -319,31 +331,26 @@
         function showToast(message, type = 'success') {
           els.toastMsg.innerText = message;
           els.toastIcon.innerHTML = type === 'success' 
-            ? `<polyline points="20 6 9 17 4 12"></polyline>` // check
-            : `<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>`; // x
+            ? `<polyline points="20 6 9 17 4 12"></polyline>` 
+            : `<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>`; 
           
-          // Re-render icon
-          lucide.createIcons();
+          if(window.lucide) lucide.createIcons();
 
           els.toast.className = `fixed bottom-6 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 z-50 transition-all duration-300 ${type === 'success' ? 'bg-slate-800 text-white' : 'bg-red-600 text-white'}`;
           
-          // Show
           requestAnimationFrame(() => {
             els.toast.classList.remove('translate-y-20', 'opacity-0');
           });
 
-          // Hide after 3s
           setTimeout(() => {
             els.toast.classList.add('translate-y-20', 'opacity-0');
           }, 3000);
         }
 
-        // --- API Wrapper with Token Refresh (The Fix) ---
+        // --- API Wrapper ---
         async function callGoogleApi(apiCall) {
-          // Check if token exists
           const token = gapi.client.getToken();
           if (!token) {
-            // Force prompt if no token at all
             await new Promise((resolve, reject) => {
               state.tokenClient.callback = (resp) => {
                 if (resp.error) reject(resp);
@@ -356,7 +363,7 @@
           try {
             return await apiCall();
           } catch (error) {
-            // If 401 Unauthorized (Token expired), refresh silently
+            // Auto refresh token on 401
             if (error.status === 401 || (error.result && error.result.error && error.result.error.code === 401)) {
               console.log("Token expired, refreshing...");
               await new Promise((resolve, reject) => {
@@ -364,10 +371,8 @@
                     if (resp.error) reject(resp);
                     resolve(resp);
                  };
-                 // Use empty prompt to try silent refresh, or 'consent' if needed
                  state.tokenClient.requestAccessToken({ prompt: '' });
               });
-              // Retry the original call
               return await apiCall();
             }
             throw error;
@@ -377,31 +382,42 @@
         // --- Initialization ---
         function gapiLoaded() {
           gapi.load('client', async () => {
-            await gapi.client.init({
-              apiKey: CONFIG.API_KEY,
-              discoveryDocs: [
-                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-                'https://sheets.googleapis.com/$discovery/rest?version=v4'
-              ],
-            });
-            state.gapiInited = true;
-            checkAuth();
+            try {
+              await gapi.client.init({
+                apiKey: CONFIG.API_KEY,
+                discoveryDocs: [
+                  'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+                  'https://sheets.googleapis.com/$discovery/rest?version=v4'
+                ],
+              });
+              state.gapiInited = true;
+              checkAuth();
+            } catch (err) {
+              console.error('GAPI Init Error:', err);
+              showToast('Gagal inisialisasi Google API: ' + JSON.stringify(err), 'error');
+            }
           });
         }
 
         function gisLoaded() {
-          state.tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: CONFIG.CLIENT_ID,
-            scope: CONFIG.SCOPES,
-            callback: '', // defined dynamically
-          });
-          state.gisInited = true;
-          checkAuth();
+          try {
+            state.tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: CONFIG.CLIENT_ID,
+              scope: CONFIG.SCOPES,
+              callback: '', // defined dynamically
+            });
+            state.gisInited = true;
+            checkAuth();
+          } catch (err) {
+            console.error('GIS Init Error:', err);
+          }
         }
 
         function checkAuth() {
           if (state.gapiInited && state.gisInited) {
-            // Check localstorage for simple session persistence
+            // Hide Initial Loader
+            els.initialLoader.classList.add('hidden');
+
             const savedUser = localStorage.getItem('jg_user');
             if (savedUser) {
                 state.user = JSON.parse(savedUser);
@@ -409,8 +425,7 @@
             } else {
                 els.loginScreen.classList.remove('hidden');
             }
-            // Initialize icons
-            lucide.createIcons();
+            if(window.lucide) lucide.createIcons();
           }
         }
 
@@ -488,12 +503,11 @@
           try {
             const response = await callGoogleApi(() => gapi.client.sheets.spreadsheets.values.get({
               spreadsheetId: state.files.spreadsheetId,
-              range: 'Sheet1!A2:H', // Dynamic range
+              range: 'Sheet1!A2:H',
             }));
 
             const rows = response.result.values;
             if (rows && rows.length > 0) {
-              // Map rows to objects (reverse to show newest first)
               state.journalData = rows.map((row, index) => ({
                 timestamp: row[0],
                 date: row[1],
@@ -530,7 +544,6 @@
             const el = document.createElement('div');
             el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-3';
             
-            // Check if it has photo
             const photoHtml = item.photoUrl 
               ? `<div class="mt-3 mb-1"><img src="${item.photoUrl}" class="rounded-lg max-h-48 object-cover w-full bg-slate-100" loading="lazy"></div>` 
               : '';
@@ -572,21 +585,16 @@
             let photoLink = '';
             const file = els.inputs.photo.files?.[0];
 
-            // 1. Upload Photo if exists
             if (file && state.files.folderId) {
                els.btnSave.textContent = 'UPLOAD FOTO...';
-               
-               // Compress!
                const compressedBlob = await compressImage(file);
                
-               // Prepare Metadata
                const metadata = {
                  name: `IMG_${Date.now()}.jpg`,
                  mimeType: 'image/jpeg',
                  parents: [state.files.folderId]
                };
 
-               // Upload using Multipart
                const accessToken = gapi.client.getToken().access_token;
                const form = new FormData();
                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -600,12 +608,10 @@
                
                const fileData = await uploadRes.json();
                if(fileData.id) {
-                  // Hack for thumbnail link to get higher res
                   photoLink = fileData.thumbnailLink ? fileData.thumbnailLink.replace('=s220', '=s800') : fileData.webViewLink; 
                }
             }
 
-            // 2. Append to Sheet
             els.btnSave.textContent = 'MENULIS DATA...';
             const rowValues = [
               new Date().toISOString(),
@@ -630,7 +636,7 @@
 
             showToast('Jurnal berhasil disimpan!');
             closeForm();
-            await fetchJournalData(); // Refresh list
+            await fetchJournalData();
 
           } catch (err) {
             console.error(err);
@@ -647,7 +653,6 @@
           state.tokenClient.callback = async (resp) => {
             if (resp.error) throw resp;
             
-            // Get Profile
             const userInfo = await callGoogleApi(() => 
                fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                   headers: { Authorization: `Bearer ${gapi.client.getToken().access_token}` }
@@ -659,7 +664,6 @@
             showApp();
           };
 
-          // Request token
           state.tokenClient.requestAccessToken({ prompt: 'consent' });
         }
 
@@ -667,7 +671,6 @@
           const token = gapi.client.getToken();
           if (token) {
             google.accounts.oauth2.revoke(token.access_token, () => {
-              console.log('Token revoked');
               gapi.client.setToken(null);
               localStorage.removeItem('jg_user');
               localStorage.removeItem('jg_ssid');
@@ -691,7 +694,6 @@
             const d = new Date();
             els.currentDate.innerText = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
 
-            // Initial Fetch
             fetchJournalData();
           }
         }
@@ -728,15 +730,11 @@
             const target = e.target;
             if (target.files && target.files[0]) {
                 const file = target.files[0];
-                
-                // Show Preview
                 els.uploadUI.placeholder.classList.add('hidden');
                 els.uploadUI.preview.classList.remove('hidden');
                 els.uploadUI.preview.classList.add('flex');
                 
                 const rawSize = (file.size / 1024).toFixed(0);
-                
-                // Show temp preview
                 const url = URL.createObjectURL(file);
                 els.uploadUI.img.src = url;
 
@@ -766,11 +764,23 @@
         els.formBackdrop.onclick = closeForm;
         els.btnSave.onclick = saveJournal;
 
-        // --- Manual Trigger for Libraries loaded via defer ---
-        window.onload = function() {
-            if (typeof gapi !== 'undefined') gapiLoaded();
-            if (typeof google !== 'undefined') gisLoaded();
-        };
+        // --- DYNAMIC SCRIPT INJECTION (FIX FOR BLANK PAGE) ---
+        function loadGoogleScripts() {
+            const s1 = document.createElement('script');
+            s1.src = 'https://apis.google.com/js/api.js';
+            s1.onload = () => gapiLoaded();
+            s1.onerror = () => showToast('Gagal memuat Google API', 'error');
+            document.body.appendChild(s1);
+
+            const s2 = document.createElement('script');
+            s2.src = 'https://accounts.google.com/gsi/client';
+            s2.onload = () => gisLoaded();
+            s2.onerror = () => showToast('Gagal memuat Google Identity', 'error');
+            document.body.appendChild(s2);
+        }
+
+        // Start Loading
+        loadGoogleScripts();
     </script>
 </body>
 </html>
