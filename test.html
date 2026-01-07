@@ -461,7 +461,7 @@
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <label class="text-xs font-bold text-slate-400 mb-2 block">KEGIATAN</label>
-                    <input type="text" id="input-act" list="suggestions-act" class="w-full text-base border-b border-slate-100 py-2 outline-none bg-transparent" placeholder="Ketik kegiatan...">
+                    <input type="text" id="input-act" list="suggestions-act" class="w-full text-base border-b border-slate-100 py-2 outline-none bg-transparent" placeholder="Ketik kegiatan..." onchange="app.checkSuggestion(this.value)">
                     <datalist id="suggestions-act"></datalist>
                 </div>
                 
@@ -552,15 +552,27 @@
                     const url = `https://docs.google.com/spreadsheets/d/${CONFIG.REF_SHEET}/gviz/tq?tqx=out:json`;
                     const res = await fetch(url).then(r => r.text());
                     const json = JSON.parse(res.substr(47).slice(0, -2));
-                    this.suggestions = json.table.rows.map(r => r.c[0]?.v).filter(v => v);
+                    // Store object { act: 'Activity', res: 'Result' }
+                    this.suggestions = json.table.rows.map(r => ({
+                        act: r.c[0]?.v,
+                        res: r.c[1]?.v || ''
+                    })).filter(x => x.act);
+                    
                     const list = document.getElementById('suggestions-act');
                     list.innerHTML = '';
                     this.suggestions.forEach(s => {
                         const opt = document.createElement('option');
-                        opt.value = s;
+                        opt.value = s.act;
                         list.appendChild(opt);
                     });
                 } catch(e) { console.warn("Ref load failed", e); }
+            },
+            
+            checkSuggestion: function(val) {
+                const found = this.suggestions.find(s => s.act === val);
+                if(found && found.res) {
+                    document.getElementById('input-res').value = found.res;
+                }
             },
 
             handleAuth: function() { 
@@ -1132,7 +1144,8 @@
 
                         if(d.img) {
                              if (d.img.startsWith('http')) {
-                                linkObj = { v: "Lihat Foto", t: "s", s: centerCellStyle, l: { Target: d.img } };
+                                // CHANGED: Show Full URL text instead of "Lihat Foto"
+                                linkObj = { v: d.img, t: "s", s: centerCellStyle, l: { Target: d.img } };
                              } else {
                                 linkObj = { v: "Base64 Img", t: "s", s: centerCellStyle };
                              }
@@ -1150,17 +1163,18 @@
                     XLSX.utils.sheet_add_aoa(ws, tableRows, {origin: "A9"});
 
                     // --- SIGNATURES ---
+                    // CHANGED: Signatures moved to Column E (index 4) and F (index 5) alignment
                     const lastRow = 9 + tableRows.length + 2;
                     const cityDate = (c.kota || "..............") + ", " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                     
                     XLSX.utils.sheet_add_aoa(ws, [
-                        ["Mengetahui,", "", "", "", "", cityDate],
-                        ["Kepala Sekolah", "", "", "", "", (c.jabatan || "Guru Yang Bersangkutan")]
-                    ], {origin: `C${lastRow}`}); // Shifted to C to spread out, actually using Merge is better
+                        ["Mengetahui,", "", "", "", cityDate],
+                        ["Kepala Sekolah", "", "", "", (c.jabatan || "Guru Yang Bersangkutan")]
+                    ], {origin: `C${lastRow}`}); 
 
                      XLSX.utils.sheet_add_aoa(ws, [
-                        [c.ks_nama || "...................", "", "", "", "", teacherName],
-                        ["NIP. " + (c.ks_nip || "-"), "", "", "", "", "NIP. " + (c.nip || "-")]
+                        [c.ks_nama || "...................", "", "", "", teacherName],
+                        ["NIP. " + (c.ks_nip || "-"), "", "", "", "NIP. " + (c.nip || "-")]
                     ], {origin: `C${lastRow + 5}`});
 
 
@@ -1170,13 +1184,11 @@
                         { s: {r:1, c:0}, e: {r:1, c:5} }, // Title 2
                         { s: {r:2, c:0}, e: {r:2, c:5} }, // Title 3
                     ];
-                    ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:35}, {wch:15}];
+                    ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:35}, {wch:50}]; // Expanded Link Column
 
-                    // Apply Header Styles manually since sheet_add_aoa doesn't support bulk styling easily without loop
+                    // Apply Header Styles
                     ['A1','A2','A3'].forEach(ref => { if(ws[ref]) ws[ref].s = headerStyle; });
-                    // Bold Biodata labels
                     ['A5','D5','A6','D6'].forEach(ref => { if(ws[ref]) ws[ref].s = {font:{bold:true}}; });
-                    // Table Header Style
                     ['A8','B8','C8','D8','E8','F8'].forEach(ref => { if(ws[ref]) ws[ref].s = tableHeaderStyle; });
 
                     XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31));
@@ -1214,7 +1226,6 @@
                 document.getElementById('print-t-sign').innerText = teacherName;
                 document.getElementById('print-t-nip-sign').innerText = c.nip || '-';
                 
-                // Update Signature Title
                 document.getElementById('print-role-sign').innerText = c.jabatan || 'Guru Yang Bersangkutan';
 
                 const tbody = document.getElementById('print-table-body');
