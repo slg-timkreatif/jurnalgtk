@@ -83,6 +83,10 @@
             .print-bold { font-weight: bold; }
             .print-center { text-align: center; }
             .print-uppercase { text-transform: uppercase; }
+            .print-nowrap { white-space: nowrap; } /* Prevents name breaking */
+            
+            /* Links in print */
+            a { text-decoration: none; color: black; }
         }
     </style>
 </head>
@@ -366,13 +370,13 @@
                     <div class="flex justify-between px-8 mt-10 break-inside-avoid">
                         <div class="text-center w-64">
                             <p class="mb-16">Mengetahui,<br/>Kepala Sekolah</p>
-                            <p class="font-bold underline" id="print-ks-sign">...</p>
+                            <p class="font-bold underline print-nowrap" id="print-ks-sign">...</p>
                             <p class="text-base">NIP. <span id="print-ks-nip-sign">...</span></p>
                         </div>
                         <div class="text-center w-64">
                             <p class="mb-4"><span id="print-city">...</span>, <span id="print-date-sign">...</span></p>
                             <p class="mb-16" id="print-role-sign">Guru Yang Bersangkutan</p>
-                            <p class="font-bold underline" id="print-t-sign">...</p>
+                            <p class="font-bold underline print-nowrap" id="print-t-sign">...</p>
                             <p class="text-base">NIP. <span id="print-t-nip-sign">...</span></p>
                         </div>
                     </div>
@@ -552,7 +556,6 @@
                     const url = `https://docs.google.com/spreadsheets/d/${CONFIG.REF_SHEET}/gviz/tq?tqx=out:json`;
                     const res = await fetch(url).then(r => r.text());
                     const json = JSON.parse(res.substr(47).slice(0, -2));
-                    // Store object { act: 'Activity', res: 'Result' }
                     this.suggestions = json.table.rows.map(r => ({
                         act: r.c[0]?.v,
                         res: r.c[1]?.v || ''
@@ -586,6 +589,51 @@
                 this.loadApp();
             },
 
+            // --- AUTO REFRESH MIDDLEWARE ---
+            refreshToken: function() {
+                return new Promise((resolve) => {
+                    const originalCallback = this.tokenClient.callback;
+                    this.tokenClient.callback = (resp) => {
+                        this.tokenClient.callback = originalCallback;
+                        if (resp.error) {
+                            console.error("Silent refresh failed", resp);
+                            resolve(false);
+                        } else {
+                            console.log("Token refreshed silently");
+                            this.token = resp.access_token;
+                            localStorage.setItem('jg_token', this.token);
+                            resolve(true);
+                        }
+                    };
+                    // Prompt empty means try silent login
+                    this.tokenClient.requestAccessToken({prompt: ''});
+                });
+            },
+
+            request: async function(url, options = {}) {
+                if (!options.headers) options.headers = {};
+                options.headers['Authorization'] = `Bearer ${this.token}`;
+                
+                try {
+                    let res = await fetch(url, options);
+                    
+                    // IF TOKEN EXPIRED (401), RETRY ONCE
+                    if (res.status === 401) {
+                        utils.toast("Memperbarui sesi...", "success");
+                        const refreshed = await this.refreshToken();
+                        if (refreshed) {
+                            options.headers['Authorization'] = `Bearer ${this.token}`;
+                            res = await fetch(url, options);
+                        } else {
+                            throw { status: 401 };
+                        }
+                    }
+                    return res;
+                } catch (e) {
+                    throw e;
+                }
+            },
+
             signOut: function() {
                 if (confirm("Keluar dari aplikasi?")) {
                     google.accounts.oauth2.revoke(this.token, ()=>{});
@@ -599,14 +647,14 @@
                 try {
                     await this.fetchProfile();
                     await this.setupDB();
-                    // Load Profile Config from Cloud
                     await this.fetchProfileConfig();
                     await this.fetchData();
                     this.toggleScreen('main');
                     this.renderCalendar();
                 } catch (e) {
                     console.error("Load Error:", e);
-                    if (e.code === 401 || e.status === 401 || e.code === 403 || e.status === 403) {
+                    if (e.status === 401) {
+                        // Real logout if retry failed
                         utils.toast("Sesi habis, login ulang...", 'error');
                         localStorage.removeItem('jg_token');
                         localStorage.removeItem('jg_db_id'); 
@@ -620,9 +668,7 @@
 
             fetchProfile: async function() {
                 try {
-                    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                        headers: {'Authorization': `Bearer ${this.token}`}
-                    });
+                    const response = await this.request('https://www.googleapis.com/oauth2/v3/userinfo');
                     if (!response.ok) return;
                     const res = await response.json();
                     this.user = res;
@@ -637,48 +683,44 @@
                 let id = localStorage.getItem('jg_db_id');
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
-                    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-                        headers: {'Authorization': `Bearer ${this.token}`}
-                    });
+                    const res = await this.request(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`);
                     if (!res.ok) { const err = await res.json().catch(()=>({})); throw { code: res.status, ...err.error }; }
                     const s = await res.json();
                     if (s.files && s.files.length > 0) id = s.files[0].id;
                 }
                 
                 if (!id) {
-                    const resCreate = await fetch('https://www.googleapis.com/drive/v3/files', {
+                    const resCreate = await this.request('https://www.googleapis.com/drive/v3/files', {
                         method: 'POST',
-                        headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
                     });
                     if (!resCreate.ok) { const err = await resCreate.json().catch(()=>({})); throw { code: resCreate.status, ...err.error }; }
                     const c = await resCreate.json();
                     id = c.id;
 
-                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
+                    await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
                         method: 'PUT',
-                        headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL','IMAGE']]})
                     });
                 }
                 
                 try {
-                    const meta = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {
-                        headers: { 'Authorization': `Bearer ${this.token}` }
-                    }).then(r => r.json());
+                    const meta = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`).then(r => r.json());
                     
                     if(!meta.sheets.some(s => s.properties.title === 'Config')) {
-                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+                         await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
                             method: 'POST',
-                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 requests: [{ addSheet: { properties: { title: 'Config', gridProperties: { columnCount: 10, rowCount: 5 } } } }]
                             })
                         });
                         const headers = ['NAMA_GURU','NIP','JABATAN','SEKOLAH','KS_NAMA','KS_NIP','KOTA'];
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Config!A1:G1?valueInputOption=RAW`, {
+                        await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Config!A1:G1?valueInputOption=RAW`, {
                             method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ values: [headers] })
                         });
                     }
@@ -691,7 +733,7 @@
             fetchData: async function() {
                 if(!this.dbId) await this.setupDB();
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
-                const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
+                const res = await this.request(url).then(r => r.json());
                 
                 if(res.error) {
                     if(res.error.code === 404) {
@@ -730,12 +772,10 @@
                     let thumbHtml = '';
                     if (item.img) {
                         let src = item.img;
-                        // Handle Google Drive Links for thumbnails
                         if(src.includes('drive.google.com') && src.includes('/d/')) {
-                            // Try to extract ID for thumbnail hack, otherwise just show icon
                             const match = src.match(/\/d\/(.+?)\//);
                             if(match && match[1]) {
-                                src = `https://lh3.googleusercontent.com/d/${match[1]}=s220`; // Google Thumbnail API
+                                src = `https://lh3.googleusercontent.com/d/${match[1]}=s220`; 
                                 thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${src}')"></div>`;
                             } else {
                                 thumbHtml = `<div class="w-16 h-16 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-500"><i data-lucide="image" class="w-6 h-6"></i></div>`;
@@ -779,20 +819,16 @@
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
-                            const MAX_WIDTH = 1024; // Compress to Max 1024px width
+                            const MAX_WIDTH = 1024; 
                             let width = img.width; let height = img.height;
                             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
                             
-                            // To Blob for Upload (High compression: 0.5)
                             canvas.toBlob((blob) => {
-                                this.currentFile = blob; // Use this blob for upload
-                                // Check approximate size
-                                console.log("Compressed size approx:", blob.size / 1024, "KB");
+                                this.currentFile = blob;
                             }, 'image/jpeg', 0.5);
 
-                            // Preview DataURL (Lower quality is fine for preview)
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
@@ -830,10 +866,9 @@
                             close_delim;
 
                         try {
-                            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                            const res = await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
                                 method: 'POST',
                                 headers: {
-                                    'Authorization': 'Bearer ' + this.token,
                                     'Content-Type': 'multipart/related; boundary=' + boundary
                                 },
                                 body: body
@@ -941,11 +976,10 @@
                 const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
                 btns.forEach(b => b.disabled = true);
                 
-                // UX: Close Immediately and show uploading state
                 const spin = document.getElementById('spinner');
                 spin.classList.remove('hidden');
                 utils.toast('Menyimpan data...', 'success');
-                this.closeForm(); // Close form immediately for better UX
+                this.closeForm(); 
 
                 try {
                     let finalImg = document.getElementById('input-img-base64').value; 
@@ -968,13 +1002,13 @@
                     let res;
                     if(this.currentEditIdx) {
                         const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
-                        res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
-                            method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                            method: 'PUT', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         }).then(r => r.json());
                     } else {
-                        res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
-                            method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         }).then(r => r.json());
                     }
@@ -983,7 +1017,6 @@
                     utils.toast('Data Tersimpan di Cloud');
                 } catch(e) { 
                     utils.toast('Gagal menyimpan: ' + (e.message || 'Error'), 'error'); 
-                    // If failed, reopen form? Maybe better to just let user retry from list if implemented properly, but here we just warn.
                 }
                 btns.forEach(b => b.disabled = false);
                 spin.classList.add('hidden');
@@ -1001,8 +1034,8 @@
             executeDelete: async function(rowIdx) {
                 try {
                     const req = { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: rowIdx - 1, endIndex: rowIdx } } }] };
-                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}:batchUpdate`, {
-                        method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                    await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}:batchUpdate`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(req)
                     });
                     this.closeForm();
@@ -1015,9 +1048,7 @@
             fetchProfileConfig: async function() {
                 if(!this.dbId) return;
                 try {
-                    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2`, {
-                        headers: {'Authorization': `Bearer ${this.token}`}
-                    }).then(r => r.json());
+                    const res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2`).then(r => r.json());
                     
                     if(res.values && res.values[0]) {
                         const v = res.values[0];
@@ -1057,7 +1088,6 @@
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
                 document.getElementById('profile-jabatan').innerText = c.jabatan || 'Guru';
                 
-                // Sync to Cloud
                 const btn = document.getElementById('btn-save-profile');
                 const origText = btn.innerText;
                 btn.innerText = "Menyimpan ke Cloud..."; btn.disabled = true;
@@ -1065,8 +1095,8 @@
                 try {
                     if(!this.dbId) await this.setupDB();
                     const row = [c.nama_guru, c.nip, c.jabatan, c.sekolah, c.ks_nama, c.ks_nip, c.kota];
-                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2?valueInputOption=USER_ENTERED`, {
-                        method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                    await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Config!A2:G2?valueInputOption=USER_ENTERED`, {
+                        method: 'PUT', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({values: [row]})
                     });
                     utils.toast('Profil disimpan & disinkronkan');
@@ -1086,7 +1116,6 @@
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
                 const wb = XLSX.utils.book_new();
 
-                // Style Helpers
                 const headerStyle = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center", vertical: "center" } };
                 const subHeaderStyle = { font: { bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" } };
                 const tableHeaderStyle = { 
@@ -1101,7 +1130,6 @@
                 };
                 const centerCellStyle = { ...cellStyle, alignment: { vertical: "top", horizontal: "center", wrapText: true } };
 
-                // Group Data by Month
                 const grouped = {};
                 filtered.forEach(item => {
                     const monthKey = item.date.substring(0, 7); 
@@ -1115,28 +1143,23 @@
                     const monthName = new Date(y, m-1, 1).toLocaleDateString('id-ID', {month: 'long', year: 'numeric'});
                     
                     const ws_data = [];
-                    // Create Sheet
                     const ws = XLSX.utils.aoa_to_sheet([]);
                     
-                    // --- KOP ---
                     XLSX.utils.sheet_add_aoa(ws, [
                         ["LAPORAN KINERJA HARIAN GURU"],
                         [c.sekolah || "NAMA SEKOLAH"],
                         ["Periode: " + utils.fmtDateFull(start) + " s/d " + utils.fmtDateFull(end)]
                     ], {origin: "A1"});
                     
-                    // --- BIODATA ---
                     XLSX.utils.sheet_add_aoa(ws, [
                         ["Nama", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")],
                         ["NIP", ": " + (c.nip || "-"), "", "Jabatan", ": " + (c.jabatan || "-")]
                     ], {origin: "A5"});
 
-                    // --- TABLE HEADER ---
                     XLSX.utils.sheet_add_aoa(ws, [
                         ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"]
                     ], {origin: "A8"});
 
-                    // --- TABLE DATA ---
                     const tableRows = [];
                     monthData.forEach((d, i) => {
                         let linkVal = "-";
@@ -1144,7 +1167,6 @@
 
                         if(d.img) {
                              if (d.img.startsWith('http')) {
-                                // SHOW FULL LINK TEXT
                                 linkObj = { v: d.img, t: "s", s: centerCellStyle, l: { Target: d.img } };
                              } else {
                                 linkObj = { v: "Base64 Img", t: "s", s: centerCellStyle };
@@ -1162,8 +1184,6 @@
                     });
                     XLSX.utils.sheet_add_aoa(ws, tableRows, {origin: "A9"});
 
-                    // --- SIGNATURES ---
-                    // COL B (Headmaster) & COL E (Teacher)
                     const lastRow = 9 + tableRows.length + 2;
                     const cityDate = (c.kota || "..............") + ", " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                     
@@ -1178,15 +1198,13 @@
                     ], {origin: `A${lastRow}`});
 
 
-                    // --- MERGES & COL WIDTHS ---
                     ws['!merges'] = [
-                        { s: {r:0, c:0}, e: {r:0, c:5} }, // Title 1
-                        { s: {r:1, c:0}, e: {r:1, c:5} }, // Title 2
-                        { s: {r:2, c:0}, e: {r:2, c:5} }, // Title 3
+                        { s: {r:0, c:0}, e: {r:0, c:5} }, 
+                        { s: {r:1, c:0}, e: {r:1, c:5} }, 
+                        { s: {r:2, c:0}, e: {r:2, c:5} }, 
                     ];
-                    ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:35}, {wch:50}]; // Expanded Link Column
+                    ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:35}, {wch:50}]; 
 
-                    // Apply Header Styles
                     ['A1','A2','A3'].forEach(ref => { if(ws[ref]) ws[ref].s = headerStyle; });
                     ['A5','D5','A6','D6'].forEach(ref => { if(ws[ref]) ws[ref].s = {font:{bold:true}}; });
                     ['A8','B8','C8','D8','E8','F8'].forEach(ref => { if(ws[ref]) ws[ref].s = tableHeaderStyle; });
@@ -1209,7 +1227,6 @@
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
 
-                // Update Print View DOM
                 document.getElementById('print-school-name').innerText = c.sekolah || "NAMA SEKOLAH";
                 document.getElementById('print-period-text').innerText = `${utils.fmtDateFull(start)} s/d ${utils.fmtDateFull(end)}`;
                 
@@ -1234,11 +1251,11 @@
                     const tr = document.createElement('tr');
                     let imgHtml = '-';
                     if(item.img) {
-                        if(item.img.startsWith('data:')) imgHtml = `<img src="${item.img}" style="max-height:80px; max-width:100px;">`;
-                        else if(item.img.includes('drive.google.com')) {
-                             const match = item.img.match(/\/d\/(.+?)\//);
-                             if(match) imgHtml = `<img src="https://lh3.googleusercontent.com/d/${match[1]}=s200" style="max-height:80px; max-width:100px;">`;
-                             else imgHtml = `<a href="${item.img}" target="_blank" style="font-size:10px; text-decoration:underline;">Lihat Foto</a>`;
+                        if(item.img.startsWith('data:')) {
+                            imgHtml = `<img src="${item.img}" style="max-height:40px;">`;
+                        } else {
+                            // SHOW TEXT LINK instead of image
+                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-xs break-all">Lihat Foto</a>`;
                         }
                     }
                     tr.innerHTML = `
@@ -1270,7 +1287,6 @@
                     }
                 });
                 
-                // Header update
                 const titles = {home: 'Beranda', calendar: 'Kalender', profile: 'Profil Saya'};
                 const subs = {home: 'Ringkasan Kegiatan', calendar: 'Jadwal Bulanan', profile: 'Pengaturan Akun'};
                 document.getElementById('header-title').innerText = titles[tab];
@@ -1278,7 +1294,6 @@
                 
                 if(tab === 'calendar') this.selectCalDate(new Date().toISOString().split('T')[0]);
                 
-                // FAB visibility
                 const fab = document.getElementById('fab-add');
                 if(tab === 'profile') fab.classList.add('scale-0'); else fab.classList.remove('scale-0');
             },
