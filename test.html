@@ -89,6 +89,7 @@
     <div id="initial-loader" class="fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="loader mb-4" style="width: 48px; height: 48px;"></div>
         <p class="text-slate-500 font-medium animate-pulse text-sm">Menyiapkan Jurnal...</p>
+        <button onclick="localStorage.removeItem('jg_token'); location.reload()" class="mt-8 text-xs text-red-400 underline hover:text-red-600">Reset Aplikasi</button>
     </div>
 
     <div id="login-screen" class="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-6 hidden">
@@ -473,7 +474,7 @@
         const CONFIG = {
             CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com',
             DB_NAME: 'JurnalGuru_Database_v2',
-            SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+            SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
             REF_SHEET: '1CD63O0L8jaJnXZBCFrX4eT83uHngs7LOy9jOgr3Nta8'
         };
 
@@ -565,8 +566,8 @@
                     this.renderCalendar();
                 } catch (e) {
                     console.error("Load Error:", e);
-                    // Handle Auth Error (401 or 403) from either standard fetch or Google API error object
-                    // Google API errors usually have `code`. Standard fetch might just have `status`.
+                    // Only catch 401/403 for re-login if it came from critical paths (like DB/Data fetch).
+                    // Profile fetch errors are already caught and swallowed inside fetchProfile, so they won't trigger this unless something else fails.
                     if (e.code === 401 || e.status === 401 || e.code === 403 || e.status === 403) {
                         utils.toast("Sesi habis, login ulang...", 'error');
                         localStorage.removeItem('jg_token');
@@ -578,24 +579,29 @@
             },
 
             fetchProfile: async function() {
-                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: {'Authorization': `Bearer ${this.token}`}
-                });
-                
-                if (!response.ok) {
-                    throw { status: response.status, message: "Profile fetch failed" };
-                }
+                try {
+                    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: {'Authorization': `Bearer ${this.token}`}
+                    });
+                    
+                    if (!response.ok) {
+                        // Soft fail: Just log it and return. Do not throw.
+                        console.warn("Profile fetch failed, continuing without profile data.", response.status);
+                        return;
+                    }
 
-                const res = await response.json();
-                this.user = res;
-                // Update Sidebar
-                document.getElementById('sidebar-name').innerText = res.given_name;
-                document.getElementById('sidebar-email').innerText = res.email;
-                document.getElementById('sidebar-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
-                // Update Profile View (Avatar Only)
-                document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover rounded-full">`;
-                
-                // Name handled in loadProfileConfig now to allow override
+                    const res = await response.json();
+                    this.user = res;
+                    // Update Sidebar
+                    document.getElementById('sidebar-name').innerText = res.given_name || 'Guru';
+                    document.getElementById('sidebar-email').innerText = res.email || '';
+                    document.getElementById('sidebar-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
+                    // Update Profile View (Avatar Only)
+                    document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover rounded-full">`;
+                } catch(e) {
+                    console.warn("Profile fetch error (Network/Parse)", e);
+                    // Do not re-throw
+                }
             },
 
             setupDB: async function() {
