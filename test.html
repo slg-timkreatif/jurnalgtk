@@ -89,7 +89,7 @@
     <div id="initial-loader" class="fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="loader mb-4" style="width: 48px; height: 48px;"></div>
         <p class="text-slate-500 font-medium animate-pulse text-sm">Menyiapkan Jurnal...</p>
-        <button onclick="localStorage.removeItem('jg_token'); location.reload()" class="mt-8 text-xs text-red-400 underline hover:text-red-600">Reset Aplikasi</button>
+        <button onclick="localStorage.clear(); location.reload()" class="mt-8 text-xs text-red-400 underline hover:text-red-600">Reset Aplikasi</button>
     </div>
 
     <div id="login-screen" class="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-6 hidden">
@@ -539,7 +539,10 @@
                 } catch(e) { console.warn("Ref load failed", e); }
             },
 
-            handleAuth: function() { this.tokenClient.requestAccessToken(); },
+            handleAuth: function() { 
+                // Force consent to ensure we get fresh refresh tokens and proper scopes
+                this.tokenClient.requestAccessToken({prompt: 'consent'}); 
+            },
             
             handleToken: function(r) {
                 if (r.error) return utils.toast("Login Gagal", 'error');
@@ -566,11 +569,13 @@
                     this.renderCalendar();
                 } catch (e) {
                     console.error("Load Error:", e);
-                    // Only catch 401/403 for re-login if it came from critical paths (like DB/Data fetch).
-                    // Profile fetch errors are already caught and swallowed inside fetchProfile, so they won't trigger this unless something else fails.
+                    // Critical error handler
                     if (e.code === 401 || e.status === 401 || e.code === 403 || e.status === 403) {
                         utils.toast("Sesi habis, login ulang...", 'error');
+                        // Clear Token AND DB ID to prevent loops with bad data
                         localStorage.removeItem('jg_token');
+                        localStorage.removeItem('jg_db_id'); 
+                        this.dbId = null;
                         setTimeout(() => this.toggleScreen('login'), 2000);
                     } else {
                         utils.toast("Gagal memuat data. Coba refresh.", 'error');
@@ -606,28 +611,47 @@
 
             setupDB: async function() {
                 let id = localStorage.getItem('jg_db_id');
+                // Check if file exists - STRICT CHECK
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
-                    try {
-                        const s = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-                            headers: {'Authorization': `Bearer ${this.token}`}
-                        }).then(r => r.json());
-                        if (s.files && s.files.length > 0) id = s.files[0].id;
-                    } catch (e) {}
+                    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+                        headers: {'Authorization': `Bearer ${this.token}`}
+                    });
+                    
+                    if (!res.ok) {
+                        // Throw immediately on 401/403 so loadApp catches it
+                        const err = await res.json().catch(()=>({}));
+                        throw { code: res.status, message: "Drive Search Failed", ...err.error };
+                    }
+                    
+                    const s = await res.json();
+                    if (s.files && s.files.length > 0) id = s.files[0].id;
                 }
+                
+                // Create if not found - STRICT CHECK
                 if (!id) {
-                    const c = await fetch('https://www.googleapis.com/drive/v3/files', {
+                    const resCreate = await fetch('https://www.googleapis.com/drive/v3/files', {
                         method: 'POST',
                         headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                         body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
-                    }).then(r => r.json());
+                    });
+                    
+                    if (!resCreate.ok) {
+                        const err = await resCreate.json().catch(()=>({}));
+                        throw { code: resCreate.status, message: "Create DB Failed", ...err.error };
+                    }
+
+                    const c = await resCreate.json();
                     id = c.id;
+
+                    // Initialize Header
                     await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:G1?valueInputOption=RAW`, {
                         method: 'PUT',
                         headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
                         body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL','IMAGE']]})
                     });
                 }
+                
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
             },
@@ -639,20 +663,32 @@
                 
                 if(res.error) {
                     if(res.error.code === 404) {
+                        // Logic to handle deleted sheet: Clear ID and retry ONCE
                         localStorage.removeItem('jg_db_id');
                         this.dbId = null;
-                        await this.setupDB();
-                        return this.fetchData();
+                        await this.setupDB(); 
+                        // We do not recurse return this.fetchData() to avoid infinite loops, 
+                        // just let the next refresh handle it or do one explicit fetch
+                        const url2 = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:G1000`;
+                        const res2 = await fetch(url2, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r => r.json());
+                         if(res2.error) throw res2.error;
+                         this.data = this.parseValues(res2.values);
+                         this.renderList(this.data);
+                         this.updateStats();
+                         return;
                     }
                     throw res.error;
                 }
 
-                this.data = (res.values || []).map((r, i) => ({
-                    idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5], img: r[6] || null
-                })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
-                
+                this.data = this.parseValues(res.values);
                 this.renderList(this.data);
                 this.updateStats();
+            },
+            
+            parseValues: function(values) {
+                return (values || []).map((r, i) => ({
+                    idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5], img: r[6] || null
+                })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
             },
 
             renderList: function(list, containerId = 'journal-list') {
