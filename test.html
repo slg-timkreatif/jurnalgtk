@@ -34,6 +34,7 @@
     <style>
         .hidden-view { display: none !important; }
         .hide-scroll::-webkit-scrollbar { display: none; }
+        /* Toast & Loading Styles */
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-col-reverse: column-reverse; gap: 8px; width: 90%; max-width: 400px; pointer-events: none; }
         .toast { background: #323232; color: #f1f3f4; padding: 12px 16px; border-radius: 8px; font-size: 14px; animation: slideUp 0.3s ease-out forwards; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -74,12 +75,15 @@
                 </div>
                 <div id="user-avatar" class="w-10 h-10 rounded-full bg-primary/20 overflow-hidden"></div>
             </div>
+            
             <div class="flex gap-2">
                 <select id="filter-month" onchange="app.fetchData()" class="flex-1 bg-surfaceVariant text-sm px-3 py-2 rounded-lg outline-none font-medium"></select>
                 <select id="filter-year" onchange="app.fetchData()" class="w-24 bg-surfaceVariant text-sm px-3 py-2 rounded-lg outline-none font-medium"></select>
             </div>
         </div>
+
         <div id="dashboard-list" class="p-4 space-y-3"></div>
+        
         <div id="empty-state" class="hidden-view flex flex-col items-center justify-center py-12 text-gray-400">
             <i data-lucide="clipboard-list" width="48" height="48" class="mb-2 opacity-50"></i>
             <p class="text-sm">Belum ada jurnal bulan ini</p>
@@ -92,6 +96,7 @@
             <h2 class="font-medium text-lg flex-1">Isi Jurnal</h2>
             <button onclick="app.saveJournal()" class="text-primary font-bold text-sm px-3 py-1.5 bg-primaryContainer rounded-full">SIMPAN</button>
         </div>
+
         <div class="flex-1 overflow-y-auto p-4 pb-20 space-y-6">
             <div class="space-y-4">
                 <div>
@@ -109,7 +114,9 @@
                     </div>
                 </div>
             </div>
+
             <hr class="border-gray-100">
+
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Kegiatan</label>
                 <textarea id="inp-activity" rows="3" class="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Mengajar kelas 6..."></textarea>
@@ -118,13 +125,16 @@
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Hasil / Output</label>
                 <textarea id="inp-result" rows="2" class="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Siswa memahami materi..."></textarea>
             </div>
+
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Dokumentasi</label>
                 <input type="file" id="inp-file" accept="image/*" class="hidden" onchange="app.handleFileSelect(this)">
+                
                 <div id="upload-placeholder" onclick="document.getElementById('inp-file').click()" class="w-full h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-50 hover:border-primary transition">
                     <i data-lucide="camera" class="mb-2"></i>
                     <span class="text-xs">Ketuk untuk ambil foto</span>
                 </div>
+
                 <div id="preview-container" class="hidden-view relative">
                     <img id="img-preview" class="w-full h-48 object-cover rounded-xl shadow-sm bg-gray-100">
                     <button onclick="app.clearFile()" class="absolute top-2 right-2 w-8 h-8 bg-white/80 rounded-full text-red-500 shadow flex items-center justify-center"><i data-lucide="x" width="16"></i></button>
@@ -138,11 +148,13 @@
         <div class="px-4 py-4 border-b sticky top-0 bg-white">
             <h1 class="text-xl font-bold">Profil & Laporan</h1>
         </div>
+        
         <div class="p-6 flex flex-col items-center">
             <div id="profile-pic-lg" class="w-20 h-20 bg-gray-200 rounded-full mb-4 overflow-hidden"></div>
             <h2 id="profile-name-lg" class="text-lg font-bold">Nama User</h2>
             <p class="text-gray-500 text-sm">Status: Terhubung ke Google Drive</p>
         </div>
+
         <div class="px-4 space-y-4">
             <div class="bg-surfaceVariant p-4 rounded-2xl">
                 <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="user-cog" width="16"></i> Data Sekolah</h3>
@@ -153,24 +165,34 @@
                     <input type="text" id="conf-nip-ks" placeholder="NIP Kepala Sekolah" class="w-full px-3 py-2 rounded-lg text-sm border-none focus:ring-2 focus:ring-primary" onchange="localStorage.setItem('jg_nip_ks', this.value)">
                 </div>
             </div>
+
             <div class="border rounded-2xl p-4">
                 <h3 class="text-sm font-bold text-gray-700 mb-3">Cetak Laporan Bulanan</h3>
                 <button onclick="app.downloadExcel()" class="w-full py-3 bg-green-600 text-white rounded-xl font-medium shadow hover:bg-green-700 flex items-center justify-center gap-2">
                     <i data-lucide="sheet"></i> Download Excel
                 </button>
             </div>
+
             <button onclick="app.handleSignOut()" class="w-full py-3 text-red-600 font-medium bg-red-50 rounded-xl mt-4">Keluar Akun</button>
         </div>
     </div>
 
     <nav id="bottom-nav" class="hidden-view fixed bottom-0 left-0 right-0 h-20 bg-white border-t flex justify-around items-center z-40 max-w-2xl mx-auto pb-2">
-        <button onclick="app.navigate('dashboard')" class="nav-item p-2 flex flex-col items-center gap-1 text-gray-500 w-16" data-target="dashboard"><i data-lucide="home"></i> <span class="text-[10px] font-medium">Jurnal</span></button>
-        <button onclick="app.openForm()" class="mb-8 w-14 h-14 bg-primary text-white rounded-2xl shadow-lg shadow-primary/30 flex items-center justify-center transform active:scale-95 transition"><i data-lucide="plus" width="28" height="28"></i></button>
-        <button onclick="app.navigate('profile')" class="nav-item p-2 flex flex-col items-center gap-1 text-gray-500 w-16" data-target="profile"><i data-lucide="user"></i> <span class="text-[10px] font-medium">Profil</span></button>
+        <button onclick="app.navigate('dashboard')" class="nav-item p-2 flex flex-col items-center gap-1 text-gray-500 w-16" data-target="dashboard">
+            <i data-lucide="home"></i> <span class="text-[10px] font-medium">Jurnal</span>
+        </button>
+        
+        <button onclick="app.openForm()" class="mb-8 w-14 h-14 bg-primary text-white rounded-2xl shadow-lg shadow-primary/30 flex items-center justify-center transform active:scale-95 transition">
+            <i data-lucide="plus" width="28" height="28"></i>
+        </button>
+        
+        <button onclick="app.navigate('profile')" class="nav-item p-2 flex flex-col items-center gap-1 text-gray-500 w-16" data-target="profile">
+            <i data-lucide="user"></i> <span class="text-[10px] font-medium">Profil</span>
+        </button>
     </nav>
 
     <script>
-        const CLIENT_ID = '283173141538-keji60evn4b4qhn0ngjvcq90n0eanoma.apps.googleusercontent.com';
+        const CLIENT_ID = '283173141538-keji60evn4b4qhn0ngjvcq90n0eanoma.apps.googleusercontent.com'; // ID Client Bapak
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
         const DB_FILENAME = 'JurnalGuru_Database'; 
         const FOLDER_NAME = 'JurnalGuru_Foto';
@@ -190,14 +212,14 @@
                     if(el) el.value = localStorage.getItem('jg_'+k) || '';
                 });
 
-                // Init Google Identity Service (GIS)
+                // 1. Siapkan Tombol Login (GIS)
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID,
                     scope: SCOPES,
                     callback: (resp) => this.handleTokenResponse(resp),
                 });
 
-                // Init GAPI Client
+                // 2. Siapkan Mesin Data (GAPI)
                 gapi.load('client', async () => {
                     try {
                         await gapi.client.init({
@@ -208,16 +230,16 @@
                         });
                         this.isGapiLoaded = true;
                         
-                        // Cek sesi tersimpan SETELAH GAPI siap
+                        // Cek sesi tersimpan HANYA jika GAPI sudah siap
                         const savedToken = sessionStorage.getItem('g_token');
                         if(savedToken) {
                             this.accessToken = savedToken;
-                            // FIX UTAMA: Set Token ke GAPI agar tidak Invalid Credentials
                             gapi.client.setToken({ access_token: savedToken });
-                            this.loadApp();
+                            this.loadApp(); // Coba load data
                         }
                     } catch (err) {
                         console.error("Gagal Init GAPI:", err);
+                        alert("Gagal menghubungi server Google. Coba refresh halaman.");
                     }
                 });
 
@@ -226,19 +248,23 @@
 
             handleAuth: function() {
                 if(!this.isGapiLoaded) {
-                    alert("Sistem Google sedang disiapkan... Tunggu sebentar.");
+                    alert("Sistem Google sedang disiapkan... Tunggu 5 detik lalu coba lagi.");
                     return;
                 }
+                // Minta token baru
                 this.tokenClient.requestAccessToken();
             },
 
-            handleTokenResponse: async function(resp) {
-                if (resp.error) return alert("Login Gagal: " + resp.error);
+            handleTokenResponse: function(resp) {
+                if (resp.error) {
+                    console.error(resp);
+                    return alert("Login Dibatalkan/Gagal.");
+                }
                 
                 this.accessToken = resp.access_token;
                 sessionStorage.setItem('g_token', this.accessToken);
                 
-                // FIX UTAMA: Set Token ke GAPI saat login baru
+                // Tempel token ke GAPI
                 gapi.client.setToken(resp);
                 
                 this.loadApp();
@@ -251,9 +277,9 @@
                     }
                 };
                 if(this.accessToken) revokeToken();
-                sessionStorage.clear();
+                sessionStorage.clear(); 
                 localStorage.removeItem('jg_files'); 
-                location.reload();
+                location.reload(); 
             },
 
             loadApp: async function() {
@@ -261,7 +287,8 @@
                 document.getElementById('view-login').classList.add('hidden-view');
                 
                 try {
-                    // Cek Profile dulu untuk memastikan token valid
+                    if(!gapi.client.drive) throw new Error("Library Drive belum siap.");
+
                     await this.loadUserProfile();
                     await this.ensureDriveFiles();
                     
@@ -272,13 +299,13 @@
                     console.error("Error App:", err);
                     const msg = err.result?.error?.message || err.message || JSON.stringify(err);
                     
-                    // Deteksi Token Expired / Invalid
+                    // JIKA ERROR: Jangan minta login otomatis! Kembalikan ke layar login.
                     if(err.status === 401 || err.status === 403 || msg.includes("UNAUTHENTICATED") || msg.includes("Invalid Credentials")) {
-                        console.warn("Token expired, requesting new one...");
+                        alert("Sesi Anda telah berakhir. Silakan login ulang.");
                         sessionStorage.removeItem('g_token'); // Hapus token basi
-                        this.tokenClient.requestAccessToken(); // Minta login ulang tanpa reload
+                        document.getElementById('view-login').classList.remove('hidden-view'); 
                     } else {
-                        alert("Gagal memuat: " + msg);
+                        alert("Terjadi kesalahan:\n" + msg);
                         document.getElementById('view-login').classList.remove('hidden-view');
                     }
                 }
@@ -309,7 +336,6 @@
                 }
 
                 this.setLoadingText("Mengecek Database...");
-                // GAPI Call (Akan sukses karena token sudah di-set)
                 const q = `name = '${DB_FILENAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
                 const resDb = await gapi.client.drive.files.list({ q: q });
 
@@ -493,7 +519,6 @@
                 
                 const nip = localStorage.getItem('jg_nip') || '-';
                 const unit = localStorage.getItem('jg_unit') || '-';
-                const nama = this.user.name;
                 
                 const tableData = reportData.map((d, i) => ({
                     "No": i + 1, "Hari/Tanggal": d.tanggal, "Waktu": `${d.mulai} - ${d.selesai}`,
