@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jurnal Guru & Tendik Pro (Smart Save)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jurnal Guru Pro</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,15 +19,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* Animation Utilities */
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        /* Animations */
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         .slide-up { animation: slideUp 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -35,36 +41,17 @@
 
         /* Loader */
         .loader {
-            border: 2px solid #e2e8f0;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #2563eb;
             border-radius: 50%;
-            border-top: 2px solid #1e40af;
-            width: 20px;
-            height: 20px;
-            animation: spin 0.8s linear infinite;
-        }
-        .loader-lg {
-            border: 4px solid #e2e8f0;
-            border-radius: 50%;
-            border-top: 4px solid #1e40af;
-            width: 48px;
-            height: 48px;
+            width: 24px;
+            height: 24px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Skeleton Loading */
-        .skeleton {
-            background: #e2e8f0;
-            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 6px;
-        }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-        /* Toast Notification */
-        #toast-container { pointer-events: none; }
-        .toast { pointer-events: auto; }
+        .nav-item.active { color: #2563eb; }
+        .nav-item.active svg { fill: #dbeafe; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex flex-col">
@@ -73,37 +60,24 @@
     <!-- 1. LOADING & LOGIN SCREENS -->
     <!-- ========================================== -->
     
-    <!-- Initial Loader -->
     <div id="initial-loader" class="fixed inset-0 z-[100] bg-slate-50 flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="loader-lg mb-4"></div>
-        <p class="text-slate-500 font-medium animate-pulse tracking-wide">Memuat Aplikasi...</p>
+        <div class="loader mb-4" style="width: 48px; height: 48px;"></div>
+        <p class="text-slate-500 font-medium animate-pulse text-sm">Menyiapkan Jurnal...</p>
     </div>
 
-    <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-6 hidden">
         <div class="text-center max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-100 fade-in">
             <div class="bg-blue-50 p-4 rounded-2xl inline-flex mb-6 ring-8 ring-blue-50/50">
                 <i data-lucide="book-open" class="w-12 h-12 text-blue-700"></i>
             </div>
-            <h1 class="text-3xl font-bold text-slate-900 mb-2">Jurnal Guru Pro</h1>
-            <p class="text-slate-500 mb-8 leading-relaxed">Platform pencatatan kegiatan harian guru & tendik yang terintegrasi langsung dengan Google Drive Anda.</p>
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">Jurnal Guru Pro</h1>
+            <p class="text-slate-500 text-sm mb-8 leading-relaxed">Catat kinerja harian, simpan di Google Drive, dan cetak laporan dengan mudah.</p>
             
-            <button onclick="app.handleAuth()" class="group w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-4 rounded-xl shadow-lg flex items-center justify-center gap-3 transition-all transform active:scale-95">
-                <div class="bg-white rounded-full p-1.5 flex items-center justify-center">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
-                </div>
-                <span>Masuk dengan Akun Belajar/Google</span>
-                <i data-lucide="arrow-right" class="w-4 h-4 opacity-50 group-hover:translate-x-1 transition-transform"></i>
+            <button onclick="app.handleAuth()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5 bg-white rounded-full p-0.5">
+                <span>Masuk dengan Google</span>
             </button>
-            
-            <div class="mt-8 pt-6 border-t border-slate-100">
-                <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Keunggulan</p>
-                <div class="flex justify-center gap-4 text-xs text-slate-500">
-                    <span class="flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Aman</span>
-                    <span class="flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Privat</span>
-                    <span class="flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3 text-green-500"></i> Gratis</span>
-                </div>
-            </div>
+            <p class="text-xs text-slate-400 mt-4">Pastikan mengizinkan akses ke Google Drive & Sheets.</p>
         </div>
     </div>
 
@@ -113,753 +87,652 @@
 
     <div id="main-layout" class="flex-1 flex flex-col h-full hidden relative">
         
-        <!-- Header Section -->
-        <header class="bg-white border-b border-slate-200 z-20 flex-shrink-0">
-            <div class="px-4 py-3 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
-                        <div id="user-avatar" class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm"></div>
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-slate-800 text-sm leading-tight" id="user-name">Pengguna</h2>
-                        <p class="text-[10px] text-slate-500 font-medium truncate max-w-[150px]" id="user-email">email@sekolah.id</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="app.downloadCSV()" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Download Excel/CSV">
-                        <i data-lucide="download" class="w-5 h-5"></i>
-                    </button>
-                    <button onclick="app.signOut()" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Keluar">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                    </button>
-                </div>
+        <!-- HEADER -->
+        <header class="bg-white border-b border-slate-200 z-20 flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-sm">
+            <div>
+                <h2 class="font-bold text-slate-800 text-lg" id="header-title">Beranda</h2>
+                <p class="text-[10px] text-slate-500 font-medium" id="header-subtitle">Ringkasan Kegiatan</p>
             </div>
-
-            <!-- Stats & Search Bar -->
-            <div class="px-4 pb-4">
-                <!-- Search -->
-                <div class="relative mb-3">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                    <input type="text" id="search-input" onkeyup="app.handleSearch(this.value)" placeholder="Cari kegiatan..." class="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all">
-                </div>
-                
-                <!-- Mini Stats -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                        <p class="text-[10px] uppercase font-bold text-blue-400 mb-0.5">Total Kegiatan</p>
-                        <p class="text-xl font-bold text-blue-800" id="stat-total">0</p>
-                    </div>
-                    <div class="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-                        <p class="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">Bulan Ini</p>
-                        <p class="text-xl font-bold text-indigo-800" id="stat-month">0</p>
-                    </div>
-                </div>
+            <div id="header-actions">
+                <!-- Actions injected via JS based on active tab -->
             </div>
         </header>
 
-        <!-- Main Content (Scrollable) -->
-        <main class="flex-1 overflow-y-auto bg-slate-50 relative w-full" id="scroll-container">
-            <div class="p-4 pb-24 max-w-2xl mx-auto w-full">
-                
-                <!-- Loading Skeleton -->
-                <div id="loading-skeleton" class="space-y-3 hidden">
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 h-24 skeleton"></div>
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 h-24 skeleton"></div>
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 h-24 skeleton"></div>
+        <!-- CONTENT VIEWS -->
+        <main class="flex-1 overflow-y-auto bg-slate-50 relative w-full scroll-smooth" id="main-container">
+            
+            <!-- VIEW: HOME (TIMELINE) -->
+            <div id="view-home" class="p-4 pb-24 max-w-2xl mx-auto w-full fade-in">
+                <!-- Search -->
+                <div class="relative mb-4">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" onkeyup="app.handleSearch(this.value)" placeholder="Cari kegiatan..." class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none shadow-sm">
                 </div>
 
-                <!-- Empty State -->
-                <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
-                    <div class="bg-white p-6 rounded-full shadow-sm mb-4">
-                        <i data-lucide="clipboard-list" class="w-12 h-12 text-slate-300"></i>
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 text-white shadow-lg shadow-blue-200">
+                        <p class="text-[10px] uppercase font-bold opacity-80 mb-0.5">Bulan Ini</p>
+                        <p class="text-2xl font-bold" id="stat-month">0</p>
+                        <p class="text-[10px] opacity-80 mt-1">Kegiatan</p>
                     </div>
-                    <h3 class="text-slate-900 font-semibold mb-1">Belum ada jurnal</h3>
-                    <p class="text-slate-500 text-sm max-w-xs mx-auto">Mulai catat kegiatan harian Anda dengan menekan tombol (+) di bawah.</p>
-                </div>
-
-                <!-- Not Found State -->
-                <div id="not-found-state" class="hidden flex flex-col items-center justify-center py-10 text-center">
-                    <i data-lucide="search-x" class="w-10 h-10 text-slate-300 mb-3"></i>
-                    <p class="text-slate-500 text-sm">Tidak ditemukan hasil pencarian.</p>
-                    <button onclick="document.getElementById('search-input').value=''; app.handleSearch('')" class="text-blue-600 text-xs font-semibold mt-2 hover:underline">Reset Pencarian</button>
+                    <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
+                        <p class="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Total Jam</p>
+                        <p class="text-2xl font-bold text-slate-800" id="stat-hours">0</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Estimasi Jam</p>
+                    </div>
                 </div>
 
                 <!-- Journal List -->
-                <div id="journal-container" class="space-y-3"></div>
+                <div id="journal-list" class="space-y-3">
+                    <!-- Dynamic Content -->
+                </div>
+                
+                <!-- States -->
+                <div id="loading-skeleton" class="space-y-3 hidden">
+                    <div class="bg-white p-4 h-24 rounded-xl animate-pulse bg-slate-200"></div>
+                    <div class="bg-white p-4 h-24 rounded-xl animate-pulse bg-slate-200"></div>
+                </div>
+                <div id="empty-state" class="hidden flex flex-col items-center justify-center py-10 opacity-60">
+                    <i data-lucide="clipboard-list" class="w-12 h-12 text-slate-300 mb-2"></i>
+                    <p class="text-sm text-slate-500">Belum ada data</p>
+                </div>
             </div>
+
+            <!-- VIEW: CALENDAR -->
+            <div id="view-calendar" class="p-4 pb-24 max-w-2xl mx-auto w-full hidden fade-in">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
+                    <!-- Calendar Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <button onclick="app.changeMonth(-1)" class="p-1 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <h3 class="font-bold text-slate-800" id="cal-month-year">Januari 2024</h3>
+                        <button onclick="app.changeMonth(1)" class="p-1 hover:bg-slate-100 rounded-full"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                    </div>
+                    <!-- Days Header -->
+                    <div class="calendar-grid mb-2 text-center">
+                        <span class="text-xs font-bold text-slate-400">Min</span>
+                        <span class="text-xs font-bold text-slate-400">Sen</span>
+                        <span class="text-xs font-bold text-slate-400">Sel</span>
+                        <span class="text-xs font-bold text-slate-400">Rab</span>
+                        <span class="text-xs font-bold text-slate-400">Kam</span>
+                        <span class="text-xs font-bold text-slate-400">Jum</span>
+                        <span class="text-xs font-bold text-slate-400">Sab</span>
+                    </div>
+                    <!-- Dates Grid -->
+                    <div id="cal-days" class="calendar-grid text-sm font-medium text-slate-700"></div>
+                </div>
+
+                <div class="flex items-center gap-2 mb-3 px-1">
+                    <i data-lucide="list" class="w-4 h-4 text-blue-600"></i>
+                    <h4 class="font-bold text-sm text-slate-700" id="cal-selected-date-label">Kegiatan Hari Ini</h4>
+                </div>
+                <div id="cal-journal-list" class="space-y-3"></div>
+            </div>
+
+            <!-- VIEW: PROFILE -->
+            <div id="view-profile" class="p-4 pb-24 max-w-2xl mx-auto w-full hidden fade-in">
+                <!-- User Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col items-center text-center mb-4">
+                    <div id="profile-avatar" class="w-20 h-20 rounded-full bg-slate-200 mb-3 border-4 border-slate-50 overflow-hidden"></div>
+                    <h3 class="font-bold text-lg text-slate-800" id="profile-name">Guru</h3>
+                    <p class="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-1" id="profile-email">email@sekolah.id</p>
+                </div>
+
+                <!-- Form Data Diri (Local Storage) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
+                    <h4 class="font-bold text-sm text-slate-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="user-cog" class="w-4 h-4 text-blue-600"></i> Data Laporan
+                    </h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">NIP / NUPTK</label>
+                            <input type="text" id="conf-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition" placeholder="Contoh: 19880101...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Jabatan / Mapel</label>
+                            <input type="text" id="conf-jabatan" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition" placeholder="Contoh: Guru Kelas 4">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Kerja / Sekolah</label>
+                            <input type="text" id="conf-sekolah" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition" placeholder="Contoh: SD Negeri 1...">
+                        </div>
+                        <div class="pt-2 border-t border-slate-100 mt-2">
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Nama Kepala Sekolah</label>
+                            <input type="text" id="conf-ks-nama" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition" placeholder="Nama Kepala Sekolah">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">NIP Kepala Sekolah</label>
+                            <input type="text" id="conf-ks-nip" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none transition" placeholder="NIP Kepala Sekolah">
+                        </div>
+                        <button onclick="app.saveProfileConfig()" class="w-full bg-blue-50 text-blue-600 font-medium text-sm py-2 rounded-lg hover:bg-blue-100 transition mt-2">
+                            Simpan Data Profil
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-2">
+                    <button onclick="app.exportData()" class="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition text-left">
+                        <div class="bg-green-100 p-2 rounded-lg text-green-600"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
+                        <div>
+                            <h5 class="font-bold text-sm text-slate-700">Download Laporan</h5>
+                            <p class="text-[10px] text-slate-400">Format Excel/CSV lengkap dengan header</p>
+                        </div>
+                    </button>
+                    <div class="h-px bg-slate-50 my-1"></div>
+                    <button onclick="app.signOut()" class="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-xl transition text-left group">
+                        <div class="bg-red-50 p-2 rounded-lg text-red-500 group-hover:bg-red-100"><i data-lucide="log-out" class="w-5 h-5"></i></div>
+                        <div>
+                            <h5 class="font-bold text-sm text-red-600">Keluar Aplikasi</h5>
+                            <p class="text-[10px] text-red-300">Hapus sesi login dari perangkat ini</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
         </main>
 
-        <!-- Floating Action Button -->
-        <button onclick="app.openForm()" class="absolute bottom-6 right-6 bg-blue-700 hover:bg-blue-800 text-white w-14 h-14 rounded-2xl shadow-xl shadow-blue-900/20 flex items-center justify-center transition-transform active:scale-90 z-30 group">
-            <i data-lucide="plus" class="w-7 h-7 group-hover:rotate-90 transition-transform duration-300"></i>
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="bg-white border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center z-30 fixed bottom-0 left-0 right-0 h-[70px]">
+            <button onclick="app.switchTab('home')" class="nav-item active flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="home">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Beranda</span>
+            </button>
+            <button onclick="app.switchTab('calendar')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="calendar">
+                <i data-lucide="calendar" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Kalender</span>
+            </button>
+            <button onclick="app.switchTab('profile')" class="nav-item flex flex-col items-center gap-1 w-16 text-slate-400 transition-colors" data-target="profile">
+                <i data-lucide="user" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Profil</span>
+            </button>
+        </nav>
+
+        <!-- FLOATING ACTION BUTTON (Not on Profile) -->
+        <button id="fab-add" onclick="app.openForm()" class="fixed bottom-24 right-5 bg-blue-600 text-white w-14 h-14 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center transition-transform active:scale-90 z-40">
+            <i data-lucide="plus" class="w-7 h-7"></i>
         </button>
 
     </div>
 
     <!-- ========================================== -->
-    <!-- 3. MODALS & FORMS -->
+    <!-- 3. INPUT FORM MODAL -->
     <!-- ========================================== -->
-
-    <!-- Form Modal (Create/Edit) -->
-    <div id="form-modal" class="fixed inset-0 z-40 hidden" role="dialog">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0" id="form-backdrop" onclick="app.closeForm()"></div>
-        
-        <!-- Sheet Content -->
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl h-[92vh] flex flex-col shadow-2xl transform transition-transform duration-300 translate-y-full md:max-w-2xl md:mx-auto md:relative md:h-auto md:rounded-2xl md:top-10 md:bottom-auto" id="form-content">
-            
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white rounded-t-3xl md:rounded-t-2xl sticky top-0 z-10">
-                <div class="flex items-center gap-3">
-                    <button onclick="app.closeForm()" class="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
-                    <h3 class="font-bold text-slate-800 text-lg" id="form-title">Jurnal Baru</h3>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="btn-delete" type="button" onclick="app.confirmDelete()" class="hidden text-red-500 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg text-xs font-semibold transition">
-                        HAPUS
-                    </button>
-                    <button id="btn-save" onclick="app.saveJournal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-md shadow-blue-200 transition flex items-center gap-2 active:scale-95">
-                        <span>SIMPAN</span>
-                        <div id="save-spinner" class="loader w-4 h-4 border-white border-t-transparent hidden"></div>
-                    </button>
+    <div id="form-modal" class="fixed inset-0 z-50 hidden" style="z-index: 9999;">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="app.closeForm()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl transform transition-transform duration-300 translate-y-full" id="form-content">
+            <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white rounded-t-3xl z-10">
+                <h3 class="font-bold text-slate-800 text-lg" id="form-title">Jurnal Baru</h3>
+                <div class="flex gap-2">
+                    <button id="btn-delete" onclick="app.confirmDelete()" class="hidden p-2 text-red-500 bg-red-50 rounded-full hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    <button onclick="app.closeForm()" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
             </div>
-
-            <!-- Modal Form Body -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50 md:max-h-[70vh]">
-                <input type="hidden" id="input-id"> <!-- Hidden ID for Edit -->
-                
-                <!-- Section: Waktu -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-5">
-                    <div class="flex items-center gap-2 mb-2">
-                        <div class="bg-blue-100 p-1.5 rounded-lg text-blue-600">
-                            <i data-lucide="calendar" class="w-4 h-4"></i>
+            <div class="flex-1 overflow-y-auto p-5 space-y-5 bg-slate-50">
+                <input type="hidden" id="input-id">
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-400 mb-1 block">WAKTU PELAKSANAAN</label>
+                    <input type="date" id="input-date" class="w-full text-sm font-semibold text-slate-800 border-b border-slate-100 py-2 mb-3 outline-none">
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <span class="text-[10px] text-slate-400">Mulai</span>
+                            <input type="time" id="input-start" class="w-full font-semibold border-b border-slate-100 py-1 outline-none">
                         </div>
-                        <h4 class="font-bold text-sm text-slate-700">Waktu Pelaksanaan</h4>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">TANGGAL</label>
-                            <input type="date" id="input-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors font-medium text-slate-700">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">MULAI</label>
-                                <input type="time" id="input-time-start" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-sm text-center font-medium focus:ring-2 focus:ring-blue-100 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">SELESAI</label>
-                                <input type="time" id="input-time-end" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-sm text-center font-medium focus:ring-2 focus:ring-blue-100 outline-none">
-                            </div>
+                        <div class="flex-1">
+                            <span class="text-[10px] text-slate-400">Selesai</span>
+                            <input type="time" id="input-end" class="w-full font-semibold border-b border-slate-100 py-1 outline-none">
                         </div>
                     </div>
                 </div>
-
-                <!-- Section: Detail -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                    <div class="flex items-center gap-2 mb-1">
-                        <div class="bg-indigo-100 p-1.5 rounded-lg text-indigo-600">
-                            <i data-lucide="file-text" class="w-4 h-4"></i>
-                        </div>
-                        <h4 class="font-bold text-sm text-slate-700">Detail Kegiatan</h4>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">URAIAN KEGIATAN</label>
-                        <textarea id="input-activity" rows="4" placeholder="Apa yang Anda kerjakan hari ini?" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors resize-none leading-relaxed"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1.5 ml-1">HASIL / OUTPUT</label>
-                        <textarea id="input-result" rows="2" placeholder="Contoh: Siswa memahami materi, Dokumen tersusun." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors resize-none leading-relaxed"></textarea>
-                    </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-400 mb-2 block">KEGIATAN</label>
+                    <textarea id="input-act" rows="3" class="w-full text-sm border-none resize-none outline-none" placeholder="Tuliskan detail kegiatan..."></textarea>
                 </div>
-
-                <div class="h-10"></div> <!-- Spacer -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-400 mb-2 block">OUTPUT / HASIL</label>
+                    <textarea id="input-res" rows="2" class="w-full text-sm border-none resize-none outline-none" placeholder="Hasil yang dicapai..."></textarea>
+                </div>
+                <div class="h-10"></div>
+            </div>
+            <div class="p-4 bg-white border-t border-slate-100 sticky bottom-0">
+                <button id="btn-save" onclick="app.saveJournal()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition flex justify-center items-center gap-2">
+                    <span>SIMPAN JURNAL</span>
+                    <div id="spinner" class="loader w-4 h-4 border-white border-t-transparent hidden"></div>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Confirm Delete Modal -->
-    <div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4 fade-in">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-95 transition-transform" id="delete-content">
-            <div class="flex flex-col items-center text-center">
-                <div class="bg-red-100 p-3 rounded-full text-red-600 mb-4">
-                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
-                </div>
-                <h3 class="text-lg font-bold text-slate-800">Hapus Jurnal?</h3>
-                <p class="text-sm text-slate-500 mt-2 mb-6">Data yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?</p>
-                <div class="flex gap-3 w-full">
-                    <button onclick="document.getElementById('delete-modal').classList.add('hidden')" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition">Batal</button>
-                    <button onclick="app.deleteJournal()" class="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 shadow-lg shadow-red-200 transition">Ya, Hapus</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- TOAST -->
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2"></div>
 
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="fixed top-4 left-0 right-0 z-[70] flex flex-col items-center gap-2 p-4"></div>
-
-    <!-- ========================================== -->
-    <!-- 4. JAVASCRIPT LOGIC (ROBUST & FULL) -->
-    <!-- ========================================== -->
+    <!-- JAVASCRIPT -->
     <script>
-        // CONFIGURATION
         const CONFIG = {
-            CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com', // Updated Client ID
-            DB_FILENAME: 'JurnalGuru_Database_v2', // Filename in Google Drive
-            SHEET_NAME: 'Sheet1',
+            CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com',
+            DB_NAME: 'JurnalGuru_Database_v2',
             SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'
         };
 
-        // UTILITIES
         const utils = {
-            generateId: () => Date.now().toString(36) + Math.random().toString(36).substr(2),
-            
-            formatDate: (dateStr) => {
-                if(!dateStr) return '-';
-                const options = { weekday: 'short', day: 'numeric', month: 'short' };
-                return new Date(dateStr).toLocaleDateString('id-ID', options);
-            },
-
-            formatTime: (timeStr) => {
-                if(!timeStr) return '';
-                return timeStr.substring(0, 5); // HH:MM
-            },
-
-            showToast: (message, type = 'success') => {
-                const container = document.getElementById('toast-container');
+            id: () => Date.now().toString(36) + Math.random().toString(36).substr(2),
+            toast: (msg, type='success') => {
+                const con = document.getElementById('toast-container');
                 const el = document.createElement('div');
-                const colors = type === 'error' ? 'bg-red-500' : 'bg-slate-800';
-                const icon = type === 'error' ? 'alert-circle' : 'check-circle';
-                
-                el.className = `toast ${colors} text-white px-4 py-3 rounded-full shadow-xl flex items-center gap-3 min-w-[300px] max-w-sm slide-up`;
-                el.innerHTML = `
-                    <i data-lucide="${icon}" class="w-5 h-5"></i>
-                    <span class="text-sm font-medium">${message}</span>
-                `;
-                
-                container.appendChild(el);
-                lucide.createIcons();
-
-                setTimeout(() => {
-                    el.style.opacity = '0';
-                    el.style.transform = 'translateY(-10px)';
-                    setTimeout(() => el.remove(), 300);
-                }, 3000);
-            }
+                el.className = `px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg slide-up flex items-center gap-2 ${type=='error'?'bg-red-500':'bg-slate-800'}`;
+                el.innerHTML = `<span>${msg}</span>`;
+                con.appendChild(el);
+                setTimeout(() => el.remove(), 3000);
+            },
+            fmtDate: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'short', day:'numeric', month:'short'})
         };
 
-        // APPLICATION CORE
         const app = {
-            tokenClient: null,
-            accessToken: null,
+            token: null,
             user: null,
             dbId: null,
+            data: [],
+            calDate: new Date(),
             
-            // State
-            journals: [], // Local copy of data
-            filteredJournals: [],
-            isSaving: false,
-            editMode: false,
-            currentEditId: null,
-
             init: function() {
-                // Init Google Identity
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CONFIG.CLIENT_ID,
-                    scope: CONFIG.SCOPES,
-                    callback: (resp) => this.handleTokenResponse(resp),
+                    client_id: CONFIG.CLIENT_ID, scope: CONFIG.SCOPES,
+                    callback: (r) => this.handleToken(r)
                 });
-
-                // Init Icons
                 lucide.createIcons();
-
-                // Auto Login Check
-                const savedToken = sessionStorage.getItem('g_token');
+                
+                // Persistent Login Check
+                const savedToken = localStorage.getItem('jg_token');
                 if (savedToken) {
-                    this.accessToken = savedToken;
+                    this.token = savedToken;
                     this.loadApp();
                 } else {
-                    this.toggleView('login');
+                    this.toggleScreen('login');
                 }
+
+                // Load Profile Config
+                this.loadProfileConfig();
             },
 
-            // --- AUTHENTICATION MODULE ---
-            handleAuth: function() {
-                this.tokenClient.requestAccessToken();
-            },
-
-            handleTokenResponse: function(resp) {
-                if (resp.error) {
-                    console.error(resp);
-                    return alert("Login Gagal: " + resp.error);
-                }
-                this.accessToken = resp.access_token;
-                sessionStorage.setItem('g_token', this.accessToken);
+            handleAuth: function() { this.tokenClient.requestAccessToken(); },
+            
+            handleToken: function(r) {
+                if (r.error) return utils.toast("Login Gagal", 'error');
+                this.token = r.access_token;
+                localStorage.setItem('jg_token', this.token);
                 this.loadApp();
             },
 
             signOut: function() {
-                const token = sessionStorage.getItem('g_token');
-                if (token) {
-                    google.accounts.oauth2.revoke(token, () => console.log('Token revoked'));
+                if (confirm("Keluar dari aplikasi?")) {
+                    google.accounts.oauth2.revoke(this.token, ()=>{});
+                    localStorage.removeItem('jg_token');
+                    location.reload();
                 }
-                sessionStorage.clear();
-                localStorage.removeItem('jg_db_id');
-                window.location.reload();
             },
 
-            // --- MAIN LOGIC FLOW ---
             loadApp: async function() {
-                this.toggleView('loading');
+                this.toggleScreen('loading');
                 try {
-                    // 1. Get Profile
-                    await this.fetchUserInfo();
-                    
-                    // 2. Connect/Create DB
-                    await this.setupDatabase();
-                    
-                    // 3. Ready
-                    this.toggleView('dashboard');
-                    this.fetchJournals();
-
-                } catch (error) {
-                    console.error("App Load Error:", error);
-                    if (error.status === 401 || error.status === 403) {
-                        utils.showToast("Sesi berakhir, silakan login ulang", "error");
-                        setTimeout(() => this.signOut(), 2000);
-                    } else {
-                        utils.showToast("Terjadi kesalahan sistem", "error");
-                        this.toggleView('login');
-                    }
-                }
-            },
-
-            fetchUserInfo: async function() {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                }).then(r => r.json());
-                
-                this.user = res;
-                document.getElementById('user-name').innerText = res.given_name || "Guru";
-                document.getElementById('user-email').innerText = res.email || "";
-                
-                // Avatar
-                if(res.picture) {
-                    document.getElementById('user-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
-                }
-            },
-
-            // --- DATABASE CONNECTION (Google Sheets) ---
-            setupDatabase: async function() {
-                // 1. Check Local Cache ID
-                const cachedId = localStorage.getItem('jg_db_id');
-                if (cachedId) {
-                    // Verifikasi apakah file masih ada (opsional, tapi bagus untuk robustness)
-                    const check = await fetch(`https://www.googleapis.com/drive/v3/files/${cachedId}?fields=id,trashed`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                    });
-                    if (check.ok) {
-                        const fileMeta = await check.json();
-                        if (!fileMeta.trashed) {
-                            this.dbId = cachedId;
-                            return;
-                        }
-                    }
-                }
-
-                // 2. Search in Drive
-                const q = `name = '${CONFIG.DB_FILENAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
-                const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-                    headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                }).then(r => r.json());
-
-                if (searchRes.files && searchRes.files.length > 0) {
-                    this.dbId = searchRes.files[0].id;
-                } else {
-                    // 3. Create New if not found
-                    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-                        method: 'POST',
-                        headers: { 
-                            'Authorization': `Bearer ${this.accessToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            name: CONFIG.DB_FILENAME, 
-                            mimeType: 'application/vnd.google-apps.spreadsheet' 
-                        })
-                    }).then(r => r.json());
-                    
-                    this.dbId = createRes.id;
-
-                    // Initialize Header Row (Col F is hidden ID)
-                    const values = [['ID', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Kegiatan', 'Hasil']];
-                    const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${CONFIG.SHEET_NAME}!A1:F1?valueInputOption=RAW`;
-                    await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ values })
-                    });
-                }
-                
-                // Cache the ID
-                localStorage.setItem('jg_db_id', this.dbId);
-            },
-
-            // --- DATA OPERATIONS (CRUD) ---
-            fetchJournals: async function() {
-                // UI States
-                const container = document.getElementById('journal-container');
-                const skeleton = document.getElementById('loading-skeleton');
-                const empty = document.getElementById('empty-state');
-                
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                empty.classList.add('hidden');
-                skeleton.classList.remove('hidden');
-
-                try {
-                    // Fetch all data
-                    const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${CONFIG.SHEET_NAME}!A2:F1000`;
-                    const res = await fetch(url, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                    }).then(r => r.json());
-
-                    const rows = res.values || [];
-                    
-                    // Map to Object
-                    // Row structure: [ID, Date, Start, End, Activity, Result]
-                    this.journals = rows.map((r, index) => ({
-                        rowIndex: index + 2, // Sheet row starts at 1, data starts at 2
-                        id: r[0] || index, // Fallback ID
-                        date: r[1],
-                        start: r[2],
-                        end: r[3],
-                        activity: r[4],
-                        result: r[5]
-                    })).filter(j => j.date && j.activity); // Filter invalid rows
-
-                    // Sort: Newest First
-                    this.journals.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                    this.filteredJournals = [...this.journals];
-                    this.updateStats();
-                    this.renderList();
-
-                } catch(e) {
+                    await this.fetchProfile();
+                    await this.setupDB();
+                    await this.fetchData();
+                    this.toggleScreen('main');
+                    this.renderCalendar();
+                } catch (e) {
                     console.error(e);
-                    utils.showToast("Gagal mengambil data", "error");
-                } finally {
-                    skeleton.classList.add('hidden');
+                    if(e.status == 401) {
+                        utils.toast("Sesi habis, login ulang...", 'error');
+                        localStorage.removeItem('jg_token');
+                        this.toggleScreen('login');
+                    } else {
+                        utils.toast("Koneksi Error", 'error');
+                    }
                 }
             },
 
-            renderList: function() {
-                const container = document.getElementById('journal-container');
-                const empty = document.getElementById('empty-state');
-                const notFound = document.getElementById('not-found-state');
-                
-                container.innerHTML = '';
+            fetchProfile: async function() {
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: {'Authorization': `Bearer ${this.token}`}
+                }).then(r => r.json());
+                this.user = res;
+                document.getElementById('profile-name').innerText = res.given_name;
+                document.getElementById('profile-email').innerText = res.email;
+                document.getElementById('profile-avatar').innerHTML = `<img src="${res.picture}" class="w-full h-full object-cover">`;
+            },
 
-                // Handle Empty States
-                if (this.journals.length === 0) {
-                    container.classList.add('hidden');
-                    empty.classList.remove('hidden');
-                    notFound.classList.add('hidden');
-                    return;
-                }
-
-                if (this.filteredJournals.length === 0) {
-                    container.classList.add('hidden');
-                    empty.classList.add('hidden');
-                    notFound.classList.remove('hidden');
-                    return;
-                }
-
-                container.classList.remove('hidden');
-                empty.classList.add('hidden');
-                notFound.classList.add('hidden');
-
-                // Render Items
-                this.filteredJournals.forEach(item => {
-                    const dateObj = new Date(item.date);
-                    const day = dateObj.toLocaleDateString('id-ID', { day: 'numeric' });
-                    const month = dateObj.toLocaleDateString('id-ID', { month: 'short' });
+            setupDB: async function() {
+                let id = localStorage.getItem('jg_db_id');
+                if(!id) {
+                    const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
+                    const s = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+                        headers: {'Authorization': `Bearer ${this.token}`}
+                    }).then(r=>r.json());
                     
-                    const el = document.createElement('div');
-                    el.className = 'bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 transition-all hover:shadow-md cursor-pointer active:scale-[0.99] group';
-                    el.onclick = () => this.openForm(item); // Edit Mode
+                    if(s.files?.length > 0) id = s.files[0].id;
+                    else {
+                        const c = await fetch('https://www.googleapis.com/drive/v3/files', {
+                            method: 'POST',
+                            headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                            body: JSON.stringify({name: CONFIG.DB_NAME, mimeType: 'application/vnd.google-apps.spreadsheet'})
+                        }).then(r=>r.json());
+                        id = c.id;
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1!A1:F1?valueInputOption=RAW`, {
+                            method: 'PUT',
+                            headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                            body: JSON.stringify({values: [['ID','TANGGAL','MULAI','SELESAI','KEGIATAN','HASIL']]})
+                        });
+                    }
+                    localStorage.setItem('jg_db_id', id);
+                }
+                this.dbId = id;
+            },
 
+            fetchData: async function() {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A2:F1000`;
+                const res = await fetch(url, { headers: {'Authorization': `Bearer ${this.token}`} }).then(r=>r.json());
+                
+                this.data = (res.values || []).map((r, i) => ({
+                    idx: i+2, id: r[0], date: r[1], start: r[2], end: r[3], act: r[4], res: r[5]
+                })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
+                
+                this.renderList(this.data);
+                this.updateStats();
+            },
+
+            renderList: function(list, containerId = 'journal-list') {
+                const con = document.getElementById(containerId);
+                con.innerHTML = '';
+                if(list.length === 0 && containerId === 'journal-list') {
+                    document.getElementById('empty-state').classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('empty-state').classList.add('hidden');
+
+                list.forEach(item => {
+                    const d = new Date(item.date);
+                    const el = document.createElement('div');
+                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-3 active:scale-[0.98] transition cursor-pointer';
+                    el.onclick = () => this.openForm(item);
                     el.innerHTML = `
-                        <div class="flex flex-col items-center justify-center bg-blue-50 text-blue-700 w-14 h-14 rounded-xl flex-shrink-0 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            <span class="text-xl font-bold leading-none">${day}</span>
-                            <span class="text-[10px] font-bold uppercase leading-none mt-1">${month}</span>
+                        <div class="bg-blue-50 w-12 h-12 rounded-lg flex flex-col items-center justify-center text-blue-600 shrink-0">
+                            <span class="text-lg font-bold leading-none">${d.getDate()}</span>
+                            <span class="text-[10px] font-bold uppercase">${d.toLocaleDateString('id',{month:'short'})}</span>
                         </div>
-                        <div class="flex-1 min-w-0 py-0.5">
-                            <div class="flex justify-between items-start">
-                                <h4 class="text-sm font-bold text-slate-800 line-clamp-1 mb-1 group-hover:text-blue-700 transition-colors">${item.activity}</h4>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        <div class="overflow-hidden">
+                            <h4 class="font-bold text-sm text-slate-800 truncate mb-1">${item.act}</h4>
+                            <div class="flex items-center gap-2 text-xs text-slate-500">
+                                <i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}
                             </div>
-                            <div class="flex items-center gap-3 text-xs text-slate-500 mb-1.5">
-                                <div class="flex items-center gap-1">
-                                    <i data-lucide="clock" class="w-3 h-3"></i>
-                                    <span>${item.start} - ${item.end}</span>
-                                </div>
-                            </div>
-                            <p class="text-xs text-slate-400 truncate">${item.result || 'Tidak ada catatan hasil.'}</p>
                         </div>
                     `;
-                    container.appendChild(el);
+                    con.appendChild(el);
                 });
                 lucide.createIcons();
             },
 
-            // --- SAVE / UPDATE / DELETE ---
-            saveJournal: async function() {
-                const id = document.getElementById('input-id').value;
-                const date = document.getElementById('input-date').value;
-                const start = document.getElementById('input-time-start').value;
-                const end = document.getElementById('input-time-end').value;
-                const act = document.getElementById('input-activity').value;
-                const res = document.getElementById('input-result').value;
-
-                // Validation
-                if (!date || !act || !start || !end) {
-                    utils.showToast("Mohon lengkapi Tanggal, Waktu, dan Kegiatan", "error");
-                    return;
-                }
-
-                // UI Loading
-                const btn = document.getElementById('btn-save');
-                const spinner = document.getElementById('save-spinner');
-                btn.disabled = true;
-                btn.classList.add('opacity-75');
-                spinner.classList.remove('hidden');
-
-                try {
-                    if (this.editMode && id) {
-                        // === UPDATE MODE ===
-                        // Find the journal object to get rowIndex
-                        const journal = this.journals.find(j => j.id === id);
-                        if (!journal) throw new Error("Data tidak ditemukan");
-
-                        const range = `${CONFIG.SHEET_NAME}!A${journal.rowIndex}:F${journal.rowIndex}`;
-                        const values = [[id, date, start, end, act, res]];
-                        
-                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ values })
-                        });
-                        
-                        utils.showToast("Berhasil diperbarui");
-
-                    } else {
-                        // === CREATE MODE ===
-                        const newId = utils.generateId();
-                        const values = [[newId, date, start, end, act, res]];
-                        const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${CONFIG.SHEET_NAME}!A:F:append?valueInputOption=USER_ENTERED`;
-                        
-                        await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ values })
-                        });
-
-                        utils.showToast("Jurnal berhasil disimpan");
-                    }
-
-                    this.closeForm();
-                    this.fetchJournals(); // Refresh list
-
-                } catch (e) {
-                    console.error(e);
-                    utils.showToast("Gagal menyimpan data", "error");
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-75');
-                    spinner.classList.add('hidden');
-                }
-            },
-
-            deleteJournal: async function() {
-                const id = document.getElementById('input-id').value;
-                if (!id) return;
-
-                const journal = this.journals.find(j => j.id === id);
-                if (!journal) return;
-
-                // Close Modal & Show Loading Toast
-                document.getElementById('delete-modal').classList.add('hidden');
-                utils.showToast("Menghapus data...", "info");
-
-                try {
-                    // Google Sheets API Delete Row Request (BatchUpdate)
-                    const batchUpdateRequest = {
-                        requests: [{
-                            deleteDimension: {
-                                range: {
-                                    sheetId: 0, // Assuming Sheet1 is ID 0. Ideally fetch sheet Id.
-                                    dimension: "ROWS",
-                                    startIndex: journal.rowIndex - 1, // 0-based index
-                                    endIndex: journal.rowIndex
-                                }
-                            }
-                        }]
-                    };
-
-                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}:batchUpdate`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify(batchUpdateRequest)
-                    });
-
-                    utils.showToast("Data berhasil dihapus");
-                    this.closeForm();
-                    this.fetchJournals();
-
-                } catch (e) {
-                    console.error(e);
-                    utils.showToast("Gagal menghapus data", "error");
-                }
-            },
-
-            // --- FEATURES (Search, Stats, Export) ---
-            handleSearch: function(keyword) {
-                const term = keyword.toLowerCase();
-                this.filteredJournals = this.journals.filter(j => 
-                    j.activity.toLowerCase().includes(term) || 
-                    j.result.toLowerCase().includes(term)
-                );
-                this.renderList();
-            },
-
-            updateStats: function() {
-                // Total Activities
-                document.getElementById('stat-total').innerText = this.journals.length;
-
-                // Monthly Activities
-                const currentMonth = new Date().getMonth();
-                const monthCount = this.journals.filter(j => new Date(j.date).getMonth() === currentMonth).length;
-                document.getElementById('stat-month').innerText = monthCount;
-            },
-
-            downloadCSV: function() {
-                if (this.journals.length === 0) return utils.showToast("Tidak ada data untuk diunduh", "error");
-
-                let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "Tanggal,Jam Mulai,Jam Selesai,Kegiatan,Hasil\n";
-
-                this.journals.forEach(row => {
-                    // Escape commas in text
-                    const act = row.activity.replace(/,/g, " ");
-                    const res = row.result.replace(/,/g, " ");
-                    csvContent += `${row.date},${row.start},${row.end},${act},${res}\n`;
-                });
-
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `Jurnal_Guru_Export_${new Date().toISOString().slice(0,10)}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                utils.showToast("Laporan berhasil diunduh");
-            },
-
-            // --- NAVIGATION & UI HELPERS ---
-            toggleView: function(viewName) {
-                const loader = document.getElementById('initial-loader');
-                const login = document.getElementById('login-screen');
-                const main = document.getElementById('main-layout');
-
-                if (viewName === 'loading') {
-                    loader.classList.remove('opacity-0', 'pointer-events-none');
-                } else if (viewName === 'login') {
-                    loader.classList.add('opacity-0', 'pointer-events-none');
-                    login.classList.remove('hidden');
-                    main.classList.add('hidden');
-                } else if (viewName === 'dashboard') {
-                    loader.classList.add('opacity-0', 'pointer-events-none');
-                    login.classList.add('hidden');
-                    main.classList.remove('hidden');
-                }
-            },
-
-            openForm: function(data = null) {
-                const modal = document.getElementById('form-modal');
-                const content = document.getElementById('form-content');
-                const backdrop = document.getElementById('form-backdrop');
-                const btnDelete = document.getElementById('btn-delete');
-                const title = document.getElementById('form-title');
-
-                modal.classList.remove('hidden');
+            // --- CALENDAR LOGIC ---
+            renderCalendar: function() {
+                const y = this.calDate.getFullYear(), m = this.calDate.getMonth();
+                document.getElementById('cal-month-year').innerText = new Date(y, m).toLocaleDateString('id', {month:'long', year:'numeric'});
                 
-                // Animation
-                setTimeout(() => {
-                    backdrop.classList.remove('opacity-0');
-                    content.classList.remove('translate-y-full');
-                }, 10);
+                const firstDay = new Date(y, m, 1).getDay();
+                const daysInMonth = new Date(y, m + 1, 0).getDate();
+                const grid = document.getElementById('cal-days');
+                grid.innerHTML = '';
 
-                if (data) {
-                    // EDIT MODE
-                    this.editMode = true;
-                    this.currentEditId = data.id;
-                    title.innerText = "Edit Jurnal";
-                    btnDelete.classList.remove('hidden');
+                for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
 
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const hasData = this.data.some(x => x.date === dateStr);
+                    const isSelected = dateStr === this.calSelectedDate;
+                    
+                    const el = document.createElement('button');
+                    el.className = `h-10 rounded-lg text-sm font-medium flex flex-col items-center justify-center relative ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-50'}`;
+                    el.innerText = d;
+                    if(hasData && !isSelected) {
+                        el.innerHTML += `<div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-0.5"></div>`;
+                    }
+                    el.onclick = () => this.selectCalDate(dateStr);
+                    grid.appendChild(el);
+                }
+            },
+            
+            changeMonth: function(delta) {
+                this.calDate.setMonth(this.calDate.getMonth() + delta);
+                this.renderCalendar();
+            },
+
+            selectCalDate: function(dateStr) {
+                this.calSelectedDate = dateStr;
+                this.renderCalendar();
+                const daily = this.data.filter(x => x.date === dateStr);
+                
+                document.getElementById('cal-selected-date-label').innerText = `Kegiatan ${utils.fmtDate(dateStr)}`;
+                this.renderList(daily, 'cal-journal-list');
+                
+                if(daily.length === 0) {
+                    document.getElementById('cal-journal-list').innerHTML = `<p class="text-center text-sm text-slate-400 py-4">Tidak ada kegiatan di tanggal ini.</p>`;
+                }
+            },
+
+            // --- FORM & SAVING ---
+            openForm: function(data=null) {
+                const m = document.getElementById('form-modal');
+                const c = document.getElementById('form-content');
+                m.classList.remove('hidden');
+                setTimeout(()=> c.classList.remove('translate-y-full'), 10);
+                
+                if(data) {
+                    document.getElementById('form-title').innerText = 'Edit Jurnal';
+                    document.getElementById('btn-delete').classList.remove('hidden');
                     document.getElementById('input-id').value = data.id;
-                    document.getElementById('input-date').value = data.date; // YYYY-MM-DD
-                    document.getElementById('input-time-start').value = data.start;
-                    document.getElementById('input-time-end').value = data.end;
-                    document.getElementById('input-activity').value = data.activity;
-                    document.getElementById('input-result').value = data.result;
+                    document.getElementById('input-date').value = data.date;
+                    document.getElementById('input-start').value = data.start;
+                    document.getElementById('input-end').value = data.end;
+                    document.getElementById('input-act').value = data.act;
+                    document.getElementById('input-res').value = data.res;
+                    this.currentEditIdx = data.idx;
                 } else {
-                    // CREATE MODE
-                    this.editMode = false;
-                    this.currentEditId = null;
-                    title.innerText = "Jurnal Baru";
-                    btnDelete.classList.add('hidden');
-
-                    // Reset Fields
+                    document.getElementById('form-title').innerText = 'Jurnal Baru';
+                    document.getElementById('btn-delete').classList.add('hidden');
                     document.getElementById('input-id').value = '';
                     document.getElementById('input-date').valueAsDate = new Date();
-                    
-                    const now = new Date();
-                    const hh = String(now.getHours()).padStart(2, '0');
-                    const mm = String(now.getMinutes()).padStart(2, '0');
-                    document.getElementById('input-time-start').value = `${hh}:${mm}`;
-                    document.getElementById('input-time-end').value = `${hh}:${mm}`;
-                    
-                    document.getElementById('input-activity').value = '';
-                    document.getElementById('input-result').value = '';
+                    const now = new Date().toTimeString().slice(0,5);
+                    document.getElementById('input-start').value = now;
+                    document.getElementById('input-end').value = now;
+                    document.getElementById('input-act').value = '';
+                    document.getElementById('input-res').value = '';
+                    this.currentEditIdx = null;
                 }
             },
 
             closeForm: function() {
-                const modal = document.getElementById('form-modal');
-                const content = document.getElementById('form-content');
-                const backdrop = document.getElementById('form-backdrop');
-
-                content.classList.add('translate-y-full');
-                backdrop.classList.add('opacity-0');
-                
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                }, 300);
+                const m = document.getElementById('form-modal');
+                const c = document.getElementById('form-content');
+                c.classList.add('translate-y-full');
+                setTimeout(()=> m.classList.add('hidden'), 300);
             },
 
-            confirmDelete: function() {
-                document.getElementById('delete-modal').classList.remove('hidden');
+            saveJournal: async function() {
+                const id = document.getElementById('input-id').value || utils.id();
+                const row = [
+                    id,
+                    document.getElementById('input-date').value,
+                    document.getElementById('input-start').value,
+                    document.getElementById('input-end').value,
+                    document.getElementById('input-act').value,
+                    document.getElementById('input-res').value
+                ];
+
+                if(!row[1] || !row[4]) return utils.toast('Lengkapi data!', 'error');
+
+                const btn = document.getElementById('btn-save');
+                const spin = document.getElementById('spinner');
+                btn.disabled = true; spin.classList.remove('hidden');
+
+                try {
+                    if(this.currentEditIdx) {
+                        // Update
+                        const range = `Sheet1!A${this.currentEditIdx}:F${this.currentEditIdx}`;
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                            method: 'PUT', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                            body: JSON.stringify({values: [row]})
+                        });
+                    } else {
+                        // Append
+                        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED`, {
+                            method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                            body: JSON.stringify({values: [row]})
+                        });
+                    }
+                    this.closeForm();
+                    this.fetchData();
+                    utils.toast('Berhasil disimpan');
+                } catch(e) {
+                    utils.toast('Gagal menyimpan', 'error');
+                }
+                btn.disabled = false; spin.classList.add('hidden');
+            },
+
+            confirmDelete: async function() {
+                if(!confirm('Hapus jurnal ini?')) return;
+                try {
+                    const req = { requests: [{ deleteDimension: { range: { sheetId: 0, dimension: "ROWS", startIndex: this.currentEditIdx - 1, endIndex: this.currentEditIdx } } }] };
+                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}:batchUpdate`, {
+                        method: 'POST', headers: {'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json'},
+                        body: JSON.stringify(req)
+                    });
+                    this.closeForm();
+                    this.fetchData();
+                    utils.toast('Terhapus');
+                } catch(e) { utils.toast('Gagal hapus', 'error'); }
+            },
+
+            // --- PROFILE & SETTINGS ---
+            loadProfileConfig: function() {
+                const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
+                document.getElementById('conf-nip').value = c.nip || '';
+                document.getElementById('conf-jabatan').value = c.jabatan || '';
+                document.getElementById('conf-sekolah').value = c.sekolah || '';
+                document.getElementById('conf-ks-nama').value = c.ks_nama || '';
+                document.getElementById('conf-ks-nip').value = c.ks_nip || '';
+            },
+
+            saveProfileConfig: function() {
+                const c = {
+                    nip: document.getElementById('conf-nip').value,
+                    jabatan: document.getElementById('conf-jabatan').value,
+                    sekolah: document.getElementById('conf-sekolah').value,
+                    ks_nama: document.getElementById('conf-ks-nama').value,
+                    ks_nip: document.getElementById('conf-ks-nip').value
+                };
+                localStorage.setItem('jg_profile_config', JSON.stringify(c));
+                utils.toast('Profil disimpan di HP');
+            },
+
+            exportData: function() {
+                if(this.data.length === 0) return utils.toast('Tidak ada data', 'error');
+                
+                const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
+                const teacherName = this.user?.given_name || 'Guru';
+                
+                // Construct CSV with Header
+                let csv = `LAPORAN JURNAL KEGIATAN HARIAN\n`;
+                csv += `Satuan Pendidikan,${c.sekolah || '-'}\n`;
+                csv += `Nama Guru,${teacherName}\n`;
+                csv += `NIP,${c.nip || '-'}\n`;
+                csv += `Bulan,${new Date().toLocaleDateString('id',{month:'long', year:'numeric'})}\n\n`;
+                
+                csv += "NO,HARI/TANGGAL,WAKTU,KEGIATAN,HASIL/OUTPUT\n";
+                
+                // Rows (Reverse to Oldest first for report usually)
+                [...this.data].reverse().forEach((d, i) => {
+                    const cleanAct = d.act.replace(/,/g, ' ').replace(/\n/g, ' ');
+                    const cleanRes = d.res.replace(/,/g, ' ').replace(/\n/g, ' ');
+                    csv += `${i+1},"${utils.fmtDate(d.date)}","${d.start} - ${d.end}","${cleanAct}","${cleanRes}"\n`;
+                });
+
+                // Signature Footer
+                csv += `\n\nMengetahui,\nKepala Sekolah,,Guru Yang Bersangkutan\n\n\n`;
+                csv += `${c.ks_nama || '(...................)'},,${teacherName}\n`;
+                csv += `NIP. ${c.ks_nip || '-'},,NIP. ${c.nip || '-'}\n`;
+
+                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `Laporan_Jurnal_${teacherName}.csv`;
+                link.click();
+            },
+
+            // --- UI HELPERS ---
+            switchTab: function(tab) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                document.querySelector(`.nav-item[data-target="${tab}"]`).classList.add('active');
+                
+                ['home', 'calendar', 'profile'].forEach(v => {
+                    const el = document.getElementById(`view-${v}`);
+                    if(v === tab) {
+                        el.classList.remove('hidden');
+                        el.classList.add('fade-in');
+                    } else {
+                        el.classList.add('hidden');
+                        el.classList.remove('fade-in');
+                    }
+                });
+
+                // Update Header
+                const titles = {home: 'Beranda', calendar: 'Kalender', profile: 'Profil Saya'};
+                const subs = {home: 'Ringkasan Kegiatan', calendar: 'Jadwal Bulanan', profile: 'Pengaturan Akun'};
+                document.getElementById('header-title').innerText = titles[tab];
+                document.getElementById('header-subtitle').innerText = subs[tab];
+                
+                // Handle FAB
+                const fab = document.getElementById('fab-add');
+                if(tab === 'profile') fab.classList.add('scale-0');
+                else fab.classList.remove('scale-0');
+
+                // If Calendar, Render it
+                if(tab === 'calendar') {
+                    this.selectCalDate(new Date().toISOString().split('T')[0]);
+                }
+            },
+
+            toggleScreen: function(name) {
+                const ids = ['initial-loader', 'login-screen', 'main-layout'];
+                ids.forEach(id => document.getElementById(id).classList.add('hidden'));
+                
+                if(name === 'loading') document.getElementById('initial-loader').classList.remove('hidden');
+                else if(name === 'login') document.getElementById('login-screen').classList.remove('hidden');
+                else if(name === 'main') {
+                    document.getElementById('main-layout').classList.remove('hidden');
+                    this.switchTab('home');
+                }
+            },
+
+            updateStats: function() {
+                const now = new Date();
+                const thisMonth = this.data.filter(x => new Date(x.date).getMonth() === now.getMonth());
+                document.getElementById('stat-month').innerText = thisMonth.length;
+                
+                // Simple Hour Estimate (assuming 1 activity = 1 hour for now, or calc diff)
+                let mins = 0;
+                thisMonth.forEach(x => {
+                    const [h1, m1] = x.start.split(':').map(Number);
+                    const [h2, m2] = x.end.split(':').map(Number);
+                    mins += (h2*60+m2) - (h1*60+m1);
+                });
+                document.getElementById('stat-hours').innerText = Math.floor(mins/60);
+            },
+            
+            handleSearch: function(q) {
+                const term = q.toLowerCase();
+                const filtered = this.data.filter(x => x.act.toLowerCase().includes(term));
+                this.renderList(filtered);
             }
         };
 
-        // Start App
         window.onload = () => app.init();
     </script>
 </body>
