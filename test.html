@@ -11,7 +11,7 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#9c4100', // Warna asli dari phone.html
+                        primary: '#9c4100', // Warna Asli (Earth Tone)
                         onPrimary: '#ffffff',
                         primaryContainer: '#ffdbc8',
                         onPrimaryContainer: '#341100',
@@ -42,130 +42,133 @@
         .calendar-day.selected { background-color: #9c4100; color: white; }
         .calendar-day.today { border: 1px solid #9c4100; color: #9c4100; }
 
-        /* Toast & Loading */
-        #toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-col-reverse: column-reverse; gap: 8px; width: 90%; max-width: 400px; pointer-events: none; }
-        .toast { background: #323232; color: #f1f3f4; padding: 12px 16px; border-radius: 8px; font-size: 14px; animation: slideUp 0.3s ease-out forwards; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        /* Loading Spinner */
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #9c4100; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-surface text-onSurface min-h-screen font-sans selection:bg-primaryContainer selection:text-onPrimaryContainer">
 
-    <div id="toast-container"></div>
-
-    <div id="loading-overlay" class="hidden-view fixed inset-0 bg-white/90 z-[70] flex flex-col items-center justify-center p-6 text-center">
-        <div class="animate-spin text-primary mb-4"><i data-lucide="loader-2" width="48" height="48"></i></div>
-        <h3 id="loading-text" class="text-lg font-medium text-primary">Memproses...</h3>
-        <p class="text-xs text-gray-500 mt-2">Jangan tutup aplikasi</p>
+    <div id="loading-overlay" class="hidden-view fixed inset-0 bg-white/95 z-[70] flex flex-col items-center justify-center p-6 text-center">
+        <div class="spinner mb-4"></div>
+        <h3 id="loading-text" class="text-lg font-medium text-primary">Memuat...</h3>
+        <p class="text-xs text-gray-500 mt-2">Mohon tunggu sebentar</p>
     </div>
 
     <div id="view-login" class="min-h-screen flex flex-col items-center justify-center p-6 bg-surface relative">
-        <div class="w-24 h-24 bg-primaryContainer text-primary rounded-full flex items-center justify-center mb-6">
+        <div class="w-24 h-24 bg-primaryContainer text-primary rounded-full flex items-center justify-center mb-6 shadow-lg">
             <i data-lucide="book-open-check" width="48" height="48"></i>
         </div>
-        <h1 class="text-3xl font-normal text-onSurface mb-2">Selamat Datang</h1>
-        <p class="text-gray-500 mb-12">Jurnal Guru Mandiri (Serverless)</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Jurnal Guru</h1>
+        <p class="text-gray-500 mb-12 text-center">Simpan data di Google Drive Anda.<br>Aman, Pribadi, dan Gratis.</p>
         
-        <button onclick="app.handleAuth()" class="w-full max-w-sm h-14 bg-white border border-gray-300 rounded-full font-medium text-lg shadow hover:shadow-md transition flex items-center justify-center gap-3">
+        <button onclick="app.handleAuth()" class="w-full max-w-sm h-14 bg-white border border-gray-300 rounded-full font-medium text-lg shadow hover:shadow-md transition flex items-center justify-center gap-3 active:scale-95">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6">
             Masuk dengan Google
         </button>
-        <p class="text-xs text-gray-400 mt-6 text-center max-w-xs">
-            Jika muncul peringatan "Unverified App", klik <b>Advanced</b> > <b>Go to Jurnal Guru (unsafe)</b>.
-        </p>
+        
+        <div class="mt-8 p-4 bg-yellow-50 rounded-lg text-xs text-yellow-800 max-w-xs text-center border border-yellow-200">
+            <strong>Penting:</strong> Jika muncul peringatan "Unverified App", klik <u>Advanced</u> lalu <u>Go to Jurnal Guru (unsafe)</u>.
+        </div>
     </div>
 
     <div id="view-dashboard" class="hidden-view pb-24 max-w-2xl mx-auto min-h-screen flex flex-col bg-surface">
-        <div class="px-4 py-4 sticky top-0 bg-surface z-20 border-b border-surfaceVariant/50">
+        <div class="px-4 py-4 sticky top-0 bg-surface z-20 border-b border-surfaceVariant/50 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h1 class="text-xl font-bold text-onSurface">Halo, <span id="user-name">Guru</span></h1>
-                    <p class="text-xs text-gray-500" id="user-email">...</p>
+                    <h1 class="text-xl font-bold text-gray-800">Halo, <span id="user-name">Guru</span></h1>
+                    <p class="text-xs text-gray-500" id="user-email">Memuat...</p>
                 </div>
-                <div id="user-avatar" class="w-10 h-10 rounded-full bg-primaryContainer overflow-hidden"></div>
+                <div id="user-avatar" class="w-10 h-10 rounded-full bg-primaryContainer border-2 border-white shadow-sm overflow-hidden"></div>
             </div>
             <div class="flex gap-2">
-                <select id="filter-month" onchange="app.renderViews()" class="flex-1 bg-surfaceVariant text-sm px-4 py-2 rounded-lg outline-none font-medium"></select>
-                <select id="filter-year" onchange="app.renderViews()" class="w-24 bg-surfaceVariant text-sm px-4 py-2 rounded-lg outline-none font-medium"></select>
+                <select id="filter-month" onchange="app.renderViews()" class="flex-1 bg-surfaceVariant text-sm px-4 py-2 rounded-lg outline-none font-medium text-gray-700"></select>
+                <select id="filter-year" onchange="app.renderViews()" class="w-24 bg-surfaceVariant text-sm px-4 py-2 rounded-lg outline-none font-medium text-gray-700"></select>
             </div>
         </div>
 
         <div id="tab-content-list" class="p-4 space-y-3"></div>
 
         <div id="tab-content-calendar" class="hidden-view p-4">
-            <div class="bg-surfaceVariant/30 p-4 rounded-3xl border border-surfaceVariant mb-4">
-                <div class="grid grid-cols-7 mb-2 text-center text-xs font-bold text-gray-500">
+            <div class="bg-white p-4 rounded-3xl border border-gray-200 mb-4 shadow-sm">
+                <div class="grid grid-cols-7 mb-2 text-center text-xs font-bold text-gray-400 uppercase">
                     <div>M</div><div>S</div><div>S</div><div>R</div><div>K</div><div>J</div><div>S</div>
                 </div>
                 <div id="calendar-container" class="calendar-grid"></div>
             </div>
-            <div class="flex justify-between items-center mb-2">
-                <h3 id="selected-date-label" class="font-bold text-lg">Kegiatan</h3>
-                <button onclick="app.createNew(app.selectedDate)" class="text-xs bg-primaryContainer text-primary px-3 py-1 rounded-full font-bold">+ Tambah</button>
+            <div class="flex justify-between items-center mb-2 px-2">
+                <h3 id="selected-date-label" class="font-bold text-gray-700">Pilih Tanggal</h3>
+                <button onclick="app.createNew(app.selectedDate)" class="text-xs bg-primary text-white px-3 py-1.5 rounded-full font-bold shadow">+ Tambah</button>
             </div>
             <div id="calendar-day-list" class="space-y-3"></div>
         </div>
 
-        <div id="empty-state" class="hidden-view flex flex-col items-center justify-center py-12 text-gray-400">
-            <i data-lucide="clipboard-list" width="48" height="48" class="mb-2 opacity-50"></i>
-            <p class="text-sm">Belum ada data</p>
+        <div id="empty-state" class="hidden-view flex flex-col items-center justify-center py-20 text-gray-400">
+            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <i data-lucide="clipboard-list" width="40" height="40" class="opacity-30"></i>
+            </div>
+            <p class="text-sm">Belum ada jurnal bulan ini</p>
         </div>
     </div>
 
     <div id="view-form" class="hidden-view fixed inset-0 z-50 bg-surface flex flex-col">
-        <div class="px-4 py-3 border-b flex items-center gap-3 bg-surface sticky top-0 z-10">
-            <button onclick="app.navigate('dashboard')" class="p-2 -ml-2 rounded-full hover:bg-surfaceVariant"><i data-lucide="arrow-left"></i></button>
-            <h2 class="font-medium text-lg flex-1" id="form-title">Isi Jurnal</h2>
-            <button onclick="app.saveJournal()" class="text-primary font-bold text-sm px-4 py-2 bg-primaryContainer rounded-full">SIMPAN</button>
+        <div class="px-4 py-3 border-b flex items-center gap-3 bg-white sticky top-0 z-10 shadow-sm">
+            <button onclick="app.navigate('dashboard')" class="p-2 -ml-2 rounded-full hover:bg-gray-100"><i data-lucide="arrow-left" class="text-gray-700"></i></button>
+            <h2 class="font-bold text-lg flex-1 text-gray-800" id="form-title">Isi Jurnal</h2>
+            <button onclick="app.saveJournal()" class="text-white font-bold text-sm px-5 py-2 bg-primary rounded-full shadow hover:bg-orange-800 transition">SIMPAN</button>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 pb-20 space-y-6">
-            <input type="hidden" id="inp-id"> <input type="hidden" id="inp-row-index"> <div class="space-y-4">
+            <input type="hidden" id="inp-id">
+            <input type="hidden" id="inp-row-index">
+
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal</label>
-                    <input type="date" id="inp-date" class="w-full p-3 bg-surfaceVariant/50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none">
+                    <input type="date" id="inp-date" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-800">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Mulai</label>
-                        <input type="time" id="inp-start" class="w-full p-3 bg-surfaceVariant/50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none">
+                        <input type="time" id="inp-start" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-800">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Selesai</label>
-                        <input type="time" id="inp-end" class="w-full p-3 bg-surfaceVariant/50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none">
+                        <input type="time" id="inp-end" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-gray-800">
                     </div>
                 </div>
             </div>
 
-            <hr class="border-gray-200">
-
-            <div class="relative">
-                <div class="flex justify-between items-center mb-1">
-                    <label class="block text-xs font-bold text-gray-500 uppercase">Kegiatan</label>
-                    <button onclick="app.toggleVoice('activity')" id="btn-voice-activity" class="text-primary"><i data-lucide="mic" width="16"></i></button>
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <div class="relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase">Kegiatan</label>
+                        <button onclick="app.toggleVoice('activity')" id="btn-voice-activity" class="text-primary hover:bg-primary/10 p-1 rounded-full"><i data-lucide="mic" width="18"></i></button>
+                    </div>
+                    <textarea id="inp-activity" rows="3" class="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none text-gray-800" placeholder="Mengajar materi pecahan..."></textarea>
                 </div>
-                <textarea id="inp-activity" rows="3" class="w-full p-3 bg-surfaceVariant/50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Kegiatan hari ini..."></textarea>
+
+                <div class="relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase">Hasil / Output</label>
+                        <button onclick="app.toggleVoice('result')" id="btn-voice-result" class="text-primary hover:bg-primary/10 p-1 rounded-full"><i data-lucide="mic" width="18"></i></button>
+                    </div>
+                    <textarea id="inp-result" rows="2" class="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none text-gray-800" placeholder="Siswa dapat menyelesaikan soal..."></textarea>
+                </div>
             </div>
 
-            <div class="relative">
-                <div class="flex justify-between items-center mb-1">
-                    <label class="block text-xs font-bold text-gray-500 uppercase">Hasil / Output</label>
-                    <button onclick="app.toggleVoice('result')" id="btn-voice-result" class="text-primary"><i data-lucide="mic" width="16"></i></button>
-                </div>
-                <textarea id="inp-result" rows="2" class="w-full p-3 bg-surfaceVariant/50 rounded-xl border-none focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Hasil yang dicapai..."></textarea>
-            </div>
-
-            <div>
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Dokumentasi</label>
                 <input type="file" id="inp-file" accept="image/*" class="hidden" onchange="app.handleFileSelect(this)">
                 
-                <div id="upload-placeholder" onclick="document.getElementById('inp-file').click()" class="w-full h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-surfaceVariant transition">
-                    <i data-lucide="camera" class="mb-2"></i>
-                    <span class="text-xs">Ambil Foto / Galeri</span>
+                <div id="upload-placeholder" onclick="document.getElementById('inp-file').click()" class="w-full h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-50 hover:border-primary transition">
+                    <i data-lucide="camera" class="mb-2" width="32"></i>
+                    <span class="text-xs">Ketuk untuk ambil foto</span>
                 </div>
 
                 <div id="preview-container" class="hidden-view relative">
                     <img id="img-preview" class="w-full h-48 object-cover rounded-xl shadow-sm bg-gray-100">
-                    <button onclick="app.clearFile()" class="absolute top-2 right-2 w-8 h-8 bg-white/80 rounded-full text-red-500 shadow flex items-center justify-center"><i data-lucide="x" width="16"></i></button>
+                    <button onclick="app.clearFile()" class="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full text-red-500 shadow flex items-center justify-center"><i data-lucide="x" width="18"></i></button>
                     <input type="hidden" id="inp-old-photo">
                 </div>
             </div>
@@ -173,57 +176,68 @@
     </div>
 
     <div id="view-profile" class="hidden-view pb-24 max-w-2xl mx-auto min-h-screen flex flex-col bg-surface">
-        <div class="p-6 flex flex-col items-center border-b border-surfaceVariant/50">
-            <div id="profile-pic-lg" class="w-24 h-24 bg-primaryContainer rounded-full mb-4 overflow-hidden"></div>
-            <h2 id="profile-name-lg" class="text-xl font-bold">Nama User</h2>
-            <p class="text-gray-500 text-sm">Jurnal Guru Mandiri</p>
+        <div class="p-8 flex flex-col items-center border-b border-gray-100 bg-white">
+            <div id="profile-pic-lg" class="w-24 h-24 bg-primaryContainer rounded-full mb-4 overflow-hidden border-4 border-surfaceVariant"></div>
+            <h2 id="profile-name-lg" class="text-xl font-bold text-gray-800 text-center">...</h2>
+            <p class="text-primary font-medium text-sm px-3 py-1 bg-primary/10 rounded-full mt-2">Terhubung ke Google Drive</p>
         </div>
 
-        <div class="p-4 space-y-4">
-            <div class="bg-surfaceVariant/30 p-4 rounded-2xl border border-surfaceVariant">
-                <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="user-cog" width="16"></i> Data Sekolah</h3>
+        <div class="p-6 space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><i data-lucide="building-2" width="18" class="text-primary"></i> Data Sekolah</h3>
                 <div class="space-y-3">
-                    <input type="text" id="conf-nip" placeholder="NIP Anda" class="w-full px-3 py-2 rounded-lg text-sm border-none focus:ring-2 focus:ring-primary" onchange="localStorage.setItem('jg_nip', this.value)">
-                    <input type="text" id="conf-unit" placeholder="Unit Kerja" class="w-full px-3 py-2 rounded-lg text-sm border-none focus:ring-2 focus:ring-primary" onchange="localStorage.setItem('jg_unit', this.value)">
-                    <input type="text" id="conf-ks" placeholder="Nama Kepala Sekolah" class="w-full px-3 py-2 rounded-lg text-sm border-none focus:ring-2 focus:ring-primary" onchange="localStorage.setItem('jg_ks', this.value)">
-                    <input type="text" id="conf-nip-ks" placeholder="NIP Kepala Sekolah" class="w-full px-3 py-2 rounded-lg text-sm border-none focus:ring-2 focus:ring-primary" onchange="localStorage.setItem('jg_nip_ks', this.value)">
+                    <div>
+                        <label class="text-[10px] text-gray-400 font-bold uppercase">NIP</label>
+                        <input type="text" id="conf-nip" class="w-full p-2 border-b border-gray-200 focus:border-primary outline-none bg-transparent" placeholder="Isi NIP..." onchange="localStorage.setItem('jg_nip', this.value)">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400 font-bold uppercase">Unit Kerja</label>
+                        <input type="text" id="conf-unit" class="w-full p-2 border-b border-gray-200 focus:border-primary outline-none bg-transparent" placeholder="Nama Sekolah..." onchange="localStorage.setItem('jg_unit', this.value)">
+                    </div>
                 </div>
             </div>
 
-            <button onclick="app.downloadExcel()" class="w-full py-4 bg-primaryContainer text-primary rounded-xl font-bold flex items-center justify-center gap-2">
+            <button onclick="app.downloadExcel()" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-md hover:bg-green-700 flex items-center justify-center gap-2 transition active:scale-95">
                 <i data-lucide="sheet"></i> Download Laporan Excel
             </button>
 
-            <button onclick="app.handleSignOut()" class="w-full py-4 text-error font-medium bg-red-50 rounded-xl">Keluar Akun</button>
+            <button onclick="app.handleSignOut()" class="w-full py-4 text-red-600 font-medium bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition">
+                Keluar Akun
+            </button>
         </div>
     </div>
 
-    <nav id="bottom-nav" class="hidden-view fixed bottom-0 left-0 right-0 h-20 bg-surface border-t border-surfaceVariant flex justify-around items-center z-40 max-w-2xl mx-auto pb-2">
+    <nav id="bottom-nav" class="hidden-view fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-200 flex justify-around items-center z-40 max-w-2xl mx-auto pb-2 shadow-[0_-5px_10px_rgba(0,0,0,0.02)]">
         <button onclick="app.switchTab('list')" class="nav-item group flex flex-col items-center gap-1 w-16" data-target="list">
             <div class="nav-icon w-12 h-8 rounded-full flex items-center justify-center transition"><i data-lucide="layout-list" width="20"></i></div>
-            <span class="text-[10px] font-medium">List</span>
+            <span class="text-[10px] font-medium text-gray-500">List</span>
         </button>
         
         <button onclick="app.switchTab('calendar')" class="nav-item group flex flex-col items-center gap-1 w-16" data-target="calendar">
             <div class="nav-icon w-12 h-8 rounded-full flex items-center justify-center transition"><i data-lucide="calendar" width="20"></i></div>
-            <span class="text-[10px] font-medium">Kalender</span>
+            <span class="text-[10px] font-medium text-gray-500">Kalender</span>
         </button>
 
-        <button onclick="app.createNew()" class="mb-8 w-14 h-14 bg-primary text-white rounded-2xl shadow-lg shadow-primary/30 flex items-center justify-center transform active:scale-95 transition">
-            <i data-lucide="plus" width="28"></i>
-        </button>
+        <div class="relative -top-5">
+            <button onclick="app.createNew()" class="w-14 h-14 bg-primary text-white rounded-2xl shadow-lg shadow-orange-500/30 flex items-center justify-center transform active:scale-90 transition hover:bg-orange-700">
+                <i data-lucide="plus" width="28"></i>
+            </button>
+        </div>
         
         <button onclick="app.navigate('profile')" class="nav-item group flex flex-col items-center gap-1 w-16" data-target="profile">
             <div class="nav-icon w-12 h-8 rounded-full flex items-center justify-center transition"><i data-lucide="user" width="20"></i></div>
-            <span class="text-[10px] font-medium">Profil</span>
+            <span class="text-[10px] font-medium text-gray-500">Profil</span>
         </button>
     </nav>
 
     <script>
+        // --- KONFIGURASI ---
         const CLIENT_ID = '283173141538-keji60evn4b4qhn0ngjvcq90n0eanoma.apps.googleusercontent.com';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
-        const DB_FILENAME = 'JurnalGuru_Database'; 
-        const FOLDER_NAME = 'JurnalGuru_Foto';
+        // SCOPES LENGKAP: Drive (File), Spreadsheet, dan UserInfo (Profile)
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+        
+        const DB_FILENAME = 'JurnalGuru_Database_v2'; 
+        const FOLDER_NAME = 'JurnalGuru_Foto_v2';
 
         const app = {
             tokenClient: null, accessToken: null, user: null,
@@ -235,127 +249,191 @@
             
             init: function() {
                 this.initDateFilters();
-                ['nip','unit','ks','nip_ks'].forEach(k => {
+                ['nip','unit'].forEach(k => {
                     const el = document.getElementById('conf-'+k);
                     if(el) el.value = localStorage.getItem('jg_'+k) || '';
                 });
 
+                // 1. Inisialisasi Google Identity Service (GIS)
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID, scope: SCOPES,
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
                     callback: (resp) => this.handleTokenResponse(resp),
                 });
 
+                // 2. Inisialisasi GAPI Client
                 gapi.load('client', async () => {
                     try {
                         await gapi.client.init({
-                            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest", "https://sheets.googleapis.com/$discovery/rest?version=v4"],
+                            // Penting: discoveryDocs agar gapi tahu cara bicara dengan Drive & Sheets
+                            discoveryDocs: [
+                                "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+                                "https://sheets.googleapis.com/$discovery/rest?version=v4"
+                            ],
                         });
                         this.isGapiLoaded = true;
+                        console.log("GAPI Loaded.");
+
+                        // Cek apakah ada token tersimpan?
                         const savedToken = sessionStorage.getItem('g_token');
                         if(savedToken) {
-                            this.accessToken = savedToken;
+                            // WAJIB: Set token ke GAPI sebelum dipakai!
                             gapi.client.setToken({ access_token: savedToken });
-                            this.loadApp();
+                            this.accessToken = savedToken;
+                            this.loadApp(); // Langsung load data
                         }
-                    } catch (err) { alert("Gagal koneksi Google API."); }
+                    } catch (err) {
+                        console.error("Gagal init GAPI", err);
+                        alert("Gagal memuat sistem Google. Coba refresh.");
+                    }
                 });
+
                 lucide.createIcons();
             },
 
-            // --- AUTH ---
+            // --- AUTHENTICATION ---
             handleAuth: function() {
-                if(!this.isGapiLoaded) return alert("Tunggu sebentar...");
+                if(!this.isGapiLoaded) return alert("Sistem sedang memuat, coba 3 detik lagi...");
                 this.tokenClient.requestAccessToken();
             },
+
             handleTokenResponse: function(resp) {
-                if (resp.error) return alert("Login Gagal.");
+                if (resp.error) {
+                    console.error(resp);
+                    return alert("Login Dibatalkan.");
+                }
+                
+                // Simpan token
                 this.accessToken = resp.access_token;
                 sessionStorage.setItem('g_token', this.accessToken);
+                
+                // PENTING: Berikan token ke GAPI
                 gapi.client.setToken(resp);
+                
                 this.loadApp();
             },
+
             handleSignOut: function() {
-                if(this.accessToken) google.accounts.oauth2.revoke(this.accessToken, ()=>{});
-                sessionStorage.clear(); localStorage.removeItem('jg_files'); location.reload();
+                if(this.accessToken) {
+                    google.accounts.oauth2.revoke(this.accessToken, () => console.log('Revoked'));
+                }
+                sessionStorage.clear(); 
+                localStorage.removeItem('jg_files'); 
+                location.reload();
             },
 
-            // --- APP LOAD ---
+            // --- CORE LOGIC ---
             loadApp: async function() {
-                this.showLoading(true);
+                this.showLoading(true, "Menyiapkan Data...");
                 document.getElementById('view-login').classList.add('hidden-view');
+                
                 try {
                     await this.loadUserProfile();
                     await this.ensureDriveFiles();
                     this.navigate('dashboard');
                     this.fetchData();
                 } catch (err) {
+                    console.error(err);
                     const msg = JSON.stringify(err);
-                    if(msg.includes("401") || msg.includes("403")) {
-                        alert("Sesi habis, login ulang.");
-                        sessionStorage.removeItem('g_token');
-                        document.getElementById('view-login').classList.remove('hidden-view');
+                    // Jika error karena token basi/invalid
+                    if(msg.includes("401") || msg.includes("403") || msg.includes("Invalid Credentials")) {
+                        alert("Sesi login berakhir. Silakan login ulang.");
+                        this.handleSignOut();
                     } else {
-                        alert("Error: " + msg);
+                        alert("Terjadi kesalahan: " + (err.message || "Cek koneksi internet."));
+                        document.getElementById('view-login').classList.remove('hidden-view');
                     }
                 }
                 this.showLoading(false);
             },
 
             loadUserProfile: async function() {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
+                // Fetch data profil dari endpoint userinfo
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { 
+                    headers: { 'Authorization': `Bearer ${this.accessToken}` } 
+                }).then(r => r.json());
+                
                 this.user = res;
-                document.getElementById('user-name').innerText = res.given_name;
-                document.getElementById('user-email').innerText = res.email;
-                document.getElementById('profile-name-lg').innerText = res.name;
-                const ava = `<img src="${res.picture}" class="w-full h-full object-cover">`;
-                document.getElementById('user-avatar').innerHTML = ava;
-                document.getElementById('profile-pic-lg').innerHTML = ava;
+                // Update UI Profil
+                const nama = res.name || "Guru";
+                const email = res.email || "";
+                const pic = res.picture || "https://ui-avatars.com/api/?name=" + nama;
+
+                document.getElementById('user-name').innerText = res.given_name || nama;
+                document.getElementById('user-email').innerText = email;
+                document.getElementById('profile-name-lg').innerText = nama;
+                
+                const avaHtml = `<img src="${pic}" class="w-full h-full object-cover">`;
+                document.getElementById('user-avatar').innerHTML = avaHtml;
+                document.getElementById('profile-pic-lg').innerHTML = avaHtml;
             },
 
             ensureDriveFiles: async function() {
                 const cached = JSON.parse(localStorage.getItem('jg_files'));
-                if (cached && cached.dbId) { this.files = cached; return; }
+                // Cek cache valid
+                if (cached && cached.dbId && cached.folderId) { 
+                    this.files = cached; 
+                    return; 
+                }
 
-                this.setLoadingText("Cek Database...");
+                this.setLoadingText("Mengecek Database...");
+                
+                // Cari Spreadsheet
                 const q = `name = '${DB_FILENAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
                 const resDb = await gapi.client.drive.files.list({ q: q });
                 
                 if (resDb.result.files.length > 0) {
                     this.files.dbId = resDb.result.files[0].id;
                 } else {
-                    const createDb = await gapi.client.drive.files.create({ resource: { name: DB_FILENAME, mimeType: 'application/vnd.google-apps.spreadsheet' } });
+                    // Buat Baru jika tidak ada
+                    const createDb = await gapi.client.drive.files.create({ 
+                        resource: { name: DB_FILENAME, mimeType: 'application/vnd.google-apps.spreadsheet' } 
+                    });
                     this.files.dbId = createDb.result.id;
+                    // Bikin Header
                     await gapi.client.sheets.spreadsheets.values.update({
                         spreadsheetId: this.files.dbId, range: 'Sheet1!A1:H1', valueInputOption: 'RAW',
                         resource: { values: [['ID', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Kegiatan', 'Hasil', 'ID Foto', 'Link Foto']] }
                     });
                 }
                 
-                // Cek Folder
+                // Cari Folder Foto
                 const qF = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
                 const resF = await gapi.client.drive.files.list({ q: qF });
-                this.files.folderId = (resF.result.files.length > 0) ? resF.result.files[0].id : (await gapi.client.drive.files.create({ resource: { name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' } })).result.id;
+                
+                if (resF.result.files.length > 0) {
+                    this.files.folderId = resF.result.files[0].id;
+                } else {
+                    const createF = await gapi.client.drive.files.create({ 
+                        resource: { name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' } 
+                    });
+                    this.files.folderId = createF.result.id;
+                }
                 
                 localStorage.setItem('jg_files', JSON.stringify(this.files));
             },
 
             fetchData: async function() {
-                this.showLoading(true, "Memuat data...");
+                this.showLoading(true, "Sinkronisasi...");
                 try {
-                    const res = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.files.dbId, range: 'Sheet1!A2:H1000' });
+                    const res = await gapi.client.sheets.spreadsheets.values.get({ 
+                        spreadsheetId: this.files.dbId, range: 'Sheet1!A2:H1000' 
+                    });
                     const rows = res.result.values || [];
-                    // Simpan index baris (i + 2 karena mulai baris 2)
+                    
+                    // Map data array ke object
                     this.data = rows.map((r, i) => ({
-                        rowIndex: i + 2, // PENTING UNTUK EDIT/HAPUS
+                        rowIndex: i + 2,
                         id: r[0], tanggal: r[1], mulai: r[2], selesai: r[3],
                         kegiatan: r[4], hasil: r[5], fotoId: r[6], fotoLink: r[7]
-                    })).reverse();
+                    })).reverse(); // Urutkan terbaru di atas
+                    
                     this.renderViews();
                 } catch(e) { console.error(e); }
                 this.showLoading(false);
             },
 
-            // --- RENDERING ---
+            // --- RENDERING UI ---
             renderViews: function() {
                 if(this.currentTab === 'list') this.renderList();
                 else this.renderCalendar();
@@ -381,21 +459,29 @@
                     filtered.forEach(item => {
                         const el = document.createElement('div');
                         const safeItem = encodeURIComponent(JSON.stringify(item));
-                        el.className = "bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 relative";
-                        
-                        // Tombol Opsi
-                        const editBtn = `<button onclick="app.editItem('${safeItem}')" class="absolute top-4 right-12 text-blue-600 p-2"><i data-lucide="pencil" width="16"></i></button>`;
-                        const delBtn = `<button onclick="app.deleteItem(${item.rowIndex})" class="absolute top-4 right-2 text-red-600 p-2"><i data-lucide="trash-2" width="16"></i></button>`;
+                        const d = new Date(item.tanggal);
+                        const day = d.getDate();
+                        const dayName = d.toLocaleDateString('id-ID', {weekday:'short'});
 
+                        el.className = "bg-white p-0 rounded-2xl shadow-sm border border-gray-100 flex overflow-hidden relative group";
                         el.innerHTML = `
-                            ${editBtn} ${delBtn}
-                            <div class="flex items-center gap-2">
-                                <span class="bg-primaryContainer text-primary text-xs font-bold px-2 py-1 rounded-md">${item.tanggal}</span>
-                                <span class="text-xs text-gray-500">${item.mulai} - ${item.selesai}</span>
+                            <div class="bg-primary/5 w-16 flex flex-col items-center justify-center border-r border-primary/10">
+                                <span class="text-[10px] font-bold text-primary uppercase">${dayName}</span>
+                                <span class="text-xl font-bold text-gray-700">${day}</span>
                             </div>
-                            <h3 class="font-bold text-gray-800 pr-16">${item.kegiatan}</h3>
-                            <p class="text-xs text-gray-500 line-clamp-2">${item.hasil}</p>
-                            ${item.fotoLink ? `<a href="${item.fotoLink}" target="_blank" class="text-xs text-blue-600 flex gap-1 mt-1"><i data-lucide="image" width="12"></i> Lihat Foto</a>` : ''}
+                            <div class="p-3 flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">${item.mulai} - ${item.selesai}</span>
+                                    ${item.fotoLink ? `<i data-lucide="image" width="12" class="text-blue-500"></i>` : ''}
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-sm truncate">${item.kegiatan}</h3>
+                                <p class="text-xs text-gray-500 line-clamp-1">${item.hasil}</p>
+                            </div>
+                            <div class="absolute right-0 top-0 bottom-0 w-12 flex flex-col border-l border-gray-50">
+                                <button onclick="app.editItem('${safeItem}')" class="flex-1 bg-white hover:bg-blue-50 text-blue-600 flex items-center justify-center"><i data-lucide="pencil" width="14"></i></button>
+                                <div class="h-px bg-gray-100"></div>
+                                <button onclick="app.deleteItem(${item.rowIndex})" class="flex-1 bg-white hover:bg-red-50 text-red-500 flex items-center justify-center"><i data-lucide="trash-2" width="14"></i></button>
+                            </div>
                         `;
                         container.appendChild(el);
                     });
@@ -418,7 +504,7 @@
                     const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
                     const hasData = this.data.some(d => d.tanggal === dateStr);
                     const cell = document.createElement('div');
-                    let cls = "calendar-day";
+                    let cls = "calendar-day hover:bg-orange-50";
                     if(hasData) cls += " has-data";
                     if(this.selectedDate === dateStr) cls += " selected";
                     cell.className = cls;
@@ -437,28 +523,30 @@
                 const container = document.getElementById('calendar-day-list');
                 container.innerHTML = '';
                 const dayData = this.data.filter(d => d.tanggal === dateStr);
-                document.getElementById('selected-date-label').innerText = dayData.length > 0 ? `${dayData.length} Kegiatan` : "Kosong";
+                
+                const d = new Date(dateStr);
+                const readableDate = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long'});
+                document.getElementById('selected-date-label').innerText = readableDate;
+
+                if (dayData.length === 0) container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">Tidak ada kegiatan</p>';
 
                 dayData.forEach(item => {
                     const el = document.createElement('div');
                     const safeItem = encodeURIComponent(JSON.stringify(item));
-                    el.className = "bg-white p-3 rounded-xl border flex justify-between items-center";
+                    el.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center";
                     el.innerHTML = `
                         <div>
-                            <div class="text-xs font-bold text-primary">${item.mulai} - ${item.selesai}</div>
-                            <div class="text-sm line-clamp-1">${item.kegiatan}</div>
+                            <div class="text-[10px] font-bold text-primary">${item.mulai} - ${item.selesai}</div>
+                            <div class="text-sm font-medium text-gray-800 line-clamp-1">${item.kegiatan}</div>
                         </div>
-                        <div class="flex gap-2">
-                             <button onclick="app.editItem('${safeItem}')" class="text-blue-600"><i data-lucide="pencil" width="16"></i></button>
-                             <button onclick="app.deleteItem(${item.rowIndex})" class="text-red-600"><i data-lucide="trash-2" width="16"></i></button>
-                        </div>
+                        <button onclick="app.editItem('${safeItem}')" class="w-8 h-8 rounded-full bg-white border flex items-center justify-center text-gray-500 shadow-sm"><i data-lucide="chevron-right" width="16"></i></button>
                     `;
                     container.appendChild(el);
                 });
                 lucide.createIcons();
             },
 
-            // --- ACTIONS ---
+            // --- CRUD ACTIONS ---
             createNew: function(datePref) {
                 this.resetForm();
                 if(datePref) document.getElementById('inp-date').value = datePref;
@@ -470,7 +558,7 @@
                 this.resetForm();
                 document.getElementById('form-title').innerText = "Edit Jurnal";
                 document.getElementById('inp-id').value = item.id;
-                document.getElementById('inp-row-index').value = item.rowIndex; // Simpan baris
+                document.getElementById('inp-row-index').value = item.rowIndex;
                 document.getElementById('inp-date').value = item.tanggal;
                 document.getElementById('inp-start').value = item.mulai;
                 document.getElementById('inp-end').value = item.selesai;
@@ -484,23 +572,8 @@
                 this.navigate('form');
             },
 
-            deleteItem: async function(rowIndex) {
-                if(!confirm("Hapus jurnal ini?")) return;
-                this.showLoading(true, "Menghapus...");
-                try {
-                    // Di Sheets API, menghapus baris agak rumit. Cara termudah: Kosongkan isi baris
-                    await gapi.client.sheets.spreadsheets.values.clear({
-                        spreadsheetId: this.files.dbId,
-                        range: `Sheet1!A${rowIndex}:H${rowIndex}`
-                    });
-                    // Idealnya pakai batchUpdate deleteDimension, tapi clear lebih aman buat pemula
-                    this.fetchData();
-                } catch(e) { alert("Gagal hapus"); }
-                this.showLoading(false);
-            },
-
             saveJournal: async function() {
-                const id = document.getElementById('inp-id').value || Date.now().toString(); // Generate ID unik
+                const id = document.getElementById('inp-id').value || Date.now().toString();
                 const rowIndex = document.getElementById('inp-row-index').value;
                 const form = {
                     date: document.getElementById('inp-date').value,
@@ -509,12 +582,12 @@
                     act: document.getElementById('inp-activity').value,
                     res: document.getElementById('inp-result').value
                 };
-                if(!form.date || !form.act) return alert("Data belum lengkap");
+
+                if(!form.date || !form.act) return alert("Tanggal dan Kegiatan wajib diisi.");
 
                 this.showLoading(true, "Menyimpan...");
                 let fotoId = "", fotoLink = "";
 
-                // Cek Foto Lama atau Baru
                 const oldPhoto = document.getElementById('inp-old-photo').value;
                 if(oldPhoto && !this.fileToUpload) {
                     const parsed = JSON.parse(oldPhoto);
@@ -522,33 +595,34 @@
                 }
 
                 try {
-                    // Upload Foto Baru
+                    // Upload Foto
                     if (this.fileToUpload) {
-                        this.setLoadingText("Upload Foto...");
-                        const metadata = { name: `Jurnal_${id}.jpg`, parents: [this.files.folderId] };
+                        this.setLoadingText("Mengupload Foto...");
+                        const metadata = { name: `Jurnal_${form.date}_${id}.jpg`, parents: [this.files.folderId] };
                         const formData = new FormData();
                         formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                         formData.append('file', this.fileToUpload);
+                        
                         const resUpload = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
                             method: 'POST',
                             headers: new Headers({'Authorization': 'Bearer ' + this.accessToken}),
                             body: formData
                         }).then(r => r.json());
+                        
+                        if(resUpload.error) throw new Error("Gagal upload foto");
                         fotoId = resUpload.id; fotoLink = resUpload.webViewLink;
                     }
 
                     const rowData = [id, form.date, form.start, form.end, form.act, form.res, fotoId, fotoLink];
 
                     if(rowIndex) {
-                        // MODE EDIT: Update baris yang ada
-                        this.setLoadingText("Update Data...");
+                        // Edit
                         await gapi.client.sheets.spreadsheets.values.update({
                             spreadsheetId: this.files.dbId, range: `Sheet1!A${rowIndex}:H${rowIndex}`,
                             valueInputOption: 'USER_ENTERED', resource: { values: [rowData] }
                         });
                     } else {
-                        // MODE BARU: Append ke bawah
-                        this.setLoadingText("Simpan Data...");
+                        // Baru
                         await gapi.client.sheets.spreadsheets.values.append({
                             spreadsheetId: this.files.dbId, range: 'Sheet1!A:H',
                             valueInputOption: 'USER_ENTERED', resource: { values: [rowData] }
@@ -557,7 +631,19 @@
 
                     this.fetchData();
                     this.navigate('dashboard');
-                } catch(e) { alert("Gagal simpan: " + e.message); }
+                } catch(e) { alert("Gagal menyimpan: " + e.message); }
+                this.showLoading(false);
+            },
+
+            deleteItem: async function(rowIndex) {
+                if(!confirm("Hapus jurnal ini?")) return;
+                this.showLoading(true, "Menghapus...");
+                try {
+                    await gapi.client.sheets.spreadsheets.values.clear({
+                        spreadsheetId: this.files.dbId, range: `Sheet1!A${rowIndex}:H${rowIndex}`
+                    });
+                    this.fetchData();
+                } catch(e) { alert("Gagal hapus"); }
                 this.showLoading(false);
             },
 
@@ -567,7 +653,6 @@
                 document.getElementById('tab-content-list').classList.toggle('hidden-view', tab !== 'list');
                 document.getElementById('tab-content-calendar').classList.toggle('hidden-view', tab !== 'calendar');
                 
-                // Highlight Nav
                 document.querySelectorAll('.nav-icon').forEach(el => {
                     el.classList.remove('bg-primaryContainer', 'text-primary');
                     el.classList.add('text-gray-500');
@@ -581,23 +666,25 @@
             },
             
             toggleVoice: function(fieldId) {
-                if (!('webkitSpeechRecognition' in window)) return alert("Browser tidak mendukung suara.");
+                if (!('webkitSpeechRecognition' in window)) return alert("Browser ini tidak mendukung fitur suara.");
                 const recognition = new webkitSpeechRecognition();
                 recognition.lang = 'id-ID';
                 recognition.start();
-                document.getElementById('btn-voice-'+fieldId).classList.add('animate-pulse', 'text-red-500');
+                const btn = document.getElementById('btn-voice-'+fieldId);
+                btn.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
                 
                 recognition.onresult = (e) => {
                     const txt = e.results[0][0].transcript;
                     const el = document.getElementById('inp-'+fieldId);
                     el.value += (el.value ? " " : "") + txt;
-                    document.getElementById('btn-voice-'+fieldId).classList.remove('animate-pulse', 'text-red-500');
                 };
+                recognition.onend = () => btn.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
             },
 
             navigate: function(viewId) {
                 ['login','dashboard','form','profile'].forEach(v => document.getElementById('view-'+v).classList.add('hidden-view'));
                 document.getElementById('view-'+viewId).classList.remove('hidden-view');
+                
                 const nav = document.getElementById('bottom-nav');
                 if(viewId === 'dashboard' || viewId === 'profile') {
                      nav.classList.remove('hidden-view');
@@ -632,9 +719,24 @@
                 const m=document.getElementById('filter-month').value; const y=document.getElementById('filter-year').value;
                 const d=this.data.filter(i=>{const dt=new Date(i.tanggal); return (dt.getMonth()+1)==m && dt.getFullYear()==y}).reverse();
                 if(d.length===0) return alert("Data kosong");
-                const wb=XLSX.utils.book_new();
-                const ws=XLSX.utils.json_to_sheet(d.map((x,i)=>({"No":i+1,"Tanggal":x.tanggal,"Jam":x.mulai+'-'+x.selesai,"Kegiatan":x.kegiatan,"Hasil":x.hasil,"Link Foto":{t:'s',v:'Foto',l:{Target:x.fotoLink||'#'}}})));
-                XLSX.utils.book_append_sheet(wb,ws,"Laporan"); XLSX.writeFile(wb, `Jurnal_${m}_${y}.xlsx`);
+                
+                const nip = localStorage.getItem('jg_nip') || '-';
+                const unit = localStorage.getItem('jg_unit') || '-';
+                
+                // Format Data for SheetJS
+                const exportData = d.map((x,i)=>({
+                    "No": i+1,
+                    "Tanggal": x.tanggal,
+                    "Jam": x.mulai + ' - ' + x.selesai,
+                    "Kegiatan": x.kegiatan,
+                    "Hasil": x.hasil,
+                    "Link Foto": { t:'s', v:'Buka Foto', l:{ Target:x.fotoLink || '#' } }
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan Jurnal");
+                XLSX.writeFile(wb, `Laporan_${this.user.name}_${m}_${y}.xlsx`);
             }
         };
 
