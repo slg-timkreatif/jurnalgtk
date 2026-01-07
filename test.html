@@ -9,14 +9,16 @@
     
     <link rel="icon" type="image/png" href="https://i.imgur.com/7PPoYr5.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/7PPoYr5.png">
-    
+    <meta property="og:title" content="Jurnal Harian GTK">
+    <meta property="og:image" content="https://i.imgur.com/7PPoYr5.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#1e3a8a', // Navy Blue
+                        primary: '#1e3a8a', // Navy Blue Dinas
                         primaryDark: '#172554',
                         surface: '#f8fafc',
                         onSurface: '#0f172a',
@@ -270,11 +272,13 @@
                 this.initDateFilters();
                 this.loadProfileLocal();
                 
+                // 1. Init GIS
                 this.tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID, scope: SCOPES,
                     callback: (r) => this.handleTokenResponse(r)
                 });
 
+                // 2. Init GAPI
                 gapi.load('client', async () => {
                     try {
                         await gapi.client.init({
@@ -282,27 +286,46 @@
                         });
                         this.isGapiLoaded = true;
                         
+                        // Auto Login jika ada sesi
                         const saved = sessionStorage.getItem('g_token');
                         if(saved) {
                             gapi.client.setToken({ access_token: saved });
                             this.accessToken = saved;
                             this.loadApp();
                         }
-                    } catch(e) { console.error("GAPI Error", e); }
+                    } catch(e) { console.error("GAPI Init Error", e); }
                 });
                 
+                // Init UI Components
                 this.setupAC('inp-activity', 'list-activity', 'kegiatan');
                 this.setupAC('inp-result', 'list-result', 'hasil');
                 lucide.createIcons();
             },
 
-            // --- HELPER UNTUK MENGHINDARI ERROR NULL ---
+            // --- SAFETY HELPERS (PENTING AGAR TIDAK ERROR NULL) ---
             el: function(id) { return document.getElementById(id); },
-            safeClassRemove: function(id, cls) { const e=this.el(id); if(e) e.classList.remove(cls); },
-            safeClassAdd: function(id, cls) { const e=this.el(id); if(e) e.classList.add(cls); },
-            safeSetText: function(id, txt) { const e=this.el(id); if(e) e.innerText = txt; },
-            safeSetHtml: function(id, htm) { const e=this.el(id); if(e) e.innerHTML = htm; },
+            
+            show: function(id) { 
+                const e = this.el(id); 
+                if(e) e.classList.remove('hidden-view'); 
+            },
+            
+            hide: function(id) { 
+                const e = this.el(id); 
+                if(e) e.classList.add('hidden-view'); 
+            },
+            
+            setText: function(id, txt) { 
+                const e = this.el(id); 
+                if(e) e.innerText = txt; 
+            },
+            
+            setHtml: function(id, htm) { 
+                const e = this.el(id); 
+                if(e) e.innerHTML = htm; 
+            },
 
+            // --- AUTHENTICATION ---
             handleAuth: function() {
                 if(!this.isGapiLoaded) return alert("Sistem sedang memuat... Coba 3 detik lagi.");
                 this.tokenClient.requestAccessToken();
@@ -324,15 +347,17 @@
 
             loadApp: async function() {
                 this.showLoading(true, "Sinkronisasi...");
-                this.safeClassAdd('view-login', 'hidden-view');
+                this.hide('view-login');
                 
                 try {
                     // Cek Profil dulu
                     if(!this.profile.nama) {
                         const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
                         this.user = gPro;
-                        this.safeSetHtml('dash-avatar', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
-                        this.safeSetHtml('profile-pic-lg', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
+                        // Set Avatar
+                        const ava = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
+                        this.setHtml('dash-avatar', ava);
+                        this.setHtml('profile-pic-lg', ava);
                         
                         this.showLoading(false);
                         this.openSetup(); 
@@ -341,16 +366,18 @@
 
                     await Promise.all([this.ensureDriveFiles(), this.fetchRef()]);
 
+                    // Update UI User
                     const gPro = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { 'Authorization': `Bearer ${this.accessToken}` } }).then(r=>r.json());
-                    this.safeSetHtml('dash-avatar', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
-                    this.safeSetHtml('profile-pic-lg', `<img src="${gPro.picture}" class="w-full h-full object-cover">`);
+                    const ava = `<img src="${gPro.picture}" class="w-full h-full object-cover">`;
+                    this.setHtml('dash-avatar', ava);
+                    this.setHtml('profile-pic-lg', ava);
 
                     this.navigate('dashboard');
                     this.fetchData();
 
                 } catch(e) {
                     console.error(e);
-                    // PENANGANAN ERROR LEBIH JELAS
+                    // Bedah Error
                     let msg = "Terjadi Kesalahan.";
                     if(e.result && e.result.error && e.result.error.message) msg = e.result.error.message;
                     else if(e.message) msg = e.message;
@@ -359,8 +386,8 @@
                          alert("Sesi Google Habis. Silakan login ulang.");
                          this.handleSignOut();
                     } else {
-                         alert("Error: " + msg);
-                         this.safeClassRemove('view-login', 'hidden-view');
+                         alert("Error Sistem: " + msg);
+                         this.show('view-login');
                     }
                 }
                 this.showLoading(false);
@@ -409,24 +436,29 @@
             },
 
             saveJournal: async function() {
-                const id = document.getElementById('inp-id').value || Date.now().toString();
-                const rowIndex = document.getElementById('inp-row-index').value;
+                const id = this.el('inp-id').value || Date.now().toString();
+                const rowIndex = this.el('inp-row-index').value;
                 const form = {
-                    date: document.getElementById('inp-date').value,
-                    start: document.getElementById('inp-start').value,
-                    end: document.getElementById('inp-end').value,
-                    act: document.getElementById('inp-activity').value,
-                    res: document.getElementById('inp-result').value
+                    date: this.el('inp-date').value,
+                    start: this.el('inp-start').value,
+                    end: this.el('inp-end').value,
+                    act: this.el('inp-activity').value,
+                    res: this.el('inp-result').value
                 };
 
                 if(!form.date || !form.act) return alert("Wajib isi Tanggal & Kegiatan");
                 this.showLoading(true, "Menyimpan...");
 
+                // Save Local History
                 let hist = JSON.parse(localStorage.getItem('jg_hist')||"[]");
-                if(!hist.find(x=>x.kegiatan===form.act)) { hist.push({kegiatan:form.act, hasil:form.res}); localStorage.setItem('jg_hist', JSON.stringify(hist)); this.refData.push({kegiatan:form.act, hasil:form.res}); }
+                if(!hist.find(x=>x.kegiatan===form.act)) { 
+                    hist.push({kegiatan:form.act, hasil:form.res}); 
+                    localStorage.setItem('jg_hist', JSON.stringify(hist)); 
+                    this.refData.push({kegiatan:form.act, hasil:form.res}); 
+                }
 
                 let fId = "", fLink = "";
-                const oldP = document.getElementById('inp-old-photo').value;
+                const oldP = this.el('inp-old-photo').value;
                 if(oldP && !this.fileToUpload) { const p=JSON.parse(oldP); fId=p.id; fLink=p.link; }
 
                 try {
@@ -441,6 +473,7 @@
                         }).then(r => r.json());
 
                         if(up.error && up.error.code === 404) {
+                            // Auto Repair Folder
                             localStorage.removeItem('jg_files'); 
                             await this.ensureDriveFiles(); 
                             meta.parents = [this.files.folderId];
@@ -470,7 +503,6 @@
 
             fetchRef: async function() {
                 try {
-                    // UPDATED RANGE: Read up to 5000 rows
                     const res = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: REF_ID, range: 'Sheet1!A2:B5000' });
                     this.refData = (res.result.values || []).map(r => ({ kegiatan: r[0]||"", hasil: r[1]||"" }));
                     const hist = JSON.parse(localStorage.getItem('jg_hist')||"[]");
@@ -480,91 +512,96 @@
             
             setupAC: function(id, listId, key) {
                 const inp=this.el(id); const list=this.el(listId);
-                if(!inp || !list) return; // SAFEGUARD FOR NULL ERROR
+                if(!inp || !list) return;
 
                 inp.addEventListener('input', () => {
                     const v=inp.value.toLowerCase(); list.innerHTML='';
-                    if(!v){list.classList.add('hidden-view');return;}
+                    if(!v){this.hide(listId);return;}
                     const m = this.refData.filter(d=>(key==='kegiatan'?d.kegiatan:d.hasil).toLowerCase().includes(v)).slice(0,5);
                     if(m.length>0) {
-                        list.classList.remove('hidden-view');
+                        this.show(listId);
                         m.forEach(i=>{
                             const div=document.createElement('div'); div.className='autocomplete-item';
                             div.innerText=(key==='kegiatan'?i.kegiatan:i.hasil);
                             div.onclick=()=>{ 
-                                inp.value=div.innerText; list.classList.add('hidden-view'); 
-                                if(key==='kegiatan' && i.hasil) document.getElementById('inp-result').value=i.hasil;
+                                inp.value=div.innerText; this.hide(listId); 
+                                if(key==='kegiatan' && i.hasil) this.el('inp-result').value=i.hasil;
                             };
                             list.appendChild(div);
                         });
-                    } else list.classList.add('hidden-view');
+                    } else this.hide(listId);
                 });
-                document.addEventListener('click', e=>{if(e.target!==inp)list.classList.add('hidden-view')});
+                document.addEventListener('click', e=>{if(e.target!==inp)this.hide(listId)});
             },
 
             saveProfile: function(redir) {
                 const p = {
-                    nama: document.getElementById('setup-nama').value,
-                    nip: document.getElementById('setup-nip').value,
-                    pangkat: document.getElementById('setup-pangkat').value,
-                    unit: document.getElementById('setup-unit').value,
-                    alamat: document.getElementById('setup-alamat').value,
-                    kota: document.getElementById('setup-kota').value,
-                    ks: document.getElementById('setup-ks').value,
-                    nip_ks: document.getElementById('setup-nip-ks').value
+                    nama: this.el('setup-nama').value,
+                    nip: this.el('setup-nip').value,
+                    pangkat: this.el('setup-pangkat').value,
+                    unit: this.el('setup-unit').value,
+                    alamat: this.el('setup-alamat').value,
+                    kota: this.el('setup-kota').value,
+                    ks: this.el('setup-ks').value,
+                    nip_ks: this.el('setup-nip-ks').value
                 };
                 if(!p.nama || !p.unit) return alert("Nama & Unit Kerja Wajib Diisi");
                 localStorage.setItem('jg_profile', JSON.stringify(p));
                 this.loadProfileLocal();
                 if(redir) this.navigate('dashboard');
             },
+            
             loadProfileLocal: function() {
                 const p = JSON.parse(localStorage.getItem('jg_profile'));
                 if(p) {
                     this.profile = p;
-                    this.safeSetText('dash-name', p.nama);
-                    this.safeSetText('dash-unit', p.unit);
-                    this.safeSetText('profile-name', p.nama);
-                    this.safeSetText('profile-unit', p.unit);
+                    this.setText('dash-name', p.nama);
+                    this.setText('dash-unit', p.unit);
+                    this.setText('profile-name', p.nama);
+                    this.setText('profile-unit', p.unit);
                     // Isi form setup
                     if(this.el('setup-nama')) {
-                        document.getElementById('setup-nama').value = p.nama;
-                        document.getElementById('setup-nip').value = p.nip;
-                        document.getElementById('setup-pangkat').value = p.pangkat;
-                        document.getElementById('setup-unit').value = p.unit;
-                        document.getElementById('setup-alamat').value = p.alamat;
-                        document.getElementById('setup-kota').value = p.kota;
-                        document.getElementById('setup-ks').value = p.ks;
-                        document.getElementById('setup-nip-ks').value = p.nip_ks;
+                        this.el('setup-nama').value = p.nama;
+                        this.el('setup-nip').value = p.nip;
+                        this.el('setup-pangkat').value = p.pangkat;
+                        this.el('setup-unit').value = p.unit;
+                        this.el('setup-alamat').value = p.alamat;
+                        this.el('setup-kota').value = p.kota;
+                        this.el('setup-ks').value = p.ks;
+                        this.el('setup-nip-ks').value = p.nip_ks;
                     }
                 }
             },
+            
             openSetup: function() { this.navigate('setup'); },
 
             navigate: function(id) {
-                ['login','setup','dashboard','form','profile'].forEach(v => this.safeClassAdd('view-'+v, 'hidden-view'));
-                this.safeClassRemove('view-'+id, 'hidden-view');
+                ['login','setup','dashboard','form','profile'].forEach(v => this.hide('view-'+v));
+                this.show('view-'+id);
                 
                 const nav = this.el('bottom-nav');
                 if(id==='dashboard'||id==='profile') {
-                    if(nav) nav.classList.remove('hidden-view');
+                    if(nav) this.show('bottom-nav');
                     document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
                     const target = id==='profile'?'profile':this.currentTab;
                     const btn = document.querySelector(`button[data-target="${target}"]`);
                     if(btn){btn.classList.add('active'); btn.querySelector('i').classList.add('text-primary'); btn.querySelector('span').classList.add('text-primary');}
-                } else if(nav) nav.classList.add('hidden-view');
+                } else if(nav) this.hide('bottom-nav');
             },
+            
             switchTab: function(tab) {
                 this.currentTab=tab;
-                const lst = this.el('tab-content-list'); if(lst) lst.classList.toggle('hidden-view', tab!=='list');
-                const cal = this.el('tab-content-calendar'); if(cal) cal.classList.toggle('hidden-view', tab!=='calendar');
+                const lst = this.el('tab-content-list'); if(lst) { if(tab==='list') lst.classList.remove('hidden-view'); else lst.classList.add('hidden-view'); }
+                const cal = this.el('tab-content-calendar'); if(cal) { if(tab==='calendar') cal.classList.remove('hidden-view'); else cal.classList.add('hidden-view'); }
                 this.navigate('dashboard'); this.renderList(); if(tab==='calendar')this.renderCalendar();
             },
+            
             showLoading: function(show, t="Memuat...") {
                 const el=this.el('loading-overlay');
-                if(show){if(el) el.classList.remove('hidden-view'); this.safeSetText('loading-text', t);}
+                if(show){if(el) el.classList.remove('hidden-view'); this.setText('loading-text', t);}
                 else if(el) el.classList.add('hidden-view');
             },
+            
             initDateFilters: function() {
                 const m=this.el('filter-month');
                 if(m) ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"].forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.text=n;if(i===new Date().getMonth())o.selected=true;m.appendChild(o)});
@@ -573,10 +610,15 @@
             },
             
             renderList: function() {
-                const m=this.el('filter-month').value; const y=this.el('filter-year').value;
+                const mEl = this.el('filter-month');
+                const yEl = this.el('filter-year');
+                if(!mEl || !yEl) return;
+                
+                const m=mEl.value; const y=yEl.value;
                 const d=this.data.filter(x=>{const dt=new Date(x.tanggal);return (dt.getMonth()+1)==m && dt.getFullYear()==y});
                 const c=this.el('tab-content-list'); if(c) c.innerHTML='';
                 const e=this.el('empty-state');
+                
                 if(d.length===0){if(e) e.classList.remove('hidden-view');return;} if(e) e.classList.add('hidden-view');
                 d.forEach(i=>{
                     const div=document.createElement('div'); const safe=encodeURIComponent(JSON.stringify(i));
@@ -588,8 +630,11 @@
                 });
                 lucide.createIcons();
             },
+            
             renderCalendar: function() {
-                const m=parseInt(this.el('filter-month').value)-1; const y=parseInt(this.el('filter-year').value);
+                const mEl = this.el('filter-month'); const yEl = this.el('filter-year');
+                if(!mEl || !yEl) return;
+                const m=parseInt(mEl.value)-1; const y=parseInt(yEl.value);
                 const c=this.el('calendar-container'); if(c) c.innerHTML='';
                 const days=new Date(y,m+1,0).getDate(); const first=new Date(y,m,1).getDay();
                 for(let i=0;i<first;i++)c.appendChild(document.createElement('div'));
@@ -601,6 +646,7 @@
                     c.appendChild(el);
                 }
             },
+            
             renderDayList: function(ds) {
                 const l=this.el('calendar-day-list'); if(l) l.innerHTML='';
                 this.data.filter(x=>x.tanggal===ds).forEach(i=>{
@@ -611,15 +657,18 @@
                 });
                 lucide.createIcons();
             },
+            
             createNew: function(d){this.resetForm();if(d)this.el('inp-date').value=d;this.navigate('form');},
+            
             editItem: function(s){
                 const i=JSON.parse(decodeURIComponent(s)); this.navigate('form');
                 this.el('inp-id').value=i.id; this.el('inp-row-index').value=i.rowIndex;
                 this.el('inp-date').value=i.tanggal; this.el('inp-start').value=i.mulai;
                 this.el('inp-end').value=i.selesai; this.el('inp-activity').value=i.kegiatan;
                 this.el('inp-result').value=i.hasil;
-                if(i.fotoLink){this.el('inp-old-photo').value=JSON.stringify({id:i.fotoId,link:i.fotoLink});this.el('img-preview').src=i.fotoLink;this.safeClassRemove('preview-container','hidden-view');}
+                if(i.fotoLink){this.el('inp-old-photo').value=JSON.stringify({id:i.fotoId,link:i.fotoLink});this.el('img-preview').src=i.fotoLink;this.show('preview-container');}
             },
+            
             deleteItem: async function(idx){if(confirm("Hapus?")){await gapi.client.sheets.spreadsheets.values.clear({spreadsheetId:this.files.dbId,range:`Sheet1!A${idx}:H${idx}`});this.fetchData();}},
             
             downloadExcel: function() {
@@ -644,10 +693,13 @@
                 this.el('inp-id').value=""; this.el('inp-row-index').value="";
                 this.el('inp-date').valueAsDate=new Date(); this.el('inp-activity').value="";
                 this.el('inp-result').value=""; this.clearFile();
-                this.safeSetText('form-title', "Isi Jurnal");
+                this.setText('form-title', "Isi Jurnal");
             },
-            clearFile: function() { this.fileToUpload=null; this.el('inp-file').value=""; this.safeClassAdd('preview-container','hidden-view'); this.el('inp-old-photo').value=""; },
-            handleFileSelect: function(input) { if(input.files[0]){ this.fileToUpload=input.files[0]; const r=new FileReader(); r.onload=e=>{this.el('img-preview').src=e.target.result; this.safeClassRemove('preview-container','hidden-view');}; r.readAsDataURL(input.files[0]); } },
+            
+            clearFile: function() { this.fileToUpload=null; this.el('inp-file').value=""; this.hide('preview-container'); this.el('inp-old-photo').value=""; },
+            
+            handleFileSelect: function(input) { if(input.files[0]){ this.fileToUpload=input.files[0]; const r=new FileReader(); r.onload=e=>{this.el('img-preview').src=e.target.result; this.show('preview-container');}; r.readAsDataURL(input.files[0]); } },
+            
             voice: function(id) {
                 if(!window.webkitSpeechRecognition) return alert("Browser tidak support suara.");
                 const r = new webkitSpeechRecognition(); r.lang = 'id-ID'; r.start();
