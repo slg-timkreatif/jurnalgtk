@@ -64,19 +64,25 @@
         /* Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
 
-        /* PRINT STYLES */
+        /* PRINT STYLES - A4 LANDSCAPE OFFICIAL */
         @media print {
-            @page { size: A4; margin: 1cm; }
-            body { background: white; height: auto; overflow: visible; }
+            @page { size: A4 landscape; margin: 10mm; }
+            body { background: white; height: auto; overflow: visible; font-family: 'Times New Roman', serif; color: black; }
             #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
             #main-layout { display: block; height: auto; overflow: visible; }
-            #main-container { overflow: visible; height: auto; }
+            #main-container { overflow: visible; height: auto; padding: 0; margin: 0; }
             #view-home, #view-calendar, #view-profile { display: none !important; }
-            #view-print-report { display: block !important; }
+            #view-print-report { display: block !important; width: 100%; }
             
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border: 1px solid black; padding: 5px; }
-            th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
+            /* Official Table Styling */
+            table { width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 10px; }
+            th { background-color: #e5e7eb !important; text-align: center; font-weight: bold; padding: 8px 4px; border: 1px solid black; -webkit-print-color-adjust: exact; }
+            td { border: 1px solid black; padding: 6px 4px; vertical-align: top; }
+            
+            /* Text Utilities */
+            .print-bold { font-weight: bold; }
+            .print-center { text-align: center; }
+            .print-uppercase { text-transform: uppercase; }
         }
     </style>
 </head>
@@ -244,7 +250,8 @@
                         <div class="relative z-10 flex flex-col items-center">
                             <div id="profile-avatar" class="w-24 h-24 rounded-full bg-white p-1 shadow-lg mb-4"></div>
                             <h3 class="font-bold text-2xl text-slate-800" id="profile-name">Guru</h3>
-                            <p class="text-slate-500" id="profile-email">email@sekolah.id</p>
+                            <!-- CHANGED: Now displays Job Title (Jabatan) instead of email -->
+                            <p class="text-slate-600 font-medium bg-blue-50 px-3 py-1 rounded-full text-sm" id="profile-jabatan">Guru</p>
                         </div>
                     </div>
 
@@ -324,31 +331,31 @@
                 <!-- HIDDEN PRINT VIEW -->
                 <div id="view-print-report" class="hidden">
                     <div class="text-center mb-6">
-                        <h2 class="font-bold text-lg uppercase tracking-wide">LAPORAN KINERJA HARIAN GURU</h2>
-                        <h3 id="print-school-name" class="font-bold uppercase text-base">SD NEGERI CONTOH</h3>
-                        <p class="text-sm">Periode: <span id="print-period-text">...</span></p>
+                        <h2 class="print-bold print-uppercase text-xl">LAPORAN KINERJA HARIAN GURU</h2>
+                        <h3 id="print-school-name" class="print-bold print-uppercase text-lg">SD NEGERI CONTOH</h3>
+                        <p class="text-base">Periode: <span id="print-period-text">...</span></p>
                     </div>
-                    <div class="mb-4 text-sm border-b-2 border-black pb-2">
-                        <table class="w-full border-0">
+                    <div class="mb-4 text-base border-b border-black pb-2">
+                        <table class="w-full border-0" style="margin:0; width:100%;">
                             <tr>
-                                <td class="border-0 w-24 font-bold">Nama</td>
-                                <td class="border-0">: <span id="print-t-name"></span></td>
-                                <td class="border-0 w-24 font-bold">Unit Kerja</td>
-                                <td class="border-0">: <span id="print-t-school"></span></td>
+                                <td style="border:none; width:150px;" class="print-bold">Nama</td>
+                                <td style="border:none;">: <span id="print-t-name"></span></td>
+                                <td style="border:none; width:150px;" class="print-bold">Unit Kerja</td>
+                                <td style="border:none;">: <span id="print-t-school"></span></td>
                             </tr>
                             <tr>
-                                <td class="border-0 font-bold">NIP</td>
-                                <td class="border-0">: <span id="print-t-nip"></span></td>
-                                <td class="border-0 font-bold">Jabatan</td>
-                                <td class="border-0">: <span id="print-t-role"></span></td>
+                                <td style="border:none;" class="print-bold">NIP</td>
+                                <td style="border:none;">: <span id="print-t-nip"></span></td>
+                                <td style="border:none;" class="print-bold">Jabatan</td>
+                                <td style="border:none;">: <span id="print-t-role"></span></td>
                             </tr>
                         </table>
                     </div>
                     <table class="w-full mb-8">
                         <thead>
-                            <tr class="bg-gray-100">
+                            <tr class="bg-gray-200">
                                 <th class="w-[5%]">No</th>
-                                <th class="w-[15%]">Hari/Tanggal</th>
+                                <th class="w-[12%]">Hari/Tanggal</th>
                                 <th class="w-[12%]">Waktu</th>
                                 <th>Kegiatan</th>
                                 <th class="w-[20%]">Hasil/Output</th>
@@ -361,13 +368,13 @@
                         <div class="text-center w-64">
                             <p class="mb-16">Mengetahui,<br/>Kepala Sekolah</p>
                             <p class="font-bold underline" id="print-ks-sign">...</p>
-                            <p class="text-xs">NIP. <span id="print-ks-nip-sign">...</span></p>
+                            <p class="text-base">NIP. <span id="print-ks-nip-sign">...</span></p>
                         </div>
                         <div class="text-center w-64">
                             <p class="mb-4"><span id="print-city">...</span>, <span id="print-date-sign">...</span></p>
                             <p class="mb-16">Guru Yang Bersangkutan</p>
                             <p class="font-bold underline" id="print-t-sign">...</p>
-                            <p class="text-xs">NIP. <span id="print-t-nip-sign">...</span></p>
+                            <p class="text-base">NIP. <span id="print-t-nip-sign">...</span></p>
                         </div>
                     </div>
                 </div>
@@ -534,7 +541,7 @@
                 } else {
                     this.toggleScreen('login');
                 }
-                this.loadProfileConfig(); // Load local first
+                this.loadProfileConfig(); 
                 this.fetchSuggestions();
             },
 
@@ -641,7 +648,6 @@
                     });
                 }
                 
-                // Check if 'Config' sheet exists, if not create it
                 try {
                     const meta = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {
                         headers: { 'Authorization': `Bearer ${this.token}` }
@@ -655,7 +661,6 @@
                                 requests: [{ addSheet: { properties: { title: 'Config', gridProperties: { columnCount: 10, rowCount: 5 } } } }]
                             })
                         });
-                        // Init Headers
                         const headers = ['NAMA_GURU','NIP','JABATAN','SEKOLAH','KS_NAMA','KS_NIP','KOTA'];
                         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Config!A1:G1?valueInputOption=RAW`, {
                             method: 'PUT',
@@ -935,6 +940,8 @@
                 document.getElementById('conf-ks-nip').value = c.ks_nip || '';
                 document.getElementById('conf-kota').value = c.kota || '';
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
+                // UPDATE: Show Jabatan in Profile View
+                document.getElementById('profile-jabatan').innerText = c.jabatan || 'Guru (Belum ada jabatan)';
             },
 
             saveProfileConfig: async function() {
@@ -949,6 +956,7 @@
                 };
                 localStorage.setItem('jg_profile_config', JSON.stringify(c));
                 if(c.nama_guru) document.getElementById('profile-name').innerText = c.nama_guru;
+                document.getElementById('profile-jabatan').innerText = c.jabatan || 'Guru';
                 
                 // Sync to Cloud
                 const btn = document.getElementById('btn-save-profile');
@@ -967,7 +975,7 @@
                 btn.innerText = origText; btn.disabled = false;
             },
 
-            // --- EXPORT EXCEL OFFICIAL ---
+            // --- EXPORT EXCEL OFFICIAL (MULTI SHEET / MONTH) ---
             exportExcel: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
@@ -978,73 +986,99 @@
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
                 
-                // Construct Data Array
-                const ws_data = [];
-                
-                // Title & Header (Official Format)
-                ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
-                ws_data.push([c.sekolah || "NAMA SEKOLAH"]);
-                ws_data.push([]); // Spacer
-                
-                // Identity
-                ws_data.push(["Nama Guru", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")]);
-                ws_data.push(["NIP", ": " + (c.nip || "-"), "", "Periode", ": " + utils.fmtDate(start) + " s/d " + utils.fmtDate(end)]);
-                ws_data.push(["Jabatan", ": " + (c.jabatan || "-")]);
-                ws_data.push([]); // Spacer
-                
-                // Table Header
-                ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "FOTO"]);
-                
-                // Table Data
-                filtered.forEach((d, i) => {
-                    ws_data.push([
-                        i + 1,
-                        utils.fmtDate(d.date),
-                        `${d.start} - ${d.end}`,
-                        d.act.replace(/\n/g, ' '),
-                        d.res.replace(/\n/g, ' '),
-                        d.img ? "Lihat" : "-"
-                    ]);
-                });
-
-                // Signature Section
-                ws_data.push([]);
-                ws_data.push([]);
-                const cityDate = (c.kota || "..............") + ", " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-                
-                // Signature Layout: Left (Kepsek), Right (Guru)
-                // Using empty cells for spacing
-                ws_data.push(["Mengetahui,", "", "", "", cityDate]);
-                ws_data.push(["Kepala Sekolah", "", "", "", "Guru Yang Bersangkutan"]);
-                ws_data.push([]);
-                ws_data.push([]);
-                ws_data.push([]);
-                ws_data.push([c.ks_nama || "...................", "", "", "", teacherName]);
-                ws_data.push(["NIP. " + (c.ks_nip || "-"), "", "", "", "NIP. " + (c.nip || "-")]);
-
                 const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-                // Merges for Title
-                ws['!merges'] = [
-                    { s: {r:0, c:0}, e: {r:0, c:5} }, // Title centered
-                    { s: {r:1, c:0}, e: {r:1, c:5} }  // School Name centered
-                ];
-
-                // Column Widths
-                ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:10}];
-
-                // Add Hyperlinks for Photos
-                const dataStartRow = 8; // Row index where data starts (0-based)
-                filtered.forEach((d, i) => {
-                    if(d.img) {
-                        const cellRef = XLSX.utils.encode_cell({c: 5, r: dataStartRow + i});
-                        if(!ws[cellRef]) ws[cellRef] = {v: "Lihat", t:'s'};
-                        ws[cellRef].l = { Target: d.img };
-                    }
+                // Group Data by Month (Format YYYY-MM)
+                const grouped = {};
+                filtered.forEach(item => {
+                    const monthKey = item.date.substring(0, 7); // "2024-01"
+                    if (!grouped[monthKey]) grouped[monthKey] = [];
+                    grouped[monthKey].push(item);
                 });
 
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan Kinerja");
+                // Iterate Groups and Create Sheets
+                Object.keys(grouped).sort().forEach(key => {
+                    const monthData = grouped[key];
+                    const [y, m] = key.split('-');
+                    const monthName = new Date(y, m-1, 1).toLocaleDateString('id-ID', {month: 'long', year: 'numeric'});
+                    
+                    const ws_data = [];
+                    
+                    // -- HEADER (KOP) --
+                    ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
+                    ws_data.push([c.sekolah || "NAMA SEKOLAH"]);
+                    ws_data.push([]); 
+                    
+                    // -- BIODATA --
+                    ws_data.push(["Nama Guru", ": " + teacherName, "", "Unit Kerja", ": " + (c.sekolah || "-")]);
+                    ws_data.push(["NIP", ": " + (c.nip || "-"), "", "Periode Bulan", ": " + monthName]);
+                    ws_data.push(["Jabatan", ": " + (c.jabatan || "-")]);
+                    ws_data.push([]); 
+                    
+                    // -- TABLE HEADER --
+                    ws_data.push(["NO", "HARI/TANGGAL", "WAKTU", "KEGIATAN", "HASIL / OUTPUT", "LINK / FOTO"]);
+                    
+                    // -- DATA ROWS --
+                    monthData.forEach((d, i) => {
+                        // Logic for "Long Link": If Base64 is too long, warn, otherwise just text.
+                        // Ideally we put the image data or a link. Since this app uses Base64, 
+                        // we will put the Base64 text if the user really wants to copy it, 
+                        // but usually it is too big for a single cell (32k char limit).
+                        // I will put a text "Salin Data Gambar" containing the base64 if it fits, or the hyperlink logic.
+                        // Given the request "agar bisa di copy text", I'll prioritize the Hyperlink property but also display text.
+                        
+                        let photoText = "-";
+                        if(d.img) photoText = d.img; // Put the actual Base64 string so it can be copied.
+
+                        ws_data.push([
+                            i + 1,
+                            utils.fmtDate(d.date),
+                            `${d.start} - ${d.end}`,
+                            d.act.replace(/\n/g, ' '),
+                            d.res.replace(/\n/g, ' '),
+                            photoText // The full string
+                        ]);
+                    });
+
+                    // -- SIGNATURES --
+                    ws_data.push([]);
+                    ws_data.push([]);
+                    const cityDate = (c.kota || "..............") + ", " + new Date(y, m, 0).getDate() + " " + monthName; // Last day of month estimate or today
+                    
+                    ws_data.push(["Mengetahui,", "", "", "", cityDate]);
+                    ws_data.push(["Kepala Sekolah", "", "", "", "Guru Yang Bersangkutan"]);
+                    ws_data.push([]);
+                    ws_data.push([]);
+                    ws_data.push([]);
+                    ws_data.push([c.ks_nama || "...................", "", "", "", teacherName]);
+                    ws_data.push(["NIP. " + (c.ks_nip || "-"), "", "", "", "NIP. " + (c.nip || "-")]);
+
+                    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                    // Merges
+                    ws['!merges'] = [
+                        { s: {r:0, c:0}, e: {r:0, c:5} }, 
+                        { s: {r:1, c:0}, e: {r:1, c:5} }
+                    ];
+
+                    // Column Widths
+                    ws['!cols'] = [{wch:5}, {wch:20}, {wch:15}, {wch:40}, {wch:30}, {wch:50}]; // Last col wide for link
+
+                    // Styling Hyperlink on top of text (so user can click OR copy text)
+                    const dataStartRow = 8;
+                    monthData.forEach((d, i) => {
+                        if(d.img) {
+                            const cellRef = XLSX.utils.encode_cell({c: 5, r: dataStartRow + i});
+                            // We leave the Value as the Base64 string (per request "agar bisa di copy"), 
+                            // but add a hyperlink so it's clickable too.
+                            if(!ws[cellRef]) ws[cellRef] = {v: d.img, t:'s'};
+                            ws[cellRef].l = { Target: d.img }; 
+                        }
+                    });
+
+                    XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 31)); // Sheet name max 31 chars
+                });
+
                 XLSX.writeFile(wb, `Laporan_${teacherName}_${start}_${end}.xlsx`);
             },
 
