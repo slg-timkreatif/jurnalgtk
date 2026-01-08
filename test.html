@@ -76,7 +76,8 @@
         @media print {
             @page { size: A4 landscape; margin: 10mm; }
             body { background: white; height: auto; overflow: visible; font-family: 'Times New Roman', serif; color: black; }
-            #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
+            /* Added header to display: none */
+            header, #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
             #main-layout { display: block; height: auto; overflow: visible; }
             #main-container { overflow: visible; height: auto; padding: 0; margin: 0; }
             #view-home, #view-calendar, #view-profile { display: none !important; }
@@ -1250,12 +1251,12 @@
 
                         if(d.img) {
                              if (d.img.startsWith('http')) {
-                                linkObj = { v: "Lihat Foto", t: "s", s: centerCellStyle, l: { Target: d.img } };
+                                linkObj = { v: d.img, t: "s", s: centerCellStyle, l: { Target: d.img } };
                              } else {
-                                linkObj = { v: "Foto Lokal", t: "s", s: centerCellStyle };
+                                linkObj = { v: "Foto Lokal (Base64)", t: "s", s: centerCellStyle };
                              }
                         } else if(defaultDriveLink) {
-                            linkObj = { v: "Folder Drive", t: "s", s: centerCellStyle, l: { Target: defaultDriveLink } };
+                            linkObj = { v: defaultDriveLink, t: "s", s: centerCellStyle, l: { Target: defaultDriveLink } };
                         }
 
                         tableRows.push([
@@ -1341,10 +1342,10 @@
                         if(item.img.startsWith('data:')) {
                             imgHtml = `<img src="${item.img}" style="max-height:40px;">`;
                         } else {
-                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-[10px] break-all">Link Foto</a>`;
+                            imgHtml = `<a href="${item.img}" target="_blank" class="text-black no-underline text-[10px] break-all">${item.img}</a>`;
                         }
                     } else if (defaultDriveLink) {
-                         imgHtml = `<a href="${defaultDriveLink}" target="_blank" class="text-slate-500 underline text-[10px] break-all">Folder Foto</a>`;
+                         imgHtml = `<a href="${defaultDriveLink}" target="_blank" class="text-black no-underline text-[10px] break-all">${defaultDriveLink}</a>`;
                     }
 
                     tr.innerHTML = `
