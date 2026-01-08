@@ -1190,7 +1190,8 @@
             exportExcel: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
-                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse();
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end)
+                    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 
                 if(filtered.length === 0) return utils.toast('Tidak ada data', 'error');
                 
@@ -1306,7 +1307,9 @@
                 const end = document.getElementById('print-end-date').value;
                 if(!start || !end) return utils.toast('Pilih tanggal awal dan akhir', 'error');
 
-                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse(); 
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end)
+                    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+                
                 if(filtered.length === 0) return utils.toast('Tidak ada data pada periode ini', 'error');
 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
