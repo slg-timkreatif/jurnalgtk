@@ -64,11 +64,20 @@
         /* Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
 
+        /* Text Truncate Multi-line */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
         /* PRINT STYLES - A4 LANDSCAPE OFFICIAL */
         @media print {
             @page { size: A4 landscape; margin: 10mm; }
             body { background: white; height: auto; overflow: visible; font-family: 'Times New Roman', serif; color: black; }
-            #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
+            /* Added header to display: none */
+            header, #sidebar, #bottom-nav, #fab-add, #header-actions, #form-modal, #toast-container, .no-print { display: none !important; }
             #main-layout { display: block; height: auto; overflow: visible; }
             #main-container { overflow: visible; height: auto; padding: 0; margin: 0; }
             #view-home, #view-calendar, #view-profile { display: none !important; }
@@ -460,7 +469,7 @@
                         <i data-lucide="camera" class="w-5 h-5"></i>
                         <span class="text-sm font-medium">Ambil Foto / Galeri</span>
                     </button>
-                    <p class="text-[10px] text-slate-400 mt-2 text-center">Foto otomatis dikompres (<150KB) untuk hemat Drive.</p>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">Opsional. Jika kosong, laporan akan menggunakan link folder Drive Anda.</p>
                 </div>
                 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -517,14 +526,15 @@
                 setTimeout(() => el.remove(), 3000);
             },
             fmtDate: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'short', day:'numeric', month:'short'}),
-            fmtDateFull: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
+            fmtDateFull: (d) => new Date(d).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'}),
+            truncate: (str, n) => (str.length > n) ? str.substr(0, n-1) + '...' : str
         };
 
         const app = {
             token: null,
             user: null,
             dbId: null,
-            folderId: null, // Store folder ID
+            folderId: null, 
             data: [],
             calDate: new Date(),
             suggestions: [],
@@ -591,7 +601,6 @@
                 this.loadApp();
             },
 
-            // --- AUTO REFRESH MIDDLEWARE ---
             refreshToken: function() {
                 return new Promise((resolve) => {
                     const originalCallback = this.tokenClient.callback;
@@ -607,7 +616,6 @@
                             resolve(true);
                         }
                     };
-                    // Prompt empty means try silent login
                     this.tokenClient.requestAccessToken({prompt: ''});
                 });
             },
@@ -618,8 +626,6 @@
                 
                 try {
                     let res = await fetch(url, options);
-                    
-                    // IF TOKEN EXPIRED (401), RETRY ONCE
                     if (res.status === 401) {
                         utils.toast("Memperbarui sesi...", "success");
                         const refreshed = await this.refreshToken();
@@ -656,7 +662,6 @@
                 } catch (e) {
                     console.error("Load Error:", e);
                     if (e.status === 401) {
-                        // Real logout if retry failed
                         utils.toast("Sesi habis, login ulang...", 'error');
                         localStorage.removeItem('jg_token');
                         localStorage.removeItem('jg_db_id'); 
@@ -682,7 +687,6 @@
             },
 
             setupDB: async function() {
-                // 1. Setup Spreadsheet
                 let id = localStorage.getItem('jg_db_id');
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
@@ -709,10 +713,8 @@
                     });
                 }
                 
-                // 2. Ensure Config Sheet Exists
                 try {
                     const meta = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`).then(r => r.json());
-                    
                     if(!meta.sheets.some(s => s.properties.title === 'Config')) {
                          await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
                             method: 'POST',
@@ -733,10 +735,8 @@
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
 
-                // 3. Setup Photos Folder (NEW)
                 let fId = localStorage.getItem('jg_folder_id');
                 if (!fId) {
-                    // Search for folder created by this app
                     const qFolder = `mimeType='application/vnd.google-apps.folder' and name='${CONFIG.FOLDER_NAME}' and trashed=false`;
                     const resF = await this.request(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(qFolder)}`);
                     const jsonF = await resF.json();
@@ -744,7 +744,6 @@
                     if (jsonF.files && jsonF.files.length > 0) {
                         fId = jsonF.files[0].id;
                     } else {
-                        // Create Folder
                         const resCreateF = await this.request('https://www.googleapis.com/drive/v3/files', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -786,6 +785,7 @@
                 })).filter(x => x.date && x.act).sort((a,b) => new Date(b.date) - new Date(a.date));
             },
 
+            // --- REDESIGNED RENDER LIST (CLEANER, NO THUMBNAILS) ---
             renderList: function(list, containerId = 'journal-list') {
                 const con = document.getElementById(containerId);
                 con.innerHTML = '';
@@ -800,38 +800,38 @@
                     const el = document.createElement('div');
                     const safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
                     
-                    let thumbHtml = '';
+                    // Attach Icon Indicator
+                    let attachIcon = '';
                     if (item.img) {
-                        let src = item.img;
-                        if(src.includes('drive.google.com') && src.includes('/d/')) {
-                            const match = src.match(/\/d\/(.+?)\//);
-                            if(match && match[1]) {
-                                src = `https://lh3.googleusercontent.com/d/${match[1]}=s220`; 
-                                thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${src}')"></div>`;
-                            } else {
-                                thumbHtml = `<div class="w-16 h-16 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-500"><i data-lucide="image" class="w-6 h-6"></i></div>`;
-                            }
-                        } else if(src.startsWith('data:image')) {
-                             thumbHtml = `<div class="w-16 h-16 rounded-lg bg-slate-100 bg-cover bg-center border border-slate-200 shrink-0" style="background-image: url('${src}')"></div>`;
-                        }
+                        attachIcon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold border border-blue-100"><i data-lucide="image" class="w-3 h-3"></i> FOTO</span>`;
+                    } else {
+                         attachIcon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-medium"><i data-lucide="link" class="w-3 h-3"></i> FOLDER</span>`;
                     }
 
                     el.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 transition hover:shadow-md group relative';
                     el.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-12 cursor-pointer" onclick="app.openForm(${safeItem})">
+                        <!-- Date Box -->
+                        <div class="flex flex-col items-center justify-center text-slate-500 shrink-0 w-14 h-14 bg-slate-50 rounded-lg border border-slate-100 cursor-pointer" onclick="app.openForm(${safeItem})">
                             <span class="text-xl font-bold leading-none text-slate-800">${d.getDate()}</span>
-                            <span class="text-[10px] font-bold uppercase">${d.toLocaleDateString('id',{month:'short'})}</span>
+                            <span class="text-[10px] font-bold uppercase mt-1">${d.toLocaleDateString('id',{month:'short'})}</span>
                         </div>
-                        <div class="flex-1 overflow-hidden min-w-0 cursor-pointer" onclick="app.openForm(${safeItem})">
-                            <h4 class="font-bold text-sm text-slate-800 truncate mb-1">${item.act}</h4>
-                            <div class="flex items-center gap-3 text-xs text-slate-500">
-                                <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}</span>
+                        
+                        <!-- Content -->
+                        <div class="flex-1 overflow-hidden min-w-0 cursor-pointer flex flex-col justify-center" onclick="app.openForm(${safeItem})">
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="font-bold text-sm text-slate-800 truncate leading-snug">${item.act}</h4>
+                                <div class="shrink-0">${attachIcon}</div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">${item.res || 'Tidak ada hasil tertulis.'}</p>
+                            <div class="flex items-center gap-3 text-[10px] text-slate-400 mt-2 font-medium">
+                                <span class="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded"><i data-lucide="clock" class="w-3 h-3"></i> ${item.start} - ${item.end}</span>
                             </div>
                         </div>
-                        ${thumbHtml}
-                        <div class="flex flex-col gap-2 justify-center ml-2 border-l border-slate-100 pl-3">
-                            <button onclick="app.openForm(${safeItem})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button onclick="app.quickDelete(${item.idx})" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+
+                        <!-- Actions -->
+                        <div class="flex flex-col gap-1 justify-center ml-1 border-l border-slate-100 pl-3">
+                            <button onclick="app.openForm(${safeItem})" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="app.quickDelete(${item.idx})" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </div>
                     `;
                     con.appendChild(el);
@@ -839,7 +839,6 @@
                 lucide.createIcons();
             },
 
-            // --- IMAGE HANDLING & COMPRESSION ---
             handleImageSelect: function(input) {
                 if (input.files && input.files[0]) {
                     const file = input.files[0];
@@ -856,7 +855,6 @@
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
                             
-                            // Compression 0.4 for speed
                             canvas.toBlob((blob) => {
                                 this.currentFile = blob;
                             }, 'image/jpeg', 0.4);
@@ -884,7 +882,7 @@
                 const metadata = { 
                     name: 'Jurnal_' + Date.now() + '.jpg', 
                     mimeType: 'image/jpeg',
-                    parents: this.folderId ? [this.folderId] : [] // Set Parent Folder
+                    parents: this.folderId ? [this.folderId] : [] 
                 };
                 
                 const boundary = 'foo_bar_baz';
@@ -905,7 +903,6 @@
                             close_delim;
 
                         try {
-                            // 1. Upload File
                             const res = await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
                                 method: 'POST',
                                 headers: {
@@ -916,8 +913,6 @@
                             const json = await res.json();
                             if(json.error) throw json.error;
 
-                            // 2. Set Permission (BACKGROUND - DO NOT AWAIT)
-                            // Fire and forget, so the user doesn't wait for this
                             this.request(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/json'},
@@ -931,7 +926,6 @@
                 });
             },
 
-            // --- CALENDAR ---
             renderCalendar: function() {
                 const y = this.calDate.getFullYear(), m = this.calDate.getMonth();
                 document.getElementById('cal-month-year').innerText = new Date(y, m).toLocaleDateString('id', {month:'long', year:'numeric'});
@@ -962,7 +956,6 @@
                 if(daily.length === 0) document.getElementById('cal-journal-list').innerHTML = `<p class="text-center text-sm text-slate-400 py-4 italic">Tidak ada kegiatan</p>`;
             },
 
-            // --- FORM & SAVING ---
             openForm: function(data=null) {
                 const m = document.getElementById('form-modal');
                 const c = document.getElementById('form-content');
@@ -1013,11 +1006,10 @@
                 const c = document.getElementById('form-content');
                 if (window.innerWidth >= 768) { c.classList.add('md:opacity-0', 'md:scale-95'); } 
                 else { c.classList.add('translate-y-full'); }
-                setTimeout(()=> m.classList.add('hidden'), 100); // Faster close animation
+                setTimeout(()=> m.classList.add('hidden'), 100); 
             },
 
             saveJournal: function() {
-                // 1. Setup & Validation
                 if (!this.dbId) {
                     this.setupDB().then(() => this.saveJournal());
                     return;
@@ -1033,23 +1025,18 @@
                 
                 if(!dateVal || !actVal) return utils.toast('Lengkapi data!', 'error');
 
-                // 2. CAPTURE STATE (Snapshot saat tombol ditekan)
                 const fileToUpload = this.currentFile;
                 const isEdit = !!this.currentEditIdx;
                 const editRowIdx = this.currentEditIdx;
                 
-                // Determine image for immediate display (Local Preview or Existing)
                 let displayImg = existingImg;
                 if(fileToUpload) {
                     displayImg = document.getElementById('img-preview').src;
                 }
 
-                // 3. INSTANT UI UPDATE (Optimistic)
-                // Tutup form langsung tanpa menunggu
                 this.closeForm(); 
                 utils.toast('Menyimpan di latar belakang...', 'success');
 
-                // Hitung index baris
                 const nextIdx = this.data.length > 0 ? Math.max(...this.data.map(d => d.idx)) + 1 : 2;
                 const localRowIdx = isEdit ? editRowIdx : nextIdx;
 
@@ -1058,7 +1045,6 @@
                     img: displayImg, idx: localRowIdx
                 };
 
-                // Update Array Lokal
                 if(isEdit) {
                     const index = this.data.findIndex(x => x.id === id);
                     if (index !== -1) this.data[index] = newItem;
@@ -1066,14 +1052,11 @@
                     this.data.push(newItem);
                 }
 
-                // Render Ulang List
                 this.data.sort((a,b) => new Date(b.date) - new Date(a.date));
                 this.renderList(this.data);
                 this.updateStats();
                 if(this.calSelectedDate === dateVal) this.selectCalDate(dateVal);
 
-                // 4. RUN BACKGROUND PROCESS (Upload & Sync)
-                // Proses ini berjalan sendiri di background
                 this.runBackgroundSync({
                     id, date: dateVal, start: startVal, end: endVal, act: actVal, res: resVal,
                     file: fileToUpload,
@@ -1086,44 +1069,36 @@
             runBackgroundSync: async function(p) {
                 try {
                     let finalImg = p.existingImg;
-
-                    // A. Upload Foto (Jika ada file baru)
                     if(p.file) {
                         try {
                             finalImg = await this.uploadToDrive(p.file);
                         } catch(err) {
                             console.error("Upload Error", err);
                             utils.toast('Gagal upload foto, data teks tersimpan.', 'error');
-                            finalImg = ''; // Kosongkan jika gagal upload
+                            finalImg = ''; 
                         }
                     }
 
-                    // B. Simpan ke Google Sheets
                     const row = [p.id, p.date, p.start, p.end, p.act, p.res, finalImg];
                     const rangeEnd = 'G';
                     
                     if(p.isEdit) {
-                        // Update Baris Lama
                         const range = `Sheet1!A${p.rowIdx}:${rangeEnd}${p.rowIdx}`;
                         await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     } else {
-                        // Append Baris Baru
                         await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     }
 
-                    // C. Update URL Foto di Data Lokal (agar jika direfresh valid)
                     if(p.file && finalImg) {
                         const item = this.data.find(x => x.id === p.id);
                         if(item) item.img = finalImg;
                     }
-                    
-                    // console.log("Background sync complete");
 
                 } catch(e) {
                     console.error("Sync Error", e);
@@ -1153,7 +1128,6 @@
                 } catch(e) { utils.toast('Gagal hapus', 'error'); }
             },
 
-            // --- PROFILE SYNC ---
             fetchProfileConfig: async function() {
                 if(!this.dbId) return;
                 try {
@@ -1163,7 +1137,7 @@
                         const v = res.values[0];
                         const c = { nama_guru: v[0], nip: v[1], jabatan: v[2], sekolah: v[3], ks_nama: v[4], ks_nip: v[5], kota: v[6] };
                         localStorage.setItem('jg_profile_config', JSON.stringify(c));
-                        this.loadProfileConfig(); // Refresh UI
+                        this.loadProfileConfig();
                     }
                 } catch(e) { console.warn("Fetch Config Error", e); }
             },
@@ -1213,23 +1187,26 @@
                 btn.innerText = origText; btn.disabled = false;
             },
 
-            // --- EXPORT EXCEL OFFICIAL (STYLIZED) ---
             exportExcel: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
-                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse();
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end)
+                    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
 
                 if(filtered.length === 0) return utils.toast('Tidak ada data', 'error');
                 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
+                const folderId = localStorage.getItem('jg_folder_id');
+                const defaultDriveLink = folderId ? `https://drive.google.com/drive/folders/${folderId}` : '';
+
                 const wb = XLSX.utils.book_new();
 
                 const headerStyle = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center", vertical: "center" } };
                 const subHeaderStyle = { font: { bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" } };
                 const tableHeaderStyle = { 
                     font: { bold: true }, 
-                    fill: { fgColor: { rgb: "E5E7EB" } }, // Gray background
+                    fill: { fgColor: { rgb: "E5E7EB" } },
                     alignment: { horizontal: "center", vertical: "center", wrapText: true },
                     border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} }
                 };
@@ -1271,15 +1248,16 @@
 
                     const tableRows = [];
                     monthData.forEach((d, i) => {
-                        let linkVal = "-";
                         let linkObj = { v: "-", t: "s", s: centerCellStyle };
 
                         if(d.img) {
                              if (d.img.startsWith('http')) {
                                 linkObj = { v: d.img, t: "s", s: centerCellStyle, l: { Target: d.img } };
                              } else {
-                                linkObj = { v: "Base64 Img", t: "s", s: centerCellStyle };
+                                linkObj = { v: "Foto Lokal (Base64)", t: "s", s: centerCellStyle };
                              }
+                        } else if(defaultDriveLink) {
+                            linkObj = { v: defaultDriveLink, t: "s", s: centerCellStyle, l: { Target: defaultDriveLink } };
                         }
 
                         tableRows.push([
@@ -1324,17 +1302,20 @@
                 XLSX.writeFile(wb, `Laporan_${teacherName}_${start}_${end}.xlsx`);
             },
 
-            // --- PRINT REPORT FEATURE ---
             printReport: function() {
                 const start = document.getElementById('print-start-date').value;
                 const end = document.getElementById('print-end-date').value;
                 if(!start || !end) return utils.toast('Pilih tanggal awal dan akhir', 'error');
 
-                const filtered = this.data.filter(x => x.date >= start && x.date <= end).reverse(); 
+                const filtered = this.data.filter(x => x.date >= start && x.date <= end)
+                    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+                
                 if(filtered.length === 0) return utils.toast('Tidak ada data pada periode ini', 'error');
 
                 const c = JSON.parse(localStorage.getItem('jg_profile_config') || '{}');
                 const teacherName = c.nama_guru || this.user?.given_name || 'Guru';
+                const folderId = localStorage.getItem('jg_folder_id');
+                const defaultDriveLink = folderId ? `https://drive.google.com/drive/folders/${folderId}` : null;
 
                 document.getElementById('print-school-name').innerText = c.sekolah || "NAMA SEKOLAH";
                 document.getElementById('print-period-text').innerText = `${utils.fmtDateFull(start)} s/d ${utils.fmtDateFull(end)}`;
@@ -1359,14 +1340,17 @@
                 filtered.forEach((item, i) => {
                     const tr = document.createElement('tr');
                     let imgHtml = '-';
+                    
                     if(item.img) {
                         if(item.img.startsWith('data:')) {
                             imgHtml = `<img src="${item.img}" style="max-height:40px;">`;
                         } else {
-                            // SHOW FULL URL LINK instead of text "Lihat Foto"
-                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-[10px] break-all">${item.img}</a>`;
+                            imgHtml = `<a href="${item.img}" target="_blank" class="text-black no-underline text-[10px] break-all">${item.img}</a>`;
                         }
+                    } else if (defaultDriveLink) {
+                         imgHtml = `<a href="${defaultDriveLink}" target="_blank" class="text-black no-underline text-[10px] break-all">${defaultDriveLink}</a>`;
                     }
+
                     tr.innerHTML = `
                         <td style="text-align:center">${i+1}</td>
                         <td>${utils.fmtDateFull(item.date)}</td>
