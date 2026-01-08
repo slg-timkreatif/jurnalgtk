@@ -75,7 +75,7 @@
             #view-print-report { display: block !important; width: 100%; }
             
             /* Official Table Styling */
-            table { width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 10px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 10px; }
             th { background-color: #e5e7eb !important; text-align: center; font-weight: bold; padding: 8px 4px; border: 1px solid black; -webkit-print-color-adjust: exact; }
             td { border: 1px solid black; padding: 6px 4px; vertical-align: top; }
             
@@ -362,7 +362,7 @@
                                 <th class="w-[12%]">Waktu</th>
                                 <th>Kegiatan</th>
                                 <th class="w-[20%]">Hasil/Output</th>
-                                <th class="w-[12%]">Dokumentasi</th>
+                                <th class="w-[23%]">Dokumentasi</th>
                             </tr>
                         </thead>
                         <tbody id="print-table-body"></tbody>
@@ -524,7 +524,7 @@
             token: null,
             user: null,
             dbId: null,
-            folderId: null, // NEW: Store upload folder ID
+            folderId: null, // Store folder ID
             data: [],
             calDate: new Date(),
             suggestions: [],
@@ -1306,8 +1306,8 @@
                         if(item.img.startsWith('data:')) {
                             imgHtml = `<img src="${item.img}" style="max-height:40px;">`;
                         } else {
-                            // SHOW TEXT LINK instead of image
-                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-xs break-all">Lihat Foto</a>`;
+                            // SHOW FULL URL LINK instead of text "Lihat Foto"
+                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-[10px] break-all">${item.img}</a>`;
                         }
                     }
                     tr.innerHTML = `
