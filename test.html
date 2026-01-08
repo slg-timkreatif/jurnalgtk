@@ -1016,109 +1016,119 @@
                 setTimeout(()=> m.classList.add('hidden'), 100); // Faster close animation
             },
 
-            saveJournal: async function() {
-                if (!this.dbId) await this.setupDB();
-                const id = document.getElementById('input-id').value || utils.id();
+            saveJournal: function() {
+                // 1. Setup & Validation
+                if (!this.dbId) {
+                    this.setupDB().then(() => this.saveJournal());
+                    return;
+                }
                 
-                // Get values directly
+                const id = document.getElementById('input-id').value || utils.id();
                 const dateVal = document.getElementById('input-date').value;
                 const actVal = document.getElementById('input-act').value;
                 const startVal = document.getElementById('input-start').value;
                 const endVal = document.getElementById('input-end').value;
                 const resVal = document.getElementById('input-res').value;
-
+                const existingImg = document.getElementById('input-img-base64').value;
+                
                 if(!dateVal || !actVal) return utils.toast('Lengkapi data!', 'error');
 
-                const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
-                btns.forEach(b => b.disabled = true);
+                // 2. CAPTURE STATE (Snapshot saat tombol ditekan)
+                const fileToUpload = this.currentFile;
+                const isEdit = !!this.currentEditIdx;
+                const editRowIdx = this.currentEditIdx;
                 
-                const spin = document.getElementById('spinner');
-                spin.classList.remove('hidden');
-                utils.toast('Memproses...', 'success');
+                // Determine image for immediate display (Local Preview or Existing)
+                let displayImg = existingImg;
+                if(fileToUpload) {
+                    displayImg = document.getElementById('img-preview').src;
+                }
 
+                // 3. INSTANT UI UPDATE (Optimistic)
+                // Tutup form langsung tanpa menunggu
+                this.closeForm(); 
+                utils.toast('Menyimpan di latar belakang...', 'success');
+
+                // Hitung index baris
+                const nextIdx = this.data.length > 0 ? Math.max(...this.data.map(d => d.idx)) + 1 : 2;
+                const localRowIdx = isEdit ? editRowIdx : nextIdx;
+
+                const newItem = {
+                    id: id, date: dateVal, start: startVal, end: endVal, act: actVal, res: resVal, 
+                    img: displayImg, idx: localRowIdx
+                };
+
+                // Update Array Lokal
+                if(isEdit) {
+                    const index = this.data.findIndex(x => x.id === id);
+                    if (index !== -1) this.data[index] = newItem;
+                } else {
+                    this.data.push(newItem);
+                }
+
+                // Render Ulang List
+                this.data.sort((a,b) => new Date(b.date) - new Date(a.date));
+                this.renderList(this.data);
+                this.updateStats();
+                if(this.calSelectedDate === dateVal) this.selectCalDate(dateVal);
+
+                // 4. RUN BACKGROUND PROCESS (Upload & Sync)
+                // Proses ini berjalan sendiri di background
+                this.runBackgroundSync({
+                    id, date: dateVal, start: startVal, end: endVal, act: actVal, res: resVal,
+                    file: fileToUpload,
+                    existingImg: existingImg,
+                    isEdit: isEdit,
+                    rowIdx: localRowIdx
+                });
+            },
+
+            runBackgroundSync: async function(p) {
                 try {
-                    let finalImg = document.getElementById('input-img-base64').value; 
-                    
-                    // 1. UPLOAD IMAGE FIRST (Blocking, but faster now)
-                    if(this.currentFile) {
-                         utils.toast('Mengupload Foto...');
-                         finalImg = await this.uploadToDrive(this.currentFile);
+                    let finalImg = p.existingImg;
+
+                    // A. Upload Foto (Jika ada file baru)
+                    if(p.file) {
+                        try {
+                            finalImg = await this.uploadToDrive(p.file);
+                        } catch(err) {
+                            console.error("Upload Error", err);
+                            utils.toast('Gagal upload foto, data teks tersimpan.', 'error');
+                            finalImg = ''; // Kosongkan jika gagal upload
+                        }
                     }
 
-                    // 2. OPTIMISTIC UI UPDATE (Instantaneous)
-                    // Close form and update list immediately after upload, before syncing to sheets
-                    this.closeForm();
+                    // B. Simpan ke Google Sheets
+                    const row = [p.id, p.date, p.start, p.end, p.act, p.res, finalImg];
+                    const rangeEnd = 'G';
                     
-                    const nextIdx = this.data.length > 0 ? Math.max(...this.data.map(d => d.idx)) + 1 : 2;
-                    const rowIdx = this.currentEditIdx ? this.currentEditIdx : nextIdx;
-
-                    const newItem = {
-                        id: id, 
-                        date: dateVal, 
-                        start: startVal, 
-                        end: endVal, 
-                        act: actVal, 
-                        res: resVal, 
-                        img: finalImg,
-                        idx: rowIdx
-                    };
-
-                    if(this.currentEditIdx) {
-                        const index = this.data.findIndex(x => x.id === id);
-                        if (index !== -1) this.data[index] = newItem;
-                    } else {
-                        this.data.push(newItem);
-                    }
-
-                    // Render UI immediately
-                    this.data.sort((a,b) => new Date(b.date) - new Date(a.date));
-                    this.renderList(this.data);
-                    this.updateStats();
-                    this.renderCalendar();
-                    if(this.calSelectedDate === dateVal) {
-                        this.selectCalDate(dateVal);
-                    }
-
-                    // 3. BACKGROUND SYNC TO SHEETS (Non-blocking)
-                    utils.toast('Menyimpan ke Cloud...');
-                    
-                    const row = [id, dateVal, startVal, endVal, actVal, resVal, finalImg];
-                    const rangeEnd = 'G'; 
-                    
-                    let sheetPromise;
-                    if(this.currentEditIdx) {
-                        const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
-                        sheetPromise = this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                    if(p.isEdit) {
+                        // Update Baris Lama
+                        const range = `Sheet1!A${p.rowIdx}:${rangeEnd}${p.rowIdx}`;
+                        await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     } else {
-                        sheetPromise = this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
+                        // Append Baris Baru
+                        await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
                         });
                     }
 
-                    // Handle success/error silently in background
-                    sheetPromise.then(() => {
-                        utils.toast('Tersimpan di Cloud!');
-                    }).catch(err => {
-                        console.error('Background sync failed', err);
-                        utils.toast('Gagal sinkronisasi ke Cloud (Data Lokal Aman)', 'error');
-                    });
+                    // C. Update URL Foto di Data Lokal (agar jika direfresh valid)
+                    if(p.file && finalImg) {
+                        const item = this.data.find(x => x.id === p.id);
+                        if(item) item.img = finalImg;
+                    }
+                    
+                    // console.log("Background sync complete");
 
-                } catch(e) { 
-                    console.error(e);
-                    utils.toast('Gagal: ' + (e.message || 'Error'), 'error'); 
-                    // If image upload failed, we stay on form
-                    spin.classList.add('hidden');
-                    btns.forEach(b => b.disabled = false);
-                    return; 
+                } catch(e) {
+                    console.error("Sync Error", e);
+                    utils.toast('Gagal sinkronisasi ke Cloud. Cek internet.', 'error');
                 }
-                
-                // Cleanup UI state
-                btns.forEach(b => b.disabled = false);
-                spin.classList.add('hidden');
             },
 
             confirmDelete: async function() {
