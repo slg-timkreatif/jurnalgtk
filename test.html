@@ -856,11 +856,12 @@
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
                             
+                            // Compression 0.4 for speed
                             canvas.toBlob((blob) => {
                                 this.currentFile = blob;
-                            }, 'image/jpeg', 0.5);
+                            }, 'image/jpeg', 0.4);
 
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
                         };
@@ -878,7 +879,6 @@
             },
 
             uploadToDrive: async function(blobFile) {
-                // Ensure folder ID is loaded
                 if(!this.folderId) this.folderId = localStorage.getItem('jg_folder_id');
 
                 const metadata = { 
@@ -916,16 +916,13 @@
                             const json = await res.json();
                             if(json.error) throw json.error;
 
-                            // 2. Set Permission: Anyone with link can view (Reader)
-                            try {
-                                await this.request(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({ role: 'reader', type: 'anyone' })
-                                });
-                            } catch (permErr) {
-                                console.warn("Gagal set public permission:", permErr);
-                            }
+                            // 2. Set Permission (BACKGROUND - DO NOT AWAIT)
+                            // Fire and forget, so the user doesn't wait for this
+                            this.request(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ role: 'reader', type: 'anyone' })
+                            }).catch(err => console.warn("Permission setting bg error", err));
 
                             resolve(json.webViewLink);
                         } catch(err) { reject(err); }
@@ -1022,54 +1019,104 @@
             saveJournal: async function() {
                 if (!this.dbId) await this.setupDB();
                 const id = document.getElementById('input-id').value || utils.id();
-                if(!document.getElementById('input-date').value || !document.getElementById('input-act').value) 
-                    return utils.toast('Lengkapi data!', 'error');
+                
+                // Get values directly
+                const dateVal = document.getElementById('input-date').value;
+                const actVal = document.getElementById('input-act').value;
+                const startVal = document.getElementById('input-start').value;
+                const endVal = document.getElementById('input-end').value;
+                const resVal = document.getElementById('input-res').value;
+
+                if(!dateVal || !actVal) return utils.toast('Lengkapi data!', 'error');
 
                 const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
                 btns.forEach(b => b.disabled = true);
                 
                 const spin = document.getElementById('spinner');
                 spin.classList.remove('hidden');
-                utils.toast('Menyimpan data...', 'success');
-                this.closeForm(); 
+                utils.toast('Memproses...', 'success');
 
                 try {
                     let finalImg = document.getElementById('input-img-base64').value; 
                     
+                    // 1. UPLOAD IMAGE FIRST (Blocking, but faster now)
                     if(this.currentFile) {
+                         utils.toast('Mengupload Foto...');
                          finalImg = await this.uploadToDrive(this.currentFile);
                     }
 
-                    const row = [
-                        id,
-                        document.getElementById('input-date').value,
-                        document.getElementById('input-start').value,
-                        document.getElementById('input-end').value,
-                        document.getElementById('input-act').value,
-                        document.getElementById('input-res').value,
-                        finalImg
-                    ];
+                    // 2. OPTIMISTIC UI UPDATE (Instantaneous)
+                    // Close form and update list immediately after upload, before syncing to sheets
+                    this.closeForm();
+                    
+                    const nextIdx = this.data.length > 0 ? Math.max(...this.data.map(d => d.idx)) + 1 : 2;
+                    const rowIdx = this.currentEditIdx ? this.currentEditIdx : nextIdx;
 
+                    const newItem = {
+                        id: id, 
+                        date: dateVal, 
+                        start: startVal, 
+                        end: endVal, 
+                        act: actVal, 
+                        res: resVal, 
+                        img: finalImg,
+                        idx: rowIdx
+                    };
+
+                    if(this.currentEditIdx) {
+                        const index = this.data.findIndex(x => x.id === id);
+                        if (index !== -1) this.data[index] = newItem;
+                    } else {
+                        this.data.push(newItem);
+                    }
+
+                    // Render UI immediately
+                    this.data.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    this.renderList(this.data);
+                    this.updateStats();
+                    this.renderCalendar();
+                    if(this.calSelectedDate === dateVal) {
+                        this.selectCalDate(dateVal);
+                    }
+
+                    // 3. BACKGROUND SYNC TO SHEETS (Non-blocking)
+                    utils.toast('Menyimpan ke Cloud...');
+                    
+                    const row = [id, dateVal, startVal, endVal, actVal, resVal, finalImg];
                     const rangeEnd = 'G'; 
-                    let res;
+                    
+                    let sheetPromise;
                     if(this.currentEditIdx) {
                         const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
-                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                        sheetPromise = this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        }).then(r => r.json());
+                        });
                     } else {
-                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
+                        sheetPromise = this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        }).then(r => r.json());
+                        });
                     }
-                    if(res.error) throw res.error;
-                    this.fetchData();
-                    utils.toast('Data Tersimpan di Cloud');
+
+                    // Handle success/error silently in background
+                    sheetPromise.then(() => {
+                        utils.toast('Tersimpan di Cloud!');
+                    }).catch(err => {
+                        console.error('Background sync failed', err);
+                        utils.toast('Gagal sinkronisasi ke Cloud (Data Lokal Aman)', 'error');
+                    });
+
                 } catch(e) { 
-                    utils.toast('Gagal menyimpan: ' + (e.message || 'Error'), 'error'); 
+                    console.error(e);
+                    utils.toast('Gagal: ' + (e.message || 'Error'), 'error'); 
+                    // If image upload failed, we stay on form
+                    spin.classList.add('hidden');
+                    btns.forEach(b => b.disabled = false);
+                    return; 
                 }
+                
+                // Cleanup UI state
                 btns.forEach(b => b.disabled = false);
                 spin.classList.add('hidden');
             },
