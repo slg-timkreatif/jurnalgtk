@@ -75,7 +75,7 @@
             #view-print-report { display: block !important; width: 100%; }
             
             /* Official Table Styling */
-            table { width: 100%; border-collapse: collapse; font-size: 11pt; margin-top: 10px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 10px; }
             th { background-color: #e5e7eb !important; text-align: center; font-weight: bold; padding: 8px 4px; border: 1px solid black; -webkit-print-color-adjust: exact; }
             td { border: 1px solid black; padding: 6px 4px; vertical-align: top; }
             
@@ -362,7 +362,7 @@
                                 <th class="w-[12%]">Waktu</th>
                                 <th>Kegiatan</th>
                                 <th class="w-[20%]">Hasil/Output</th>
-                                <th class="w-[12%]">Dokumentasi</th>
+                                <th class="w-[23%]">Dokumentasi</th>
                             </tr>
                         </thead>
                         <tbody id="print-table-body"></tbody>
@@ -500,6 +500,7 @@
         const CONFIG = {
             CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com',
             DB_NAME: 'JurnalGuru_Database_v2',
+            FOLDER_NAME: 'Jurnal Guru Photos',
             SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
             REF_SHEET: '1CD63O0L8jaJnXZBCFrX4eT83uHngs7LOy9jOgr3Nta8'
         };
@@ -523,6 +524,7 @@
             token: null,
             user: null,
             dbId: null,
+            folderId: null, // Store folder ID
             data: [],
             calDate: new Date(),
             suggestions: [],
@@ -680,6 +682,7 @@
             },
 
             setupDB: async function() {
+                // 1. Setup Spreadsheet
                 let id = localStorage.getItem('jg_db_id');
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
@@ -706,6 +709,7 @@
                     });
                 }
                 
+                // 2. Ensure Config Sheet Exists
                 try {
                     const meta = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`).then(r => r.json());
                     
@@ -728,6 +732,33 @@
 
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
+
+                // 3. Setup Photos Folder (NEW)
+                let fId = localStorage.getItem('jg_folder_id');
+                if (!fId) {
+                    // Search for folder created by this app
+                    const qFolder = `mimeType='application/vnd.google-apps.folder' and name='${CONFIG.FOLDER_NAME}' and trashed=false`;
+                    const resF = await this.request(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(qFolder)}`);
+                    const jsonF = await resF.json();
+                    
+                    if (jsonF.files && jsonF.files.length > 0) {
+                        fId = jsonF.files[0].id;
+                    } else {
+                        // Create Folder
+                        const resCreateF = await this.request('https://www.googleapis.com/drive/v3/files', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                name: CONFIG.FOLDER_NAME,
+                                mimeType: 'application/vnd.google-apps.folder'
+                            })
+                        });
+                        const cF = await resCreateF.json();
+                        fId = cF.id;
+                    }
+                    localStorage.setItem('jg_folder_id', fId);
+                }
+                this.folderId = fId;
             },
 
             fetchData: async function() {
@@ -825,11 +856,12 @@
                             canvas.width = width; canvas.height = height;
                             ctx.drawImage(img, 0, 0, width, height);
                             
+                            // Compression 0.4 for speed
                             canvas.toBlob((blob) => {
                                 this.currentFile = blob;
-                            }, 'image/jpeg', 0.5);
+                            }, 'image/jpeg', 0.4);
 
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
                             document.getElementById('img-preview').src = dataUrl;
                             document.getElementById('img-preview-container').classList.remove('hidden');
                         };
@@ -847,7 +879,14 @@
             },
 
             uploadToDrive: async function(blobFile) {
-                const metadata = { name: 'Jurnal_' + Date.now() + '.jpg', mimeType: 'image/jpeg' };
+                if(!this.folderId) this.folderId = localStorage.getItem('jg_folder_id');
+
+                const metadata = { 
+                    name: 'Jurnal_' + Date.now() + '.jpg', 
+                    mimeType: 'image/jpeg',
+                    parents: this.folderId ? [this.folderId] : [] // Set Parent Folder
+                };
+                
                 const boundary = 'foo_bar_baz';
                 const delimiter = "\r\n--" + boundary + "\r\n";
                 const close_delim = "\r\n--" + boundary + "--";
@@ -866,6 +905,7 @@
                             close_delim;
 
                         try {
+                            // 1. Upload File
                             const res = await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
                                 method: 'POST',
                                 headers: {
@@ -874,8 +914,17 @@
                                 body: body
                             });
                             const json = await res.json();
-                            if(json.error) reject(json.error);
-                            else resolve(json.webViewLink);
+                            if(json.error) throw json.error;
+
+                            // 2. Set Permission (BACKGROUND - DO NOT AWAIT)
+                            // Fire and forget, so the user doesn't wait for this
+                            this.request(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ role: 'reader', type: 'anyone' })
+                            }).catch(err => console.warn("Permission setting bg error", err));
+
+                            resolve(json.webViewLink);
                         } catch(err) { reject(err); }
                     }
                     reader.readAsDataURL(blobFile);
@@ -967,59 +1016,119 @@
                 setTimeout(()=> m.classList.add('hidden'), 100); // Faster close animation
             },
 
-            saveJournal: async function() {
-                if (!this.dbId) await this.setupDB();
-                const id = document.getElementById('input-id').value || utils.id();
-                if(!document.getElementById('input-date').value || !document.getElementById('input-act').value) 
-                    return utils.toast('Lengkapi data!', 'error');
-
-                const btns = document.querySelectorAll('button[onclick="app.saveJournal()"]');
-                btns.forEach(b => b.disabled = true);
+            saveJournal: function() {
+                // 1. Setup & Validation
+                if (!this.dbId) {
+                    this.setupDB().then(() => this.saveJournal());
+                    return;
+                }
                 
-                const spin = document.getElementById('spinner');
-                spin.classList.remove('hidden');
-                utils.toast('Menyimpan data...', 'success');
-                this.closeForm(); 
+                const id = document.getElementById('input-id').value || utils.id();
+                const dateVal = document.getElementById('input-date').value;
+                const actVal = document.getElementById('input-act').value;
+                const startVal = document.getElementById('input-start').value;
+                const endVal = document.getElementById('input-end').value;
+                const resVal = document.getElementById('input-res').value;
+                const existingImg = document.getElementById('input-img-base64').value;
+                
+                if(!dateVal || !actVal) return utils.toast('Lengkapi data!', 'error');
 
+                // 2. CAPTURE STATE (Snapshot saat tombol ditekan)
+                const fileToUpload = this.currentFile;
+                const isEdit = !!this.currentEditIdx;
+                const editRowIdx = this.currentEditIdx;
+                
+                // Determine image for immediate display (Local Preview or Existing)
+                let displayImg = existingImg;
+                if(fileToUpload) {
+                    displayImg = document.getElementById('img-preview').src;
+                }
+
+                // 3. INSTANT UI UPDATE (Optimistic)
+                // Tutup form langsung tanpa menunggu
+                this.closeForm(); 
+                utils.toast('Menyimpan di latar belakang...', 'success');
+
+                // Hitung index baris
+                const nextIdx = this.data.length > 0 ? Math.max(...this.data.map(d => d.idx)) + 1 : 2;
+                const localRowIdx = isEdit ? editRowIdx : nextIdx;
+
+                const newItem = {
+                    id: id, date: dateVal, start: startVal, end: endVal, act: actVal, res: resVal, 
+                    img: displayImg, idx: localRowIdx
+                };
+
+                // Update Array Lokal
+                if(isEdit) {
+                    const index = this.data.findIndex(x => x.id === id);
+                    if (index !== -1) this.data[index] = newItem;
+                } else {
+                    this.data.push(newItem);
+                }
+
+                // Render Ulang List
+                this.data.sort((a,b) => new Date(b.date) - new Date(a.date));
+                this.renderList(this.data);
+                this.updateStats();
+                if(this.calSelectedDate === dateVal) this.selectCalDate(dateVal);
+
+                // 4. RUN BACKGROUND PROCESS (Upload & Sync)
+                // Proses ini berjalan sendiri di background
+                this.runBackgroundSync({
+                    id, date: dateVal, start: startVal, end: endVal, act: actVal, res: resVal,
+                    file: fileToUpload,
+                    existingImg: existingImg,
+                    isEdit: isEdit,
+                    rowIdx: localRowIdx
+                });
+            },
+
+            runBackgroundSync: async function(p) {
                 try {
-                    let finalImg = document.getElementById('input-img-base64').value; 
-                    
-                    if(this.currentFile) {
-                         finalImg = await this.uploadToDrive(this.currentFile);
+                    let finalImg = p.existingImg;
+
+                    // A. Upload Foto (Jika ada file baru)
+                    if(p.file) {
+                        try {
+                            finalImg = await this.uploadToDrive(p.file);
+                        } catch(err) {
+                            console.error("Upload Error", err);
+                            utils.toast('Gagal upload foto, data teks tersimpan.', 'error');
+                            finalImg = ''; // Kosongkan jika gagal upload
+                        }
                     }
 
-                    const row = [
-                        id,
-                        document.getElementById('input-date').value,
-                        document.getElementById('input-start').value,
-                        document.getElementById('input-end').value,
-                        document.getElementById('input-act').value,
-                        document.getElementById('input-res').value,
-                        finalImg
-                    ];
-
-                    const rangeEnd = 'G'; 
-                    let res;
-                    if(this.currentEditIdx) {
-                        const range = `Sheet1!A${this.currentEditIdx}:${rangeEnd}${this.currentEditIdx}`;
-                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
+                    // B. Simpan ke Google Sheets
+                    const row = [p.id, p.date, p.start, p.end, p.act, p.res, finalImg];
+                    const rangeEnd = 'G';
+                    
+                    if(p.isEdit) {
+                        // Update Baris Lama
+                        const range = `Sheet1!A${p.rowIdx}:${rangeEnd}${p.rowIdx}`;
+                        await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/${range}?valueInputOption=USER_ENTERED`, {
                             method: 'PUT', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        }).then(r => r.json());
+                        });
                     } else {
-                        res = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
+                        // Append Baris Baru
+                        await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${this.dbId}/values/Sheet1!A:${rangeEnd}:append?valueInputOption=USER_ENTERED`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({values: [row]})
-                        }).then(r => r.json());
+                        });
                     }
-                    if(res.error) throw res.error;
-                    this.fetchData();
-                    utils.toast('Data Tersimpan di Cloud');
-                } catch(e) { 
-                    utils.toast('Gagal menyimpan: ' + (e.message || 'Error'), 'error'); 
+
+                    // C. Update URL Foto di Data Lokal (agar jika direfresh valid)
+                    if(p.file && finalImg) {
+                        const item = this.data.find(x => x.id === p.id);
+                        if(item) item.img = finalImg;
+                    }
+                    
+                    // console.log("Background sync complete");
+
+                } catch(e) {
+                    console.error("Sync Error", e);
+                    utils.toast('Gagal sinkronisasi ke Cloud. Cek internet.', 'error');
                 }
-                btns.forEach(b => b.disabled = false);
-                spin.classList.add('hidden');
             },
 
             confirmDelete: async function() {
@@ -1254,8 +1363,8 @@
                         if(item.img.startsWith('data:')) {
                             imgHtml = `<img src="${item.img}" style="max-height:40px;">`;
                         } else {
-                            // SHOW TEXT LINK instead of image
-                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-xs break-all">Lihat Foto</a>`;
+                            // SHOW FULL URL LINK instead of text "Lihat Foto"
+                            imgHtml = `<a href="${item.img}" target="_blank" class="text-blue-600 underline text-[10px] break-all">${item.img}</a>`;
                         }
                     }
                     tr.innerHTML = `
