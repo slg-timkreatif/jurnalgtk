@@ -500,6 +500,7 @@
         const CONFIG = {
             CLIENT_ID: '283173141538-s4348vbmt8e7puomqm6lvkn94ug7oupb.apps.googleusercontent.com',
             DB_NAME: 'JurnalGuru_Database_v2',
+            FOLDER_NAME: 'Jurnal Guru Photos',
             SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
             REF_SHEET: '1CD63O0L8jaJnXZBCFrX4eT83uHngs7LOy9jOgr3Nta8'
         };
@@ -523,6 +524,7 @@
             token: null,
             user: null,
             dbId: null,
+            folderId: null, // NEW: Store upload folder ID
             data: [],
             calDate: new Date(),
             suggestions: [],
@@ -680,6 +682,7 @@
             },
 
             setupDB: async function() {
+                // 1. Setup Spreadsheet
                 let id = localStorage.getItem('jg_db_id');
                 if (!id) {
                     const q = `name='${CONFIG.DB_NAME}' and trashed=false`;
@@ -706,6 +709,7 @@
                     });
                 }
                 
+                // 2. Ensure Config Sheet Exists
                 try {
                     const meta = await this.request(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`).then(r => r.json());
                     
@@ -728,6 +732,33 @@
 
                 localStorage.setItem('jg_db_id', id);
                 this.dbId = id;
+
+                // 3. Setup Photos Folder (NEW)
+                let fId = localStorage.getItem('jg_folder_id');
+                if (!fId) {
+                    // Search for folder created by this app
+                    const qFolder = `mimeType='application/vnd.google-apps.folder' and name='${CONFIG.FOLDER_NAME}' and trashed=false`;
+                    const resF = await this.request(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(qFolder)}`);
+                    const jsonF = await resF.json();
+                    
+                    if (jsonF.files && jsonF.files.length > 0) {
+                        fId = jsonF.files[0].id;
+                    } else {
+                        // Create Folder
+                        const resCreateF = await this.request('https://www.googleapis.com/drive/v3/files', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                name: CONFIG.FOLDER_NAME,
+                                mimeType: 'application/vnd.google-apps.folder'
+                            })
+                        });
+                        const cF = await resCreateF.json();
+                        fId = cF.id;
+                    }
+                    localStorage.setItem('jg_folder_id', fId);
+                }
+                this.folderId = fId;
             },
 
             fetchData: async function() {
@@ -847,7 +878,15 @@
             },
 
             uploadToDrive: async function(blobFile) {
-                const metadata = { name: 'Jurnal_' + Date.now() + '.jpg', mimeType: 'image/jpeg' };
+                // Ensure folder ID is loaded
+                if(!this.folderId) this.folderId = localStorage.getItem('jg_folder_id');
+
+                const metadata = { 
+                    name: 'Jurnal_' + Date.now() + '.jpg', 
+                    mimeType: 'image/jpeg',
+                    parents: this.folderId ? [this.folderId] : [] // Set Parent Folder
+                };
+                
                 const boundary = 'foo_bar_baz';
                 const delimiter = "\r\n--" + boundary + "\r\n";
                 const close_delim = "\r\n--" + boundary + "--";
@@ -866,6 +905,7 @@
                             close_delim;
 
                         try {
+                            // 1. Upload File
                             const res = await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
                                 method: 'POST',
                                 headers: {
@@ -874,8 +914,20 @@
                                 body: body
                             });
                             const json = await res.json();
-                            if(json.error) reject(json.error);
-                            else resolve(json.webViewLink);
+                            if(json.error) throw json.error;
+
+                            // 2. Set Permission: Anyone with link can view (Reader)
+                            try {
+                                await this.request(`https://www.googleapis.com/drive/v3/files/${json.id}/permissions`, {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+                                });
+                            } catch (permErr) {
+                                console.warn("Gagal set public permission:", permErr);
+                            }
+
+                            resolve(json.webViewLink);
                         } catch(err) { reject(err); }
                     }
                     reader.readAsDataURL(blobFile);
