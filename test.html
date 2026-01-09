@@ -290,8 +290,10 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-1">Unit Kerja</label>
-                                    <input type="text" id="conf-sekolah" list="school-list" class="w-full text-sm border-b border-slate-200 py-1 focus:border-blue-500 outline-none bg-transparent" placeholder="Pilih sekolah dari daftar...">
-                                    <datalist id="school-list"></datalist>
+                                    <!-- MENGGUNAKAN SELECT, BUKAN INPUT TEXT -->
+                                    <select id="conf-sekolah" class="w-full text-sm border-b border-slate-200 py-2 focus:border-blue-500 outline-none bg-transparent text-slate-700">
+                                        <option value="" disabled selected>Memuat data sekolah...</option>
+                                    </select>
                                 </div>
                                 <div class="pt-2">
                                     <label class="block text-xs font-semibold text-slate-400 mb-1">Nama Kepala Sekolah</label>
@@ -570,19 +572,44 @@
 
             fetchSchools: async function() {
                 try {
-                    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.REF_SHEET}/gviz/tq?tqx=out:json&sheet=DataSekolah`;
-                    const res = await fetch(url).then(r => r.text());
-                    const json = JSON.parse(res.substr(47).slice(0, -2));
+                    // Menggunakan GID spesifik agar langsung ke Tab yang benar (1572207536)
+                    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.REF_SHEET}/gviz/tq?tqx=out:json&gid=1572207536`;
                     
-                    const schools = json.table.rows.map(r => r.c[0]?.v).filter(x => x && x.toLowerCase() !== 'data sekolah');
-                    const list = document.getElementById('school-list');
-                    list.innerHTML = '';
-                    schools.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s;
-                        list.appendChild(opt);
-                    });
-                } catch(e) { console.warn("School load failed", e); }
+                    const res = await fetch(url).then(r => r.text());
+                    
+                    // Parse respon dari Google Visualization API dengan Regex
+                    const match = res.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\);/);
+                    
+                    if (match && match[1]) {
+                        const json = JSON.parse(match[1]);
+                        
+                        // Ambil kolom A, filter yang kosong dan header 'Data Sekolah'
+                        const schools = json.table.rows
+                            .map(r => r.c[0]?.v)
+                            .filter(x => x && typeof x === 'string' && x.toLowerCase().trim() !== 'data sekolah');
+
+                        // Target elemen SELECT
+                        const select = document.getElementById('conf-sekolah');
+                        
+                        // Reset isi select, tambahkan placeholder
+                        select.innerHTML = '<option value="" disabled selected>Pilih Sekolah...</option>';
+                        
+                        schools.sort().forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.innerText = s;
+                            select.appendChild(opt);
+                        });
+                        
+                        console.log(`Berhasil memuat ${schools.length} sekolah.`);
+                    } else {
+                        console.warn("Format data sekolah tidak dikenali.");
+                    }
+                } catch(e) { 
+                    console.warn("Gagal memuat data sekolah.", e); 
+                    const select = document.getElementById('conf-sekolah');
+                    select.innerHTML = '<option value="" disabled selected>Gagal memuat data (Cek Koneksi)</option>';
+                }
             },
 
             fetchSuggestions: async function() {
