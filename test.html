@@ -18,6 +18,9 @@
     <!-- SheetJS Style (Required for Cell Styling like Wrap Text & Borders) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
+    <!-- HEIC Converter Library -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -839,9 +842,27 @@
                 lucide.createIcons();
             },
 
-            handleImageSelect: function(input) {
+            handleImageSelect: async function(input) {
                 if (input.files && input.files[0]) {
-                    const file = input.files[0];
+                    let file = input.files[0];
+
+                    // Check for HEIC
+                    if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {
+                        try {
+                            utils.toast('Mengonversi foto HEIC...', 'success');
+                            const blob = await heic2any({
+                                blob: file,
+                                toType: 'image/jpeg',
+                                quality: 0.8
+                            });
+                            file = Array.isArray(blob) ? blob[0] : blob;
+                        } catch (e) {
+                            console.error(e);
+                            utils.toast('Gagal proses HEIC', 'error');
+                            return;
+                        }
+                    }
+
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         const img = new Image();
