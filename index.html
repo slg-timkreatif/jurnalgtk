@@ -1472,13 +1472,27 @@
 
             updateStats: function() {
                 const now = new Date();
-                const thisMonth = this.data.filter(x => new Date(x.date).getMonth() === now.getMonth());
+                const thisMonth = this.data.filter(x => {
+                    const d = new Date(x.date);
+                    return !isNaN(d.getTime()) && d.getMonth() === now.getMonth();
+                });
+                
                 document.getElementById('stat-month').innerText = thisMonth.length;
+                
                 let mins = 0;
                 thisMonth.forEach(x => {
+                    // Validasi: Pastikan start/end ada dan memiliki format jam:menit (ada titik dua)
+                    if(!x.start || !x.end || !x.start.includes(':') || !x.end.includes(':')) return;
+                    
                     const [h1, m1] = x.start.split(':').map(Number);
                     const [h2, m2] = x.end.split(':').map(Number);
-                    mins += (h2*60+m2) - (h1*60+m1);
+                    
+                    // Validasi: Pastikan hasil split adalah angka valid (bukan NaN)
+                    if(!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+                        const diff = (h2*60+m2) - (h1*60+m1);
+                        // Hanya tambahkan jika selisih positif (jam selesai > jam mulai)
+                        if(diff > 0) mins += diff;
+                    }
                 });
                 document.getElementById('stat-hours').innerText = Math.floor(mins/60);
             },
