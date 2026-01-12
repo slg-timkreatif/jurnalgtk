@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E-Jurnal Korwil Selogiri</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Warna Biru Kedinasan (Official Blue)
+                        official: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            700: '#1d4ed8',
+                            800: '#1e40af', // Primary Dark Blue
+                            900: '#1e3a8a', // Header BG
+                        },
+                        surface: '#f1f5f9', // Light Gray Background
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .hidden-view { display: none !important; }
+        body { background-color: #f1f5f9; font-family: 'Roboto', sans-serif; }
+        
+        /* Toast Notification Formal */
+        #toast-container { position: fixed; top: 80px; right: 20px; z-index: 50; width: 300px; pointer-events: none; }
+        .toast { 
+            background: #ffffff; color: #334155; 
+            padding: 12px 16px; border-radius: 8px; border-left: 4px solid #1e40af;
+            margin-bottom: 10px; opacity: 0; transform: translateX(20px); 
+            animation: slideInRight 0.3s forwards; pointer-events: auto; 
+            display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        .toast.error { border-left-color: #EF4444; }
+        .toast.success { border-left-color: #10B981; }
+        @keyframes slideInRight { to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="pb-10 min-h-screen flex flex-col">
+
+    <div id="toast-container"></div>
+
+    <div id="loading-overlay" class="hidden-view fixed inset-0 bg-slate-900/50 z-[100] flex flex-col items-center justify-center backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl shadow-xl flex flex-col items-center">
+            <div class="animate-spin text-official-800 mb-3">
+                <i data-lucide="loader-2" width="40" height="40"></i>
+            </div>
+            <p class="text-slate-700 font-medium text-sm">Sedang Memproses...</p>
+        </div>
+    </div>
+
+    <header class="bg-official-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
+                    <i data-lucide="book-open" width="20"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-wide leading-tight">E-JURNAL GURU</h1>
+                    <p class="text-[10px] text-blue-200 uppercase tracking-wider">Korwilcambidik Selogiri</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow px-5 pt-6 max-w-3xl mx-auto w-full">
+        
+        <div class="bg-white rounded-lg shadow-soft border border-slate-200 p-5 mb-6 flex items-start gap-4">
+            <div class="p-2 bg-blue-50 text-official-700 rounded-md shrink-0">
+                <i data-lucide="info" width="24"></i>
+            </div>
+            <div>
+                <h2 class="font-bold text-slate-800 text-sm mb-1">Generator Narasi Otomatis</h2>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Sistem ini membantu Bapak/Ibu Guru menyusun kalimat jurnal harian (Kegiatan & Hasil) dengan bahasa baku kedinasan secara instan.
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-soft border border-slate-200 mb-6">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Masukkan Kata Kunci Kegiatan</label>
+            <div class="flex gap-2">
+                <div class="relative flex-grow">
+                    <input type="text" id="keywordInput" placeholder="Contoh: Rapat Wali Murid, Mengajar IPAS..." 
+                        class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm text-slate-800 focus:border-official-700 focus:ring-1 focus:ring-official-700 outline-none transition-all">
+                    <div class="absolute left-3 top-3 text-slate-400"><i data-lucide="search" width="18"></i></div>
+                </div>
+                <button onclick="generateJurnal('search')" id="btnGenerate" class="bg-official-800 hover:bg-official-900 text-white px-5 py-2 rounded-md font-medium text-sm transition shadow-sm flex items-center gap-2">
+                    <span class="hidden sm:inline">PROSES</span> <i data-lucide="send" width="16"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="resultArea" class="hidden-view space-y-4 animate-[slideInRight_0.4s_ease-out]">
+            
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                <h3 class="font-bold text-slate-700 text-sm">Hasil Generate</h3>
+                
+                <div class="flex gap-3 items-center">
+                    <span id="sourceBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">Database</span>
+                    <button onclick="generateJurnal('force_generate')" class="text-xs text-official-700 hover:underline flex items-center gap-1 font-medium">
+                        <i data-lucide="refresh-ccw" width="12"></i> Ulang
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm relative group hover:border-official-500 transition-colors">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uraian Kegiatan</span>
+                        <button onclick="copyText('textKegiatan')" class="text-slate-400 hover:text-official-700 transition" title="Salin">
+                            <i data-lucide="copy" width="16"></i>
+                        </button>
+                    </div>
+                    <p id="textKegiatan" class="text-sm text-slate-800 leading-relaxed font-normal"></p>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm relative group hover:border-green-500 transition-colors">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasil / Output</span>
+                        <button onclick="copyText('textHasil')" class="text-slate-400 hover:text-green-700 transition" title="Salin">
+                            <i data-lucide="copy" width="16"></i>
+                        </button>
+                    </div>
+                    <p id="textHasil" class="text-sm text-slate-800 leading-relaxed font-normal"></p>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button onclick="resetApp()" class="text-xs text-slate-500 hover:text-official-800 underline">
+                    Reset Form
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-auto py-6 text-center border-t border-slate-200 bg-white">
+        <p class="text-[11px] font-semibold text-slate-600">
+            2026 | Tim Kreatif Korwilcambidik Kec. Selogiri
+        </p>
+    </footer>
+
+    <script>
+        // ============================================
+        // GANTI URL INI DENGAN URL WEB APP ANDA
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwAlZHamJDjnH3rjhvB-eQs4y88B6QFAMXcALsXgsZd09HoGmYVIavc51kPg0c1_tY-6A/exec'; 
+        // ============================================
+        
+        lucide.createIcons();
+
+        function showToast(msg, type = 'normal') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'error' ? 'alert-triangle' : (type === 'success' ? 'check-circle' : 'info');
+            toast.innerHTML = `<i data-lucide="${icon}" width="18"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        async function generateJurnal(actionType) {
+            const keyword = document.getElementById('keywordInput').value;
+            if (!keyword) { showToast("Silakan isi kata kunci kegiatan terlebih dahulu.", "error"); return; }
+
+            document.getElementById('loading-overlay').classList.remove('hidden-view');
+            document.getElementById('resultArea').classList.add('hidden-view');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ keyword: keyword, action: actionType })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('textKegiatan').innerText = data.kegiatan;
+                    document.getElementById('textHasil').innerText = data.hasil;
+                    
+                    const badge = document.getElementById('sourceBadge');
+                    if(data.source === 'ai') {
+                        badge.className = "text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100";
+                        badge.innerText = "AI Generated";
+                    } else {
+                        badge.className = "text-[10px] font-semibold px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-100";
+                        badge.innerText = "Database";
+                    }
+
+                    document.getElementById('resultArea').classList.remove('hidden-view');
+                    showToast("Data berhasil diproses.", "success");
+                } else {
+                    showToast(data.message || "Gagal memproses data.", "error");
+                }
+
+            } catch (error) {
+                console.error(error);
+                showToast("Terjadi kesalahan koneksi server.", "error");
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden-view');
+            }
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast("Teks berhasil disalin.", "success"));
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("Copy");
+                textArea.remove();
+                showToast("Teks berhasil disalin (Manual).", "success");
+            }
+        }
+
+        function resetApp() {
+            document.getElementById('keywordInput').value = '';
+            document.getElementById('resultArea').classList.add('hidden-view');
+            document.getElementById('keywordInput').focus();
+        }
+
+        document.getElementById('keywordInput').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") { event.preventDefault(); document.getElementById("btnGenerate").click(); }
+        });
+    </script>
+</body>
+</html>
