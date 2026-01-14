@@ -289,7 +289,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: LAPORAN (REPORT) - BARU -->
+                    <!-- TAB 3: LAPORAN (REPORT) - MODIFIED -->
                     <div id="viewReport" class="hidden space-y-6">
                         <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
                             <div class="flex items-center gap-2 mb-4 text-blue-800 border-b border-blue-100 pb-2">
@@ -297,19 +297,19 @@
                                 <h3 class="font-bold text-lg">Laporan & Arsip</h3>
                             </div>
 
-                            <!-- Filter -->
+                            <!-- Filter: DROPDOWN BULAN & TAHUN (Pengganti Range Tanggal) -->
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Dari Tanggal</label>
-                                    <input type="date" id="reportStartDate" class="w-full text-sm border-gray-300 rounded p-2 border focus:border-blue-500">
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Bulan</label>
+                                    <select id="reportMonth" class="w-full text-sm border-gray-300 rounded p-2 border focus:border-blue-500"></select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sampai Tanggal</label>
-                                    <input type="date" id="reportEndDate" class="w-full text-sm border-gray-300 rounded p-2 border focus:border-blue-500">
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Tahun</label>
+                                    <select id="reportYear" class="w-full text-sm border-gray-300 rounded p-2 border focus:border-blue-500"></select>
                                 </div>
                             </div>
 
-                            <p class="text-[11px] text-gray-500 italic mb-4">* Maksimal rentang export adalah 31 hari (1 bulan) untuk efisiensi server.</p>
+                            <p class="text-[11px] text-gray-500 italic mb-4">* Download dilakukan per bulan untuk menjaga kestabilan server. Silakan gabungkan file Excel secara manual jika diperlukan.</p>
 
                             <!-- Actions -->
                             <div class="space-y-3">
@@ -412,11 +412,7 @@
             el('inpDate').value = todayStr;
 
             initCalendarDropdowns();
-            
-            // Set Default Report Dates
-            const firstDay = `${year}-${month}-01`;
-            el('reportStartDate').value = firstDay;
-            el('reportEndDate').value = todayStr;
+            initReportDropdowns(); // NEW: Init Report Dropdowns
 
             populateReferenceUI();
             if(!appRefs.refs || appRefs.refs.length === 0) fetchReferences(true);
@@ -533,7 +529,7 @@
             localStorage.setItem(storageKey, JSON.stringify(newDataArray));
         }
 
-        // --- CALENDAR LOGIC (On-Demand Loading) ---
+        // --- CALENDAR & REPORT DROPDOWNS LOGIC ---
         function initCalendarDropdowns() {
             const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             const mSel = el('calMonth');
@@ -541,6 +537,19 @@
                 months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
                 mSel.value = new Date().getMonth();
                 const ySel = el('calYear');
+                const curYear = new Date().getFullYear();
+                for(let y=curYear-1; y<=curYear+1; y++) { ySel.innerHTML += `<option value="${y}">${y}</option>` }
+                ySel.value = curYear;
+            }
+        }
+
+        function initReportDropdowns() {
+            const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+            const mSel = el('reportMonth');
+            if(mSel.options.length === 0) {
+                months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
+                mSel.value = new Date().getMonth();
+                const ySel = el('reportYear');
                 const curYear = new Date().getFullYear();
                 for(let y=curYear-1; y<=curYear+1; y++) { ySel.innerHTML += `<option value="${y}">${y}</option>` }
                 ySel.value = curYear;
@@ -639,29 +648,25 @@
             });
         }
 
-        // --- EXPORT EXCEL (DIRECT QUERY + LIMIT 31 DAYS) ---
+        // --- EXPORT EXCEL (MODIFIED: BY SELECTED MONTH) ---
         window.exportExcel = async () => {
-            const startDate = el('reportStartDate').value;
-            const endDate = el('reportEndDate').value;
+            const mVal = el('reportMonth').value;
+            const yVal = el('reportYear').value;
+
+            if (mVal === "" || yVal === "") return Swal.fire('Info', 'Pilih bulan dan tahun', 'info');
             
-            if(!startDate || !endDate) return Swal.fire('Info', 'Pilih rentang tanggal terlebih dahulu', 'info');
-
-            // VALIDASI RENTANG TANGGAL (MAX 31 HARI)
-            const d1 = new Date(startDate);
-            const d2 = new Date(endDate);
-            const diffTime = Math.abs(d2 - d1);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-            if (diffDays > 32) {
-                return Swal.fire({
-                    title: 'Batas Export',
-                    text: 'Maksimal export data adalah 1 bulan (31 hari) per proses untuk menjaga kestabilan server. Silakan download per bulan.',
-                    icon: 'warning'
-                });
-            }
+            const monthIdx = parseInt(mVal);
+            const year = parseInt(yVal);
 
             showLoading("Mengambil Data dari Server...");
+            
             try {
+                // Calculate Start & End of Month
+                const mStr = String(monthIdx + 1).padStart(2, '0');
+                const startDate = `${year}-${mStr}-01`;
+                const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+                const endDate = `${year}-${mStr}-${lastDay}`;
+
                 // OPTIMIZATION: Query specific range only from Firestore
                 const q = query(
                     collection(db, "jurnal"), 
@@ -672,12 +677,12 @@
                 );
                 
                 const snap = await getDocs(q);
-                if (snap.empty) throw new Error("Tidak ada data pada rentang tanggal tersebut.");
+                if (snap.empty) throw new Error("Tidak ada data pada bulan tersebut.");
                 
                 const rawData = [];
                 snap.forEach(doc => rawData.push(doc.data()));
 
-                // 2. Grouping by Month (YYYY-MM)
+                // Grouping by Month (Expect only 1 Key)
                 const groupedData = {};
                 rawData.forEach(item => {
                     const monthKey = item.tanggal.substring(0, 7); // "2024-01"
@@ -685,26 +690,20 @@
                     groupedData[monthKey].push(item);
                 });
 
-                // Sort Group Keys
-                const sortedKeys = Object.keys(groupedData).sort();
-                
                 const wb = XLSX.utils.book_new();
                 const kota = appRefs.settings['Kota'] || 'Wonogiri';
                 const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
-                // 3. Create Sheet per Month
-                sortedKeys.forEach(key => {
+                // Create Sheet
+                const key = Object.keys(groupedData)[0]; // Just take the first (and only) key
+                if (key) {
                     const monthData = groupedData[key];
-                    // Sort data per sheet (time based since query is already date sorted)
+                    // Sort by time
                     monthData.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || (a.jam_mulai||'').localeCompare(b.jam_mulai||''));
 
-                    const [yStr, mStr] = key.split('-');
-                    const year = parseInt(yStr);
-                    const monthIdx = parseInt(mStr) - 1;
                     const mName = monthNames[monthIdx];
                     const sheetName = `${mName} ${year}`;
                     
-                    const lastDay = new Date(year, monthIdx + 1, 0).getDate();
                     const sPeriod = `1 ${mName} ${year}`;
                     const ePeriod = `${lastDay} ${mName} ${year}`;
 
@@ -784,10 +783,10 @@
                         }
                     }
                     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-                });
+                }
 
                 const safeName = currentUser.nama.replace(/\s+/g, '_');
-                XLSX.writeFile(wb, `Jurnal_${safeName}_${startDate}_sd_${endDate}.xlsx`);
+                XLSX.writeFile(wb, `Jurnal_${safeName}_${year}_${mStr}.xlsx`);
                 
             } catch(e) { 
                 if (e.code === 'failed-precondition') {
