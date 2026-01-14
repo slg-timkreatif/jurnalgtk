@@ -106,15 +106,14 @@
             </form>
 
             <div class="mt-8 p-4 bg-blue-50 rounded text-xs text-blue-800">
-                <p><strong>Info:</strong> Akun dikelola oleh Admin Sekolah via Google Sheets.</p>
-            </div>
-
-            <!-- SYNC TRIGGER -->
-            <div class="absolute bottom-2 right-2 opacity-30 hover:opacity-100">
-                <button onclick="handleSyncUsers()" class="text-gray-400 hover:text-blue-500 flex items-center text-[10px] gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
-                    Sync DB
-                </button>
+                <p class="mb-2"><strong>Info:</strong> Akun dikelola oleh Admin Sekolah via Google Sheets.</p>
+                <div class="pt-2 border-t border-blue-100">
+                    <button onclick="handleSyncUsers()" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                        Update Data Guru (Sinkronisasi)
+                    </button>
+                    <p class="text-[10px] text-gray-500 mt-1 pl-6">Klik tombol di atas jika ada penambahan/perubahan guru di Excel.</p>
+                </div>
             </div>
         </div>
 
@@ -583,7 +582,7 @@
             });
         }
 
-        // --- EXPORT EXCEL (RANGE - Optimized from Memory) ---
+        // --- EXPORT EXCEL (MONTHLY SHEETS) ---
         window.exportExcel = async () => {
             const startDate = el('reportStartDate').value;
             const endDate = el('reportEndDate').value;
@@ -592,128 +591,145 @@
 
             showLoading("Memproses Data...");
             try {
-                // Use Cached Data instead of New Query
-                const reportData = allJournals.filter(j => j.tanggal >= startDate && j.tanggal <= endDate);
-                
-                // Sort Ascending for Report
-                reportData.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || (a.jam_mulai||'').localeCompare(b.jam_mulai||''));
+                // 1. Filter Data Global
+                const rawData = allJournals.filter(j => j.tanggal >= startDate && j.tanggal <= endDate);
+                if(rawData.length === 0) throw new Error("Tidak ada data pada rentang tanggal tersebut.");
 
-                if(reportData.length === 0) throw new Error("Tidak ada data pada rentang tanggal tersebut.");
-
-                const kota = appRefs.settings['Kota'] || 'Wonogiri';
-                
-                // Format Headers for SheetJS AOA
-                const sDateFmt = new Date(startDate).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-                const eDateFmt = new Date(endDate).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-
-                const ws_data = [];
-
-                // 1. Header Judul
-                ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
-                ws_data.push([currentUser.sekolah || 'SD NEGERI ...']);
-                ws_data.push([`Periode: ${sDateFmt} s/d ${eDateFmt}`]);
-                ws_data.push([]); // Gap
-
-                // 2. Identitas (Baris 5-6)
-                // Layout: [ "Nama", ": Nama", "", "Unit Kerja", ": Sekolah" ]
-                ws_data.push(["Nama", ": " + currentUser.nama, "", "Unit Kerja", ": " + (currentUser.sekolah || '-')]);
-                ws_data.push(["NIP", ": " + (currentUser.nip || '-'), "", "Jabatan", ": " + (currentUser.jabatan || 'Guru Kelas')]);
-                ws_data.push([]); // Gap
-
-                // 3. Header Tabel (Baris 8)
-                ws_data.push(["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"]);
-
-                // 4. Isi Data
-                reportData.forEach((item, idx) => {
-                    const d = new Date(item.tanggal);
-                    const dateStr = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-                    ws_data.push([
-                        idx + 1, 
-                        dateStr, 
-                        `${item.jam_mulai} - ${item.jam_selesai}`, 
-                        item.kegiatan, 
-                        item.output, 
-                        item.foto || '-'
-                    ]);
+                // 2. Grouping by Month (YYYY-MM)
+                const groupedData = {};
+                rawData.forEach(item => {
+                    const monthKey = item.tanggal.substring(0, 7); // "2024-01"
+                    if (!groupedData[monthKey]) groupedData[monthKey] = [];
+                    groupedData[monthKey].push(item);
                 });
 
-                // 5. Footer Tanda Tangan
-                ws_data.push([], []); // Gap 2 baris
+                // Sort Group Keys (Chronological)
+                const sortedKeys = Object.keys(groupedData).sort();
                 
-                // Baris Tanda Tangan
-                // Kiri (B): Mengetahui KS, Kanan (E): Guru/User
-                ws_data.push(["", "Mengetahui,", "", "", `${kota}, ${eDateFmt}`]);
-                ws_data.push(["", "Kepala Sekolah", "", "", currentUser.jabatan || "Guru Kelas"]);
-                ws_data.push(["", "", "", "", ""]);
-                ws_data.push(["", "", "", "", ""]); // Tempat TTD
-                ws_data.push(["", "..........................", "", "", currentUser.nama]);
-                ws_data.push(["", "NIP. ..........................", "", "", `NIP. ${currentUser.nip}`]);
+                const wb = XLSX.utils.book_new();
+                const kota = appRefs.settings['Kota'] || 'Wonogiri';
+                const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
-                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                // 3. Create Sheet per Month
+                sortedKeys.forEach(key => {
+                    const monthData = groupedData[key];
+                    // Sort data per sheet
+                    monthData.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || (a.jam_mulai||'').localeCompare(b.jam_mulai||''));
 
-                // Setup Merges (Gabung Sel)
-                if(!ws['!merges']) ws['!merges'] = [];
-                ws['!merges'].push(
-                    {s:{r:0,c:0},e:{r:0,c:5}}, // Judul Baris 1 (A-F)
-                    {s:{r:1,c:0},e:{r:1,c:5}}, // Sekolah Baris 2 (A-F)
-                    {s:{r:2,c:0},e:{r:2,c:5}}  // Periode Baris 3 (A-F)
-                );
+                    // Parse Month Info for Header & Sheet Name
+                    const [yStr, mStr] = key.split('-');
+                    const year = parseInt(yStr);
+                    const monthIdx = parseInt(mStr) - 1;
+                    const mName = monthNames[monthIdx];
+                    
+                    // Sheet Name (e.g., "Januari 2026")
+                    const sheetName = `${mName} ${year}`;
+                    
+                    // Header Dates: 1 MonthName Year s/d EndOfMonth MonthName Year
+                    const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+                    const sPeriod = `1 ${mName} ${year}`;
+                    const ePeriod = `${lastDay} ${mName} ${year}`;
 
-                // Setup Lebar Kolom
-                ws['!cols'] = [
-                    {wch:5},  // A: No
-                    {wch:25}, // B: Tanggal (Identity Value)
-                    {wch:15}, // C: Waktu
-                    {wch:45}, // D: Kegiatan (Unit Kerja Label)
-                    {wch:40}, // E: Output (Unit Kerja Value)
-                    {wch:25}  // F: Dokumentasi
-                ];
+                    const ws_data = [];
 
-                // === STYLING LOGIC ===
-                // Define Border Style
-                const borderStyle = { style: "thin", color: { auto: 1 } };
-                const borderObj = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
-                
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                
-                for (let R = range.s.r; R <= range.e.r; ++R) {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cell_ref = XLSX.utils.encode_cell({r: R, c: C});
-                        if (!ws[cell_ref]) continue;
+                    // HEADER
+                    ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
+                    ws_data.push([currentUser.sekolah || 'SD NEGERI ...']);
+                    ws_data.push([`Periode: ${sPeriod} s/d ${ePeriod}`]);
+                    ws_data.push([]); 
 
-                        // Base Style for Everything
-                        ws[cell_ref].s = {
-                            font: { name: "Arial", sz: 11 },
-                            alignment: { vertical: "center", wrapText: true }
-                        };
+                    // IDENTITAS
+                    ws_data.push(["Nama", ": " + currentUser.nama, "", "Unit Kerja", ": " + (currentUser.sekolah || '-')]);
+                    ws_data.push(["NIP", ": " + (currentUser.nip || '-'), "", "Jabatan", ": " + (currentUser.jabatan || 'Guru Kelas')]);
+                    ws_data.push([]); 
 
-                        // 1. HEADER UTAMA (Judul) - Rows 0,1,2
-                        if (R <= 2) {
-                            ws[cell_ref].s.font = { name: "Arial", sz: 12, bold: true };
-                            ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
-                        }
+                    // TABEL
+                    ws_data.push(["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"]);
 
-                        // 2. TABLE HEADER - Row 7
-                        if (R === 7) {
-                            ws[cell_ref].s.font = { name: "Arial", sz: 11, bold: true };
-                            ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
-                            ws[cell_ref].s.border = borderObj;
-                        }
+                    // ISI TABEL
+                    monthData.forEach((item, idx) => {
+                        const d = new Date(item.tanggal);
+                        const dateStr = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+                        ws_data.push([
+                            idx + 1, 
+                            dateStr, 
+                            `${item.jam_mulai} - ${item.jam_selesai}`, 
+                            item.kegiatan, 
+                            item.output, 
+                            item.foto || '-'
+                        ]);
+                    });
 
-                        // 3. TABLE DATA - Row 8 onwards
-                        if (R >= 8 && R < (8 + reportData.length)) {
-                            ws[cell_ref].s.border = borderObj;
-                            ws[cell_ref].s.alignment = { vertical: "top", wrapText: true }; // Top aligned for better read
-                            
-                            // Center Align for 'No' and 'Waktu'
-                            if (C === 0 || C === 2) ws[cell_ref].s.alignment.horizontal = "center";
+                    // FOOTER
+                    ws_data.push([], []); 
+                    ws_data.push(["", "Mengetahui,", "", "", `${kota}, ${ePeriod}`]); // Tgl TTD = Akhir Bulan
+                    ws_data.push(["", "Kepala Sekolah", "", "", currentUser.jabatan || "Guru Kelas"]);
+                    ws_data.push(["", "", "", "", ""]);
+                    ws_data.push(["", "", "", "", ""]); 
+                    ws_data.push(["", "..........................", "", "", currentUser.nama]);
+                    ws_data.push(["", "NIP. ..........................", "", "", `NIP. ${currentUser.nip}`]);
+
+                    // CREATE SHEET
+                    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                    // MERGES
+                    if(!ws['!merges']) ws['!merges'] = [];
+                    ws['!merges'].push(
+                        {s:{r:0,c:0},e:{r:0,c:5}}, 
+                        {s:{r:1,c:0},e:{r:1,c:5}}, 
+                        {s:{r:2,c:0},e:{r:2,c:5}} 
+                    );
+
+                    // COLUMN WIDTHS
+                    ws['!cols'] = [
+                        {wch:5}, {wch:25}, {wch:15}, {wch:45}, {wch:40}, {wch:25}
+                    ];
+
+                    // STYLING (Per Sheet)
+                    const borderStyle = { style: "thin", color: { auto: 1 } };
+                    const borderObj = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    
+                    for (let R = range.s.r; R <= range.e.r; ++R) {
+                        for (let C = range.s.c; C <= range.e.c; ++C) {
+                            const cell_ref = XLSX.utils.encode_cell({r: R, c: C});
+                            if (!ws[cell_ref]) continue;
+
+                            ws[cell_ref].s = {
+                                font: { name: "Arial", sz: 11 },
+                                alignment: { vertical: "center", wrapText: true }
+                            };
+
+                            // Judul
+                            if (R <= 2) {
+                                ws[cell_ref].s.font = { name: "Arial", sz: 12, bold: true };
+                                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
+                            }
+                            // Table Header
+                            if (R === 7) {
+                                ws[cell_ref].s.font = { name: "Arial", sz: 11, bold: true };
+                                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
+                                ws[cell_ref].s.border = borderObj;
+                            }
+                            // Data Rows
+                            if (R >= 8 && R < (8 + monthData.length)) {
+                                ws[cell_ref].s.border = borderObj;
+                                ws[cell_ref].s.alignment = { vertical: "top", wrapText: true };
+                                if (C === 0 || C === 2) ws[cell_ref].s.alignment.horizontal = "center";
+                            }
                         }
                     }
-                }
 
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-                XLSX.writeFile(wb, `Jurnal_${currentUser.nama}_${startDate}_${endDate}.xlsx`);
+                    // ADD SHEET TO WORKBOOK
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                });
+
+                // Filename
+                const sDate = new Date(startDate);
+                const safeName = currentUser.nama.replace(/\s+/g, '_');
+                let filename = `Jurnal_${safeName}_${startDate}_sd_${endDate}.xlsx`;
+                
+                XLSX.writeFile(wb, filename);
                 
             } catch(e) { Swal.fire('Gagal', e.message, 'error'); } finally { hideLoading(); }
         };
@@ -739,69 +755,91 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1, range: 7}); 
                     
-                    if(jsonData.length === 0) throw new Error("File kosong atau format salah");
+                    let allRowsToUpload = [];
 
-                    const batch = writeBatch(db);
-                    let count = 0;
+                    // --- LOOP SEMUA SHEET ---
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        // Range 7 = mulai baris ke-8 (index 7)
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, {header: 1, range: 7}); 
+                        
+                        // Loop baris dalam sheet ini
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            // Validasi kolom tanggal dan kegiatan tidak kosong
+                            if (!row[1] || !row[3]) continue; 
+                            
+                            const dateStr = row[1].toString(); 
+                            const timeStr = row[2] ? row[2].toString() : "00:00 - 00:00"; 
+                            
+                            const months = { "Januari": "01", "Februari": "02", "Maret": "03", "April": "04", "Mei": "05", "Juni": "06", "Juli": "07", "Agustus": "08", "September": "09", "Oktober": "10", "November": "11", "Desember": "12" };
+                            let isoDate = "";
+                            
+                            const parts = dateStr.split(' ');
+                            const cleanParts = parts.filter(p => p.trim() !== "" && p !== ",");
+                            
+                            let dPart, mPart, yPart;
+                            const numericParts = cleanParts.filter(p => !isNaN(parseInt(p)));
+                            if (numericParts.length >= 2) {
+                                dPart = numericParts[0];
+                                yPart = numericParts[numericParts.length - 1];
+                                const mName = cleanParts.find(p => months[p]);
+                                mPart = mName ? months[mName] : "01";
+                                isoDate = `${yPart}-${mPart.padStart(2,'0')}-${dPart.padStart(2,'0')}`;
+                            }
 
-                    for (let i = 1; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if (!row[1] || !row[3]) continue; 
-                        
-                        const dateStr = row[1].toString(); 
-                        const timeStr = row[2] ? row[2].toString() : "00:00 - 00:00"; 
-                        
-                        const months = { "Januari": "01", "Februari": "02", "Maret": "03", "April": "04", "Mei": "05", "Juni": "06", "Juli": "07", "Agustus": "08", "September": "09", "Oktober": "10", "November": "11", "Desember": "12" };
-                        let isoDate = "";
-                        
-                        const parts = dateStr.split(' ');
-                        const cleanParts = parts.filter(p => p.trim() !== "" && p !== ",");
-                        
-                        let dPart, mPart, yPart;
-                        const numericParts = cleanParts.filter(p => !isNaN(parseInt(p)));
-                        if (numericParts.length >= 2) {
-                            dPart = numericParts[0];
-                            yPart = numericParts[numericParts.length - 1];
-                            const mName = cleanParts.find(p => months[p]);
-                            mPart = mName ? months[mName] : "01";
-                            isoDate = `${yPart}-${mPart.padStart(2,'0')}-${dPart.padStart(2,'0')}`;
+                            if (!isoDate || isoDate.length !== 10) continue; 
+
+                            const timeParts = timeStr.split('-').map(t => t.trim());
+                            const jamMulai = timeParts[0] || "07:00";
+                            const jamSelesai = timeParts[1] || jamMulai;
+
+                            // Masukkan ke array sementara (belum write ke DB)
+                            allRowsToUpload.push({
+                                uid: currentUser.id,
+                                nip: currentUser.nip,
+                                nama: currentUser.nama,
+                                role: currentUser.role,
+                                sekolah: currentUser.sekolah,
+                                tanggal: isoDate,
+                                jam_mulai: jamMulai,
+                                jam_selesai: jamSelesai,
+                                kegiatan: row[3] || "-", 
+                                output: row[4] || "-", 
+                                foto: row[5] || "", 
+                                createdAt: Timestamp.now(),
+                                isImported: true
+                            });
                         }
+                    });
 
-                        if (!isoDate || isoDate.length !== 10) continue; 
+                    if (allRowsToUpload.length === 0) {
+                         Swal.fire('Info', 'Tidak ada data valid yang ditemukan di semua sheet.', 'info');
+                         return;
+                    }
 
-                        const timeParts = timeStr.split('-').map(t => t.trim());
-                        const jamMulai = timeParts[0] || "07:00";
-                        const jamSelesai = timeParts[1] || jamMulai;
+                    // --- BATCH PROCESSING (Chunking) ---
+                    // Firestore limit 500 ops per batch. Kita pakai 400 biar aman.
+                    const chunkSize = 400;
+                    let successCount = 0;
 
-                        const docRef = doc(collection(db, "jurnal"));
-                        batch.set(docRef, {
-                            uid: currentUser.id,
-                            nip: currentUser.nip,
-                            nama: currentUser.nama,
-                            role: currentUser.role,
-                            sekolah: currentUser.sekolah,
-                            tanggal: isoDate,
-                            jam_mulai: jamMulai,
-                            jam_selesai: jamSelesai,
-                            kegiatan: row[3] || "-", 
-                            output: row[4] || "-", 
-                            foto: row[5] || "", 
-                            createdAt: Timestamp.now(),
-                            isImported: true
+                    for (let i = 0; i < allRowsToUpload.length; i += chunkSize) {
+                        const batch = writeBatch(db);
+                        const chunk = allRowsToUpload.slice(i, i + chunkSize);
+                        
+                        chunk.forEach(docData => {
+                            const docRef = doc(collection(db, "jurnal"));
+                            batch.set(docRef, docData);
                         });
-                        count++;
+                        
+                        await batch.commit();
+                        successCount += chunk.length;
+                        showLoading(`Menyimpan ${successCount} / ${allRowsToUpload.length} data...`);
                     }
 
-                    if (count > 0) {
-                        await batch.commit();
-                        Swal.fire('Sukses', `${count} data berhasil diimport!`, 'success');
-                        fetchJournalData(); // Refresh All Data
-                    } else {
-                        Swal.fire('Info', 'Tidak ada data valid yang ditemukan.', 'info');
-                    }
+                    Swal.fire('Sukses', `${successCount} data berhasil diimport dari ${workbook.SheetNames.length} sheet!`, 'success');
+                    fetchJournalData(); // Refresh All Data
 
                 } catch (e) {
                     console.error(e);
