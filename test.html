@@ -234,10 +234,10 @@
 
                         <!-- List Data Header -->
                         <div class="flex justify-between items-center px-1 sticky top-[135px] bg-gray-50 py-2 z-10">
-                            <h3 class="font-bold text-gray-700" id="journalListTitle">Bulan Ini</h3>
+                            <h3 class="font-bold text-gray-700" id="journalListTitle">Terbaru</h3>
                             <div class="flex items-center gap-2">
                                 <div class="text-xs text-gray-500 text-right" id="dateRangeDisplay"></div>
-                                <button onclick="forceRefreshCurrentMonth()" title="Paksa Refresh dari Server" class="bg-gray-200 hover:bg-gray-300 rounded-full p-1.5 transition-colors">
+                                <button onclick="fetchRecentData(true)" title="Refresh Data Terbaru" class="bg-gray-200 hover:bg-gray-300 rounded-full p-1.5 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 </button>
                             </div>
@@ -309,6 +309,8 @@
                                 </div>
                             </div>
 
+                            <p class="text-[11px] text-gray-500 italic mb-4">* Maksimal rentang export adalah 31 hari (1 bulan) untuk efisiensi server.</p>
+
                             <!-- Actions -->
                             <div class="space-y-3">
                                 <button onclick="exportExcel()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold text-sm shadow flex justify-center items-center gap-2 transition-all active:scale-95">
@@ -356,8 +358,7 @@
         let currentPhotoBase64 = null;
         
         // --- OPTIMIZATION: SMART CACHE ---
-        // Format Key LocalStorage: `cache_jurnal_${uid}_${YYYY_MM}`
-        let journalCache = {}; // In-memory mirror of current month
+        let journalCache = {}; 
         let loadedMonths = new Set(); 
 
         const el = (id) => document.getElementById(id);
@@ -420,47 +421,81 @@
             populateReferenceUI();
             if(!appRefs.refs || appRefs.refs.length === 0) fetchReferences(true);
             
-            // INITIAL DATA FETCH: Only Current Month (Hemat Kuota)
-            fetchMonthData(year, now.getMonth()).then(() => {
-                renderWeeklyList();
-            });
+            // INITIAL DATA FETCH: Only 15 Latest Items (ULTRA HEMAT KUOTA)
+            fetchRecentData();
 
             views.login.classList.add('hidden');
             views.dashboard.classList.remove('hidden');
             switchTab('input');
         };
 
-        // --- CORE: FETCH MONTH DATA WITH LOCAL STORAGE ---
+        // --- NEW: FETCH RECENT DATA ONLY (15 ITEMS) ---
+        // Ini menggantikan fetchMonthData saat startup dashboard
+        window.fetchRecentData = async (refresh = false) => {
+            const list = el('journalList');
+            if(refresh) showLoading("Mengambil data terbaru...");
+            else list.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto"></div><p class="text-xs text-gray-400 mt-2">Memuat 15 jurnal terakhir...</p></div>';
+
+            try {
+                // Query: Ambil 15 data terakhir milik user ini
+                const q = query(
+                    collection(db, "jurnal"), 
+                    where("uid", "==", currentUser.id),
+                    orderBy("tanggal", "desc"),
+                    limit(15)
+                );
+                
+                const snap = await getDocs(q);
+                const recentData = [];
+                snap.forEach(d => { 
+                    const dt = d.data(); 
+                    dt.docId = d.id; 
+                    recentData.push(dt); 
+                });
+
+                el('dateRangeDisplay').innerText = `15 Data Terakhir`;
+                list.innerHTML = '';
+
+                if (recentData.length === 0) {
+                    list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada riwayat jurnal.</div>';
+                } else {
+                    renderJournalList(recentData, list);
+                }
+                
+                if(refresh) Toast.fire({ icon: 'success', title: 'Data diperbarui' });
+
+            } catch(e) {
+                console.error(e);
+                if (e.code === 'failed-precondition') {
+                     Swal.fire({ title: 'Setup Database', html: `Diperlukan Index Firestore.<br><a href="${e.message.match(/https?:\/\/[^\s]+/)[0]}" target="_blank" class="text-blue-600 underline font-bold">KLIK DISINI</a>`, icon: 'warning'});
+                } else {
+                     list.innerHTML = `<div class="text-red-500 text-center text-sm py-4">Gagal memuat: ${e.message}</div>`;
+                }
+            } finally {
+                if(refresh) hideLoading();
+            }
+        };
+
+        // --- CORE: FETCH MONTH DATA WITH LOCAL STORAGE (FOR CALENDAR) ---
         async function fetchMonthData(year, monthIndex, forceRefresh = false) {
             const mStr = String(monthIndex + 1).padStart(2, '0');
             const monthKey = `${year}-${mStr}`;
             const storageKey = `cache_jurnal_${currentUser.id}_${monthKey}`;
 
-            // 1. Check RAM Cache First
-            if (!forceRefresh && loadedMonths.has(monthKey) && journalCache[monthKey]) {
-                return; 
-            }
+            // 1. Check RAM Cache
+            if (!forceRefresh && loadedMonths.has(monthKey) && journalCache[monthKey]) return; 
 
-            // 2. Check Local Storage (Persistent)
+            // 2. Check Local Storage
             const cachedString = localStorage.getItem(storageKey);
             if (!forceRefresh && cachedString) {
                 try {
-                    const parsed = JSON.parse(cachedString);
-                    // Gunakan cache local, anggap valid (hemat kuota)
-                    // Kita tidak pakai expiry time, user harus refresh manual jika mau update dari device lain
-                    journalCache[monthKey] = parsed;
+                    journalCache[monthKey] = JSON.parse(cachedString);
                     loadedMonths.add(monthKey);
-                    console.log(`Loaded ${monthKey} from LocalStorage`);
                     return;
                 } catch(e) { console.error("Cache corrupted", e); }
             }
 
-            // 3. Fetch from Server (If not in cache or forced)
-            const list = el('journalList');
-            if (!el('viewInput').classList.contains('hidden')) {
-                list.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto"></div><p class="text-xs text-gray-400 mt-2">Sinkronisasi Server...</p></div>';
-            }
-            
+            // 3. Fetch from Server
             try {
                 const startDate = `${year}-${mStr}-01`;
                 const lastDay = new Date(year, monthIndex + 1, 0).getDate();
@@ -476,62 +511,19 @@
                 
                 const snap = await getDocs(q);
                 const monthData = [];
-                snap.forEach(d => { 
-                    const dt = d.data(); 
-                    dt.docId = d.id; 
-                    monthData.push(dt); 
-                });
+                snap.forEach(d => { const dt = d.data(); dt.docId = d.id; monthData.push(dt); });
 
                 // Update RAM & LocalStorage
                 journalCache[monthKey] = monthData;
                 loadedMonths.add(monthKey);
                 localStorage.setItem(storageKey, JSON.stringify(monthData));
 
-                if (forceRefresh) Toast.fire({ icon: 'success', title: 'Data berhasil diperbarui dari server' });
-
             } catch (err) {
                 console.error(err);
                 if (err.code === 'failed-precondition') {
-                     Swal.fire({
-                         title: 'Setup Database Diperlukan',
-                         html: `Untuk performa maksimal dan hemat kuota, Firestore memerlukan Index.<br><br>
-                                <a href="${err.message.match(/https?:\/\/[^\s]+/)[0]}" target="_blank" class="text-blue-600 underline font-bold">KLIK DISINI UNTUK MEMBUAT INDEX</a><br><br>
-                                Klik link di atas, tunggu status 'Building' selesai (1-2 menit), lalu refresh aplikasi.`,
-                         icon: 'warning',
-                         allowOutsideClick: false
-                     });
-                } else {
-                     Swal.fire('Gagal Memuat Data', err.message, 'error');
+                     Swal.fire({ title: 'Setup Index', html: `Buka Kalender Error.<br><a href="${err.message.match(/https?:\/\/[^\s]+/)[0]}" target="_blank">KLIK DISINI</a>`, icon: 'warning'});
                 }
             }
-        }
-
-        // Fungsi Tombol Refresh
-        window.forceRefreshCurrentMonth = () => {
-             const now = new Date();
-             // Jika user sedang melihat bulan lain di kalender, harusnya refresh bulan itu
-             // Tapi untuk simplifikasi tombol di 'List Input' merefresh bulan berjalan
-             fetchMonthData(now.getFullYear(), now.getMonth(), true).then(() => renderWeeklyList());
-        };
-
-        // --- RENDER CURRENT MONTH LIST (From Cache) ---
-        function renderWeeklyList() {
-            const list = el('journalList');
-            list.innerHTML = '';
-            
-            // Get Current Month Data from Cache
-            const now = new Date();
-            const mKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-            const data = journalCache[mKey] || [];
-            
-            el('dateRangeDisplay').innerText = `Data Bulan ${now.toLocaleDateString('id-ID', {month:'long', year:'numeric'})}`;
-
-            if (data.length === 0) {
-                list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada jurnal bulan ini.</div>';
-                return;
-            }
-
-            renderJournalList(data, list);
         }
 
         // --- HELPER: UPDATE CACHE (CRUD SYNC) ---
@@ -571,14 +563,10 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             
-            // Constructs Key
             const mStr = String(month + 1).padStart(2,'0');
             const monthKey = `${year}-${mStr}`;
-
-            // Get from Cache
             const monthData = journalCache[monthKey] || [];
             
-            // Map dates
             const dateMap = {};
             monthData.forEach(j => {
                 const parts = j.tanggal.split('-');
@@ -617,13 +605,11 @@
             section.classList.remove('hidden');
 
             if(data && data.length > 0) {
-                // Sort by time ascending
                 data.sort((a,b) => (a.jam_mulai || '00:00').localeCompare(b.jam_mulai || '00:00'));
                 renderJournalList(data, list, true); 
             } else {
                 list.innerHTML = `<div class="text-center py-4 text-gray-400 text-sm italic border border-dashed rounded bg-gray-50">Tidak ada jurnal pada tanggal ini.</div>`;
             }
-            
             setTimeout(() => { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         };
 
@@ -653,17 +639,30 @@
             });
         }
 
-        // --- EXPORT EXCEL (DIRECT QUERY) ---
+        // --- EXPORT EXCEL (DIRECT QUERY + LIMIT 31 DAYS) ---
         window.exportExcel = async () => {
             const startDate = el('reportStartDate').value;
             const endDate = el('reportEndDate').value;
             
             if(!startDate || !endDate) return Swal.fire('Info', 'Pilih rentang tanggal terlebih dahulu', 'info');
 
+            // VALIDASI RENTANG TANGGAL (MAX 31 HARI)
+            const d1 = new Date(startDate);
+            const d2 = new Date(endDate);
+            const diffTime = Math.abs(d2 - d1);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            if (diffDays > 32) {
+                return Swal.fire({
+                    title: 'Batas Export',
+                    text: 'Maksimal export data adalah 1 bulan (31 hari) per proses untuk menjaga kestabilan server. Silakan download per bulan.',
+                    icon: 'warning'
+                });
+            }
+
             showLoading("Mengambil Data dari Server...");
             try {
                 // OPTIMIZATION: Query specific range only from Firestore
-                // Avoids filtering client-side cache which might be incomplete
                 const q = query(
                     collection(db, "jurnal"), 
                     where("uid", "==", currentUser.id),
@@ -918,9 +917,8 @@
 
                     Swal.fire('Sukses', `${successCount} data berhasil diimport dari ${workbook.SheetNames.length} sheet!`, 'success');
                     
-                    // Refresh current view
-                    const now = new Date();
-                    fetchMonthData(now.getFullYear(), now.getMonth(), true).then(() => renderWeeklyList());
+                    // Refresh current view (Using new fetchRecentData)
+                    fetchRecentData();
 
                 } catch (e) {
                     console.error(e);
@@ -1010,15 +1008,51 @@
         };
 
         window.handleEdit = (id) => {
-            // Find data in ALL loaded caches
+            // Coba cari di recentData dulu? (Karena recentData tidak disimpan di journalCache secara permanen untuk menghemat konflik)
+            // Tapi UI List kita dibangun dari RecentData. Jadi kita harus ambil data dari elemen atau query ulang?
+            // Simplifikasi: Ambil dari journalCache jika ada (kalau pernah buka kalender), kalau tidak, kita harus query single doc.
+            // TAPI, di fetchRecentData kita punya array `recentData`.
+            // Mari kita simpan `recentData` di memori global sementara.
+            
+            // NOTE: Logic sebelumnya mencari di journalCache.
+            // Sekarang karena dashboard hanya load 15, mungkin data tidak ada di journalCache bulan itu.
+            // Kita coba fetch single doc jika tidak ketemu di cache.
+            
+            // Perbaikan: Simpan data recent di journalCache temporary atau variabel baru?
+            // Untuk simplifikasi, saat fetchRecentData, kita juga update journalCache[bulan] secara parsial? Tidak, itu berbahaya (inkonsistensi).
+            // Solusi: Kita pakai getDoc saja untuk edit, pasti akurat.
+            
+            showLoading("Memuat data...");
+            // Cek cache dulu
             let data = null;
             for (const key in journalCache) {
                 const found = journalCache[key].find(j => j.docId === id);
                 if (found) { data = found; break; }
             }
 
-            if(!data) return;
-            el('inpId').value = id;
+            if(data) {
+                populateForm(data);
+                hideLoading();
+            } else {
+                // Fetch single doc from Firestore
+                getFirestoreDoc(id).then(d => {
+                    if(d) populateForm(d);
+                    hideLoading();
+                });
+            }
+        };
+
+        // Helper untuk ambil single doc (Lazy Load untuk Edit)
+        async function getFirestoreDoc(id) {
+            try {
+                const docSnap = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(m => m.getDoc(m.doc(db, "jurnal", id)));
+                if (docSnap.exists()) return { docId: docSnap.id, ...docSnap.data() };
+            } catch(e) { console.error(e); }
+            return null;
+        }
+
+        function populateForm(data) {
+            el('inpId').value = data.docId;
             el('inpDate').value = data.tanggal;
             el('inpTimeStart').value = data.jam_mulai || data.jam || "00:00";
             el('inpTimeEnd').value = data.jam_selesai || "00:00";
@@ -1031,7 +1065,7 @@
             document.getElementById('formContainer').scrollIntoView({ behavior: 'smooth' });
             el('calendarDetailSection').classList.add('hidden');
             switchTab('input');
-        };
+        }
         
         window.handleDelete = async (id) => {
             const res = await Swal.fire({ title: 'Hapus?', text: "Data akan dihapus permanen.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus' });
@@ -1041,7 +1075,6 @@
                     await deleteDoc(doc(db, "jurnal", id));
                     
                     // Update Local State (Remove from Cache)
-                    // Cari ID ini ada di bulan apa, lalu update LS bulan tersebut
                     let updatedKey = null;
                     for (const key in journalCache) {
                         const originalLen = journalCache[key].length;
@@ -1050,7 +1083,9 @@
                     }
                     if(updatedKey) updateCacheAndStorage(updatedKey, journalCache[updatedKey]);
 
-                    renderWeeklyList();
+                    // Refresh Recent List
+                    fetchRecentData();
+                    
                     if(!el('viewCalendar').classList.contains('hidden')) renderCalendar();
                     el('calendarDetailSection').classList.add('hidden');
                     
@@ -1076,12 +1111,21 @@
                     photoUrl = json.url;
                 } else if (isEdit) {
                      // Find old data URL
+                     // Coba cari di cache, kalau ga ada fetch lagi (jarang terjadi karena flow edit)
                      let oldData = null;
                      for (const key in journalCache) {
                          oldData = journalCache[key].find(j => j.docId === editId);
                          if(oldData) break;
                      }
-                     photoUrl = oldData ? oldData.foto : '';
+                     // Kalau ga ada di cache, mungkin ada di recentData (tapi recentData ga kita simpan global var, cuma render).
+                     // Asumsi: User tidak ganti foto kalau tidak upload baru.
+                     // Kita harusnya punya data lama dari `populateForm`? Tidak tersimpan.
+                     // Workaround: Query single doc sebelum update kalau perlu foto lama, ATAU
+                     // Teknik optimasi: Kita sudah fetch doc saat klik Edit. Kita simpan url foto lama di hidden field?
+                     // Atau fetch ulang doc saat submit (aman tapi nambah 1 read).
+                     // Sederhana: Fetch ulang docId untuk ambil 'foto' field saja.
+                     const oldDoc = await getFirestoreDoc(editId);
+                     photoUrl = oldDoc ? oldDoc.foto : '';
                 }
                 const commonData = { tanggal: el('inpDate').value, jam_mulai: el('inpTimeStart').value, jam_selesai: el('inpTimeEnd').value, kegiatan: el('inpActivity').value, output: el('inpOutput').value, foto: photoUrl };
                 
@@ -1112,7 +1156,7 @@
                 }
                 
                 resetForm(); 
-                renderWeeklyList();
+                fetchRecentData(); // Refresh list dashboard
                 if(!el('viewCalendar').classList.contains('hidden')) renderCalendar();
 
                 Swal.fire({ icon: 'success', title: 'Berhasil Disimpan', timer: 1500, showConfirmButton: false });
