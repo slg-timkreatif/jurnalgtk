@@ -6,8 +6,8 @@
     <title>E-Jurnal Guru</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS untuk Export & Import Excel -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS Style (xlsx-js-style) untuk Support Border & Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- HEIC2ANY untuk Support iPhone (.heic to .jpg) -->
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <!-- SweetAlert2 untuk Alert Modern -->
@@ -350,8 +350,9 @@
         let currentUser = JSON.parse(localStorage.getItem('guru_user')) || null;
         let appRefs = JSON.parse(localStorage.getItem('guru_meta')) || { refs: [], settings: {} };
         let currentPhotoBase64 = null;
-        let cachedJournals = []; // Contains current view data (Weekly or All for Calendar context)
-        let calendarJournals = []; // Specific for Calendar indicators
+        
+        // GLOBAL DATA STORE (Client-Side Cache)
+        let allJournals = []; 
 
         const el = (id) => document.getElementById(id);
         const views = {
@@ -384,8 +385,8 @@
                 }
             });
             if(tabName === 'calendar') {
-                el('calendarDetailSection').classList.add('hidden'); // Reset detail on switch
-                fetchCalendarData(); 
+                el('calendarDetailSection').classList.add('hidden'); 
+                renderCalendar(); 
             }
         };
 
@@ -394,7 +395,6 @@
             el('userDisplayRole').innerText = (currentUser.role || 'Guru').toUpperCase();
             el('userDisplayMeta').innerText = currentUser.sekolah || '';
             
-            // Get Local Date String for Today (YYYY-MM-DD)
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -402,7 +402,7 @@
             const todayStr = `${year}-${month}-${day}`;
             
             resetForm();
-            el('inpDate').value = todayStr; // Ensure input defaults to local today
+            el('inpDate').value = todayStr;
 
             initCalendarDropdowns();
             
@@ -413,94 +413,76 @@
 
             populateReferenceUI();
             if(!appRefs.refs || appRefs.refs.length === 0) fetchReferences(true);
-            loadWeeklyJournals(); // Load Weekly
+            
+            // INITIAL DATA FETCH
+            fetchJournalData();
+
             views.login.classList.add('hidden');
             views.dashboard.classList.remove('hidden');
             switchTab('input');
         };
 
-        // --- WEEKLY JOURNAL LOAD ---
-        async function loadWeeklyJournals() {
+        // --- MASTER FETCH FUNCTION (No Complex Indexes) ---
+        async function fetchJournalData() {
             const list = el('journalList');
             list.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto"></div></div>';
             
-            // Calc 7 days ago (Safe Local Calculation)
-            const d = new Date();
-            d.setDate(d.getDate() - 7);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`; // Safe local date string
-            
-            el('dateRangeDisplay').innerText = `Data sejak ${new Date(dateStr).toLocaleDateString('id-ID')}`;
-
-            // REMOVED 'createdAt' ORDER to avoid Index Error
-            const q = query(
-                collection(db, "jurnal"), 
-                where("uid", "==", currentUser.id), 
-                where("tanggal", ">=", dateStr),
-                orderBy("tanggal", "desc")
-            );
-
             try {
-                const snap = await getDocs(q);
-                cachedJournals = []; list.innerHTML = '';
-                if (snap.empty) { list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada jurnal minggu ini.</div>'; return; }
-                
-                snap.forEach(d => { const dt = d.data(); dt.docId = d.id; cachedJournals.push(dt); });
-                
-                // Manual Sort in JS to replace Firestore orderBy('createdAt')
-                cachedJournals.sort((a, b) => {
-                     // Primary: Date Desc
-                     if (a.tanggal !== b.tanggal) return b.tanggal.localeCompare(a.tanggal);
-                     // Secondary: CreatedAt Desc (if available)
-                     if (a.createdAt && b.createdAt) return b.createdAt.seconds - a.createdAt.seconds;
-                     return 0;
-                });
-
-                renderJournalList(cachedJournals, list);
-            } catch (err) { 
-                console.error(err); 
-                list.innerHTML = `<div class="text-red-400 text-center text-xs p-4">Gagal memuat. ${err.message.includes('index') ? 'Database sedang dioptimasi, coba sesaat lagi.' : 'Periksa koneksi internet.'}</div>`; 
-            }
-        }
-
-        // --- CALENDAR LOGIC (ALL MONTH DATA) ---
-        async function fetchCalendarData() {
-            // Fetch data for the selected month/year to show indicators
-            const m = parseInt(el('calMonth').value);
-            const y = parseInt(el('calYear').value);
-            
-            // Construct YYYY-MM-DD manually to be safe
-            const start = `${y}-${String(m+1).padStart(2,'0')}-01`;
-            // Get last day of month
-            const lastDay = new Date(y, m + 1, 0).getDate();
-            const end = `${y}-${String(m+1).padStart(2,'0')}-${lastDay}`;
-
-            try {
+                // QUERY SIMPLE: Only by UID. No sorting/filtering in DB to avoid index error.
+                // We fetch everything (or limit if needed, e.g., 500) and process in JS.
                 const q = query(
                     collection(db, "jurnal"), 
-                    where("uid", "==", currentUser.id), 
-                    where("tanggal", ">=", start), 
-                    where("tanggal", "<=", end)
+                    where("uid", "==", currentUser.id)
                 );
+                
                 const snap = await getDocs(q);
-                calendarJournals = [];
-                snap.forEach(d => { const dt = d.data(); dt.docId = d.id; calendarJournals.push(dt); });
+                allJournals = [];
+                snap.forEach(d => { 
+                    const dt = d.data(); 
+                    dt.docId = d.id; 
+                    allJournals.push(dt); 
+                });
+
+                // CLIENT-SIDE SORT: Date Descending
+                allJournals.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+                renderWeeklyList();
+                renderCalendar(); 
+
             } catch (err) {
-                console.error("Cal Fetch Error:", err);
-                // Even if fetch fails, we MUST render the empty calendar so user sees the grid
-                calendarJournals = [];
-                Toast.fire({ icon: 'error', title: 'Gagal memuat data kalender' });
-            } finally {
-                renderCalendar(); // ALWAYS RENDER
+                console.error(err);
+                list.innerHTML = `<div class="text-red-400 text-center text-xs p-4">Error: ${err.message}</div>`;
             }
         }
 
+        // --- RENDER WEEKLY LIST (From Cache) ---
+        function renderWeeklyList() {
+            const list = el('journalList');
+            list.innerHTML = '';
+            
+            // Calculate 7 days ago
+            const d = new Date();
+            d.setDate(d.getDate() - 7);
+            const limitDate = d.toISOString().split('T')[0];
+            
+            el('dateRangeDisplay').innerText = `Data sejak ${new Date(limitDate).toLocaleDateString('id-ID')}`;
+
+            // Filter in Memory
+            const weeklyData = allJournals.filter(j => j.tanggal >= limitDate);
+
+            if (weeklyData.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada jurnal minggu ini.</div>';
+                return;
+            }
+
+            renderJournalList(weeklyData, list);
+        }
+
+        // --- CALENDAR LOGIC (From Cache) ---
         function initCalendarDropdowns() {
             const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             const mSel = el('calMonth');
-            if(mSel.options.length === 0) { // Prevent duplicate on re-init
+            if(mSel.options.length === 0) {
                 months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
                 mSel.value = new Date().getMonth();
                 const ySel = el('calYear');
@@ -519,11 +501,18 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             
-            // Map dates with data
+            // Constructs Strings for comparision
+            const mStr = String(month + 1).padStart(2,'0');
+            const prefix = `${year}-${mStr}`; // "2024-02"
+
+            // Filter from Cache
+            const monthData = allJournals.filter(j => j.tanggal.startsWith(prefix));
+            
+            // Map dates
             const dateMap = {};
-            calendarJournals.forEach(j => {
-                const parts = j.tanggal.split('-'); // YYYY-MM-DD
-                const d = parseInt(parts[2]); // Get day part
+            monthData.forEach(j => {
+                const parts = j.tanggal.split('-');
+                const d = parseInt(parts[2]);
                 if(!dateMap[d]) dateMap[d] = [];
                 dateMap[d].push(j);
             });
@@ -540,15 +529,12 @@
                     cell.innerHTML += `<div class="indicator"></div>`;
                 }
                 
-                // Onclick: Select date & Show Detail below
                 cell.onclick = () => selectCalendarDate(d, month, year, dateMap[d], cell);
-                
                 container.appendChild(cell);
             }
         };
 
         window.selectCalendarDate = (day, month, year, data, cellElement) => {
-            // Visual Highlight
             document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('selected-date'));
             if(cellElement) cellElement.classList.add('selected-date');
 
@@ -561,17 +547,14 @@
             section.classList.remove('hidden');
 
             if(data && data.length > 0) {
-                 // Sort by time
+                // Sort by time ascending
                 data.sort((a,b) => (a.jam_mulai || '00:00').localeCompare(b.jam_mulai || '00:00'));
-                renderJournalList(data, list, true); // true = hideDate (Compact view)
+                renderJournalList(data, list, true); 
             } else {
                 list.innerHTML = `<div class="text-center py-4 text-gray-400 text-sm italic border border-dashed rounded bg-gray-50">Tidak ada jurnal pada tanggal ini.</div>`;
             }
             
-            // Scroll to detail slightly
-            setTimeout(() => {
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+            setTimeout(() => { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         };
 
         // --- RENDER HELPER ---
@@ -600,29 +583,22 @@
             });
         }
 
-        // --- EXPORT EXCEL (RANGE) ---
+        // --- EXPORT EXCEL (RANGE - Optimized from Memory) ---
         window.exportExcel = async () => {
             const startDate = el('reportStartDate').value;
             const endDate = el('reportEndDate').value;
             
             if(!startDate || !endDate) return Swal.fire('Info', 'Pilih rentang tanggal terlebih dahulu', 'info');
 
-            showLoading("Mengambil Data...");
+            showLoading("Memproses Data...");
             try {
-                // Fetch data for specific range
-                const q = query(
-                    collection(db, "jurnal"), 
-                    where("uid", "==", currentUser.id), 
-                    where("tanggal", ">=", startDate), 
-                    where("tanggal", "<=", endDate),
-                    orderBy("tanggal", "asc") // Export Ascending
-                );
+                // Use Cached Data instead of New Query
+                const reportData = allJournals.filter(j => j.tanggal >= startDate && j.tanggal <= endDate);
                 
-                const snap = await getDocs(q);
-                if(snap.empty) throw new Error("Tidak ada data pada rentang tanggal tersebut.");
-                
-                const reportData = [];
-                snap.forEach(d => reportData.push(d.data()));
+                // Sort Ascending for Report
+                reportData.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || (a.jam_mulai||'').localeCompare(b.jam_mulai||''));
+
+                if(reportData.length === 0) throw new Error("Tidak ada data pada rentang tanggal tersebut.");
 
                 const kota = appRefs.settings['Kota'] || 'Wonogiri';
                 
@@ -630,17 +606,24 @@
                 const sDateFmt = new Date(startDate).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
                 const eDateFmt = new Date(endDate).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
 
-                const ws_data = [
-                    ["LAPORAN KINERJA HARIAN GURU"],
-                    [currentUser.sekolah || 'SD NEGERI ...'], 
-                    [`Periode: ${sDateFmt} s/d ${eDateFmt}`], 
-                    [],
-                    [`Nama : ${currentUser.nama}`, "", "", `Unit Kerja : ${currentUser.sekolah || '-'}`], 
-                    [`NIP : ${currentUser.nip || '-'}`, "", "", `Jabatan : ${currentUser.jabatan || 'Guru'}`], 
-                    [],
-                    ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"] 
-                ];
+                const ws_data = [];
 
+                // 1. Header Judul
+                ws_data.push(["LAPORAN KINERJA HARIAN GURU"]);
+                ws_data.push([currentUser.sekolah || 'SD NEGERI ...']);
+                ws_data.push([`Periode: ${sDateFmt} s/d ${eDateFmt}`]);
+                ws_data.push([]); // Gap
+
+                // 2. Identitas (Baris 5-6)
+                // Layout: [ "Nama", ": Nama", "", "Unit Kerja", ": Sekolah" ]
+                ws_data.push(["Nama", ": " + currentUser.nama, "", "Unit Kerja", ": " + (currentUser.sekolah || '-')]);
+                ws_data.push(["NIP", ": " + (currentUser.nip || '-'), "", "Jabatan", ": " + (currentUser.jabatan || 'Guru Kelas')]);
+                ws_data.push([]); // Gap
+
+                // 3. Header Tabel (Baris 8)
+                ws_data.push(["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"]);
+
+                // 4. Isi Data
                 reportData.forEach((item, idx) => {
                     const d = new Date(item.tanggal);
                     const dateStr = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -654,17 +637,79 @@
                     ]);
                 });
 
-                ws_data.push([],[]);
-                ws_data.push(["Mengetahui,", "", "", "", `${kota}, ${eDateFmt}`]);
-                ws_data.push(["Kepala Sekolah", "", "", "", "Guru Kelas/Mapel"]);
-                ws_data.push([],[],[]);
-                ws_data.push(["..........................", "", "", "", currentUser.nama]);
-                ws_data.push(["NIP. ..........................", "", "", "", `NIP. ${currentUser.nip}`]);
+                // 5. Footer Tanda Tangan
+                ws_data.push([], []); // Gap 2 baris
+                
+                // Baris Tanda Tangan
+                // Kiri (B): Mengetahui KS, Kanan (E): Guru/User
+                ws_data.push(["", "Mengetahui,", "", "", `${kota}, ${eDateFmt}`]);
+                ws_data.push(["", "Kepala Sekolah", "", "", currentUser.jabatan || "Guru Kelas"]);
+                ws_data.push(["", "", "", "", ""]);
+                ws_data.push(["", "", "", "", ""]); // Tempat TTD
+                ws_data.push(["", "..........................", "", "", currentUser.nama]);
+                ws_data.push(["", "NIP. ..........................", "", "", `NIP. ${currentUser.nip}`]);
 
                 const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                // Setup Merges (Gabung Sel)
                 if(!ws['!merges']) ws['!merges'] = [];
-                ws['!merges'].push({s:{r:0,c:0},e:{r:0,c:5}}, {s:{r:1,c:0},e:{r:1,c:5}}, {s:{r:2,c:0},e:{r:2,c:5}});
-                ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:40}, {wch:40}, {wch:25}];
+                ws['!merges'].push(
+                    {s:{r:0,c:0},e:{r:0,c:5}}, // Judul Baris 1 (A-F)
+                    {s:{r:1,c:0},e:{r:1,c:5}}, // Sekolah Baris 2 (A-F)
+                    {s:{r:2,c:0},e:{r:2,c:5}}  // Periode Baris 3 (A-F)
+                );
+
+                // Setup Lebar Kolom
+                ws['!cols'] = [
+                    {wch:5},  // A: No
+                    {wch:25}, // B: Tanggal (Identity Value)
+                    {wch:15}, // C: Waktu
+                    {wch:45}, // D: Kegiatan (Unit Kerja Label)
+                    {wch:40}, // E: Output (Unit Kerja Value)
+                    {wch:25}  // F: Dokumentasi
+                ];
+
+                // === STYLING LOGIC ===
+                // Define Border Style
+                const borderStyle = { style: "thin", color: { auto: 1 } };
+                const borderObj = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+                
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cell_ref = XLSX.utils.encode_cell({r: R, c: C});
+                        if (!ws[cell_ref]) continue;
+
+                        // Base Style for Everything
+                        ws[cell_ref].s = {
+                            font: { name: "Arial", sz: 11 },
+                            alignment: { vertical: "center", wrapText: true }
+                        };
+
+                        // 1. HEADER UTAMA (Judul) - Rows 0,1,2
+                        if (R <= 2) {
+                            ws[cell_ref].s.font = { name: "Arial", sz: 12, bold: true };
+                            ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
+                        }
+
+                        // 2. TABLE HEADER - Row 7
+                        if (R === 7) {
+                            ws[cell_ref].s.font = { name: "Arial", sz: 11, bold: true };
+                            ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
+                            ws[cell_ref].s.border = borderObj;
+                        }
+
+                        // 3. TABLE DATA - Row 8 onwards
+                        if (R >= 8 && R < (8 + reportData.length)) {
+                            ws[cell_ref].s.border = borderObj;
+                            ws[cell_ref].s.alignment = { vertical: "top", wrapText: true }; // Top aligned for better read
+                            
+                            // Center Align for 'No' and 'Waktu'
+                            if (C === 0 || C === 2) ws[cell_ref].s.alignment.horizontal = "center";
+                        }
+                    }
+                }
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Laporan");
@@ -695,57 +740,38 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1, range: 7}); 
                     
-                    // Convert to JSON array, starting from row 9 (header in row 8, index 7)
-                    // But easier to use aoa and manual parse because of merged headers
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1, range: 7}); // Row 8 is header
-                    
-                    if(jsonData.length === 0) throw new Error("File kosong atau format salah (Header harus di baris ke-8)");
+                    if(jsonData.length === 0) throw new Error("File kosong atau format salah");
 
                     const batch = writeBatch(db);
                     let count = 0;
 
-                    // jsonData[0] is Header: ["No", "Hari/Tanggal", "Waktu", "Kegiatan"...]
                     for (let i = 1; i < jsonData.length; i++) {
                         const row = jsonData[i];
-                        if (!row[1] || !row[3]) continue; // Skip empty rows (Col B or D empty)
+                        if (!row[1] || !row[3]) continue; 
                         
-                        // Parse Date: "Rabu, 7 Januari 2026" -> YYYY-MM-DD
-                        // Regex to extract Day Month Year
-                        const dateStr = row[1].toString(); // Col B
-                        const timeStr = row[2] ? row[2].toString() : "00:00 - 00:00"; // Col C
+                        const dateStr = row[1].toString(); 
+                        const timeStr = row[2] ? row[2].toString() : "00:00 - 00:00"; 
                         
-                        // Simple parser logic (assuming Indonesia format)
                         const months = { "Januari": "01", "Februari": "02", "Maret": "03", "April": "04", "Mei": "05", "Juni": "06", "Juli": "07", "Agustus": "08", "September": "09", "Oktober": "10", "November": "11", "Desember": "12" };
                         let isoDate = "";
                         
-                        // Try parsing "7 Januari 2026"
                         const parts = dateStr.split(' ');
-                        // Usually format: [DayName, Day, Month, Year] or [Day, Month, Year]
-                        // Filter non-empty
                         const cleanParts = parts.filter(p => p.trim() !== "" && p !== ",");
                         
                         let dPart, mPart, yPart;
-                        // Find numeric parts
                         const numericParts = cleanParts.filter(p => !isNaN(parseInt(p)));
                         if (numericParts.length >= 2) {
-                            // Assume first is Day, Last is Year
                             dPart = numericParts[0];
                             yPart = numericParts[numericParts.length - 1];
-                            
-                            // Find Month Name
                             const mName = cleanParts.find(p => months[p]);
                             mPart = mName ? months[mName] : "01";
-                            
                             isoDate = `${yPart}-${mPart.padStart(2,'0')}-${dPart.padStart(2,'0')}`;
                         }
 
-                        if (!isoDate || isoDate.length !== 10) {
-                           console.warn("Skipping date parse fail:", dateStr);
-                           continue; // Skip invalid date
-                        }
+                        if (!isoDate || isoDate.length !== 10) continue; 
 
-                        // Parse Time: "16:21 - 16:21"
                         const timeParts = timeStr.split('-').map(t => t.trim());
                         const jamMulai = timeParts[0] || "07:00";
                         const jamSelesai = timeParts[1] || jamMulai;
@@ -760,9 +786,9 @@
                             tanggal: isoDate,
                             jam_mulai: jamMulai,
                             jam_selesai: jamSelesai,
-                            kegiatan: row[3] || "-", // Col D
-                            output: row[4] || "-", // Col E
-                            foto: row[5] || "", // Col F
+                            kegiatan: row[3] || "-", 
+                            output: row[4] || "-", 
+                            foto: row[5] || "", 
                             createdAt: Timestamp.now(),
                             isImported: true
                         });
@@ -772,14 +798,14 @@
                     if (count > 0) {
                         await batch.commit();
                         Swal.fire('Sukses', `${count} data berhasil diimport!`, 'success');
-                        loadWeeklyJournals();
+                        fetchJournalData(); // Refresh All Data
                     } else {
-                        Swal.fire('Info', 'Tidak ada data valid yang ditemukan untuk diimport.', 'info');
+                        Swal.fire('Info', 'Tidak ada data valid yang ditemukan.', 'info');
                     }
 
                 } catch (e) {
                     console.error(e);
-                    Swal.fire('Error Import', 'Pastikan format Excel sesuai template laporan. ' + e.message, 'error');
+                    Swal.fire('Error Import', e.message, 'error');
                 } finally {
                     hideLoading();
                     input.value = '';
@@ -852,14 +878,11 @@
 
         window.resetForm = () => {
             el('jurnalForm').reset(); clearPhoto(); el('inpId').value = '';
-            
-            // Default to local today
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
             el('inpDate').value = `${year}-${month}-${day}`;
-
             el('inpTimeStart').value = "07:00";
             el('inpTimeEnd').value = "14:00";
             el('btnSubmit').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> SIMPAN JURNAL`;
@@ -868,7 +891,7 @@
         };
 
         window.handleEdit = (id) => {
-            const data = cachedJournals.find(j => j.docId === id);
+            const data = allJournals.find(j => j.docId === id);
             if(!data) return;
             el('inpId').value = id;
             el('inpDate').value = data.tanggal;
@@ -881,7 +904,6 @@
             el('formTitle').innerText = "Edit Jurnal";
             el('btnCancel').classList.remove('hidden');
             document.getElementById('formContainer').scrollIntoView({ behavior: 'smooth' });
-            // Close Calendar detail if editing from there
             el('calendarDetailSection').classList.add('hidden');
             switchTab('input');
         };
@@ -892,16 +914,11 @@
                 showLoading("Menghapus...");
                 try {
                     await deleteDoc(doc(db, "jurnal", id));
-                    
-                    // Logic refresh depends on active tab
-                    const isCalendar = !el('viewCalendar').classList.contains('hidden');
-                    if(isCalendar) {
-                        fetchCalendarData(); // Refresh calendar indicators and potentially the selected detail list if user re-clicks
-                        // For UX simplicity, we hide the details to force user to re-select
-                        el('calendarDetailSection').classList.add('hidden');
-                    } else {
-                        loadWeeklyJournals();
-                    }
+                    // Update Local State
+                    allJournals = allJournals.filter(j => j.docId !== id);
+                    renderWeeklyList();
+                    if(!el('viewCalendar').classList.contains('hidden')) renderCalendar();
+                    el('calendarDetailSection').classList.add('hidden');
                     
                     Swal.fire('Terhapus', '', 'success');
                 } catch(e) { Swal.fire('Gagal', e.message, 'error'); } finally { hideLoading(); }
@@ -924,13 +941,31 @@
                     if (json.result !== 'success') throw new Error(json.message || "Gagal upload");
                     photoUrl = json.url;
                 } else if (isEdit) {
-                     const oldData = cachedJournals.find(j => j.docId === editId);
+                     const oldData = allJournals.find(j => j.docId === editId);
                      photoUrl = oldData ? oldData.foto : '';
                 }
                 const commonData = { tanggal: el('inpDate').value, jam_mulai: el('inpTimeStart').value, jam_selesai: el('inpTimeEnd').value, kegiatan: el('inpActivity').value, output: el('inpOutput').value, foto: photoUrl };
-                if (isEdit) { await updateDoc(doc(db, "jurnal", editId), { ...commonData, updatedAt: Timestamp.now() }); } 
-                else { await addDoc(collection(db, "jurnal"), { ...commonData, uid: currentUser.id, nip: currentUser.nip, nama: currentUser.nama, role: currentUser.role, sekolah: currentUser.sekolah, createdAt: Timestamp.now() }); }
-                resetForm(); loadWeeklyJournals(); Swal.fire({ icon: 'success', title: 'Berhasil Disimpan', timer: 1500, showConfirmButton: false });
+                
+                if (isEdit) { 
+                    await updateDoc(doc(db, "jurnal", editId), { ...commonData, updatedAt: Timestamp.now() }); 
+                    // Update Local
+                    const idx = allJournals.findIndex(j => j.docId === editId);
+                    if(idx !== -1) allJournals[idx] = { ...allJournals[idx], ...commonData };
+                } 
+                else { 
+                    const docRef = await addDoc(collection(db, "jurnal"), { ...commonData, uid: currentUser.id, nip: currentUser.nip, nama: currentUser.nama, role: currentUser.role, sekolah: currentUser.sekolah, createdAt: Timestamp.now() }); 
+                    // Update Local
+                    allJournals.unshift({ ...commonData, uid: currentUser.id, docId: docRef.id });
+                }
+                
+                // Re-sort local
+                allJournals.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+                resetForm(); 
+                renderWeeklyList();
+                if(!el('viewCalendar').classList.contains('hidden')) renderCalendar();
+
+                Swal.fire({ icon: 'success', title: 'Berhasil Disimpan', timer: 1500, showConfirmButton: false });
             } catch (err) { Swal.fire('Error', err.message, 'error'); } finally { hideLoading(); }
         });
 
