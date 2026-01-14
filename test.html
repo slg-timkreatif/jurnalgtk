@@ -4,798 +4,674 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Jurnal Guru</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- SheetJS untuk Excel -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <!-- SweetAlert2 -->
+    <!-- SheetJS untuk Export & Import Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- HEIC2ANY untuk Support iPhone (.heic to .jpg) -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <!-- SweetAlert2 untuk Alert Modern -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .tab-active { color: #2563eb; border-bottom: 2px solid #2563eb; }
-        .tab-inactive { color: #6b7280; }
         .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border-top: 4px solid #3b82f6;
             border-radius: 50%;
             width: 30px;
             height: 30px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Calendar Styles */
-        .calendar-day { min-height: 80px; transition: all 0.2s; }
-        .has-journal .indicator { display: block; }
-        .indicator { display: none; width: 6px; height: 6px; background-color: #2563eb; border-radius: 50%; margin: 2px auto 0; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         
-        /* Autocomplete Styles */
-        datalist { display: none; }
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            flex-direction: column;
+        }
+        .has-data .indicator {
+            display: block;
+            width: 4px;
+            height: 4px;
+            background-color: #2563eb;
+            border-radius: 50%;
+            margin-top: 2px;
+        }
+        .indicator { display: none; }
+        
+        /* SweetAlert Custom Font */
+        .swal2-popup {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
 
-    <!-- LOGIN SECTION -->
-    <div id="loginSection" class="fixed inset-0 bg-white z-50 flex flex-col justify-center items-center p-6 hidden">
-        <div class="w-full max-w-md text-center">
-            <div class="mb-6">
-                <i class="fas fa-book-open text-5xl text-blue-600"></i>
+    <div id="app" class="max-w-md md:max-w-5xl w-full mx-auto bg-white min-h-screen shadow-lg relative flex flex-col transition-all duration-300">
+        
+        <!-- LOADING OVERLAY -->
+        <div id="loadingOverlay" class="fixed inset-0 bg-black/50 z-[9999] flex flex-col items-center justify-center hidden">
+            <div class="bg-white p-5 rounded-lg flex flex-col items-center shadow-xl">
+                <div class="loader mb-3"></div>
+                <p id="loadingText" class="text-sm font-semibold text-gray-700">Memuat...</p>
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">E-Jurnal Guru</h1>
-            <p class="text-gray-500 mb-8">Masuk menggunakan Akun Terdaftar</p>
-            
+        </div>
+
+        <!-- HALAMAN LOGIN -->
+        <div id="loginPage" class="hidden p-8 flex flex-col justify-center min-h-screen relative max-w-md mx-auto w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-blue-600">E-Jurnal Guru</h1>
+                <p class="text-gray-500 text-sm mt-1">Silakan login menggunakan Email & PIN</p>
+            </div>
+
             <form id="loginForm" class="space-y-4">
-                <input type="email" id="email" placeholder="Email" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
-                <input type="password" id="password" placeholder="PIN / Password" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">MASUK</button>
-            </form>
-            <div id="loginLoading" class="hidden mt-4 text-center">
-                <div class="loader mx-auto mb-2"></div>
-                <p class="text-xs text-gray-500">Menghubungkan ke Server...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- MAIN APP LAYOUT -->
-    <div id="mainApp" class="flex-1 flex flex-col hidden">
-        
-        <!-- HEADER -->
-        <header class="bg-white shadow-sm px-4 py-3 flex justify-between items-center z-10">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-book-reader text-blue-600 text-xl"></i>
-                <h1 class="font-bold text-gray-800">E-Jurnal</h1>
-            </div>
-            
-            <!-- User Dropdown -->
-            <div class="relative">
-                <button id="userMenuBtn" class="flex items-center gap-2 focus:outline-none">
-                    <div class="text-right hidden sm:block">
-                        <p id="headerUserName" class="text-sm font-semibold text-gray-700">Nama Guru</p>
-                        <p id="headerUserRole" class="text-xs text-gray-500">Guru</p>
-                    </div>
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold border border-blue-200">
-                        <i class="fas fa-user"></i>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="loginEmail" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none" placeholder="guru@sekolah.sch.id">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">PIN</label>
+                    <input type="password" id="loginPin" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none" placeholder="PIN Rahasia">
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors">
+                    MASUK
                 </button>
-                
-                <!-- Dropdown Content -->
-                <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border ring-1 ring-black ring-opacity-5 z-20">
-                    <div class="px-4 py-2 border-b">
-                        <p class="text-xs text-gray-500">Login sebagai:</p>
-                        <p id="dropdownName" class="text-sm font-bold text-gray-800 truncate">User</p>
-                    </div>
-                    <button id="syncProfileBtn" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        <i class="fas fa-sync-alt mr-2"></i> Update Data Guru
-                    </button>
-                    <button id="logoutBtn" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                        <i class="fas fa-sign-out-alt mr-2"></i> Keluar
-                    </button>
-                </div>
-            </div>
-        </header>
+            </form>
 
-        <!-- TABS NAVIGATION (Top Sticky) -->
-        <div class="bg-white border-b flex justify-around shadow-sm sticky top-0 z-10">
-            <button onclick="app.nav('input')" id="tab-input" class="flex-1 py-3 text-sm font-medium text-center tab-active transition">
-                <i class="fas fa-pen mb-1 block"></i> Input
-            </button>
-            <button onclick="app.nav('history')" id="tab-history" class="flex-1 py-3 text-sm font-medium text-center tab-inactive transition">
-                <i class="fas fa-history mb-1 block"></i> Riwayat
-            </button>
-            <button onclick="app.nav('calendar')" id="tab-calendar" class="flex-1 py-3 text-sm font-medium text-center tab-inactive transition">
-                <i class="fas fa-calendar-alt mb-1 block"></i> Kalender
-            </button>
+            <div class="mt-8 p-4 bg-blue-50 rounded text-xs text-blue-800">
+                <p><strong>Info:</strong> Akun dikelola oleh Admin Sekolah via Google Sheets.</p>
+            </div>
+
+            <!-- SYNC TRIGGER -->
+            <div class="absolute bottom-2 right-2 opacity-30 hover:opacity-100">
+                <button onclick="handleSyncUsers()" class="text-gray-400 hover:text-blue-500 flex items-center text-[10px] gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                    Sync DB
+                </button>
+            </div>
         </div>
 
-        <!-- CONTENT AREA -->
-        <main class="flex-1 overflow-y-auto bg-gray-50 relative">
-            
-            <!-- SECTION: INPUT JURNAL -->
-            <div id="view-input" class="p-4 space-y-4 max-w-2xl mx-auto">
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded mb-4 flex justify-between items-center">
+        <!-- HALAMAN DASHBOARD -->
+        <div id="dashboardPage" class="hidden flex-1 flex flex-col h-screen">
+            <!-- Header -->
+            <div class="bg-blue-600 text-white p-4 sticky top-0 z-20 shadow-md shrink-0">
+                <div class="flex justify-between items-start max-w-5xl mx-auto w-full">
                     <div>
-                        <p class="text-xs text-blue-800 font-semibold">Status: <span id="draftStatus" class="text-gray-500">Siap</span></p>
-                        <p class="text-xs text-blue-600 mt-1">Data tersimpan otomatis (Draft).</p>
-                    </div>
-                </div>
-
-                <form id="journalForm" class="bg-white p-4 rounded-xl shadow-sm space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Tanggal</label>
-                            <input type="date" id="tgl" class="w-full p-2 border rounded bg-gray-50" required>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Mulai</label>
-                                <input type="time" id="jam_mulai" class="w-full p-2 border rounded bg-gray-50" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Selesai</label>
-                                <input type="time" id="jam_selesai" class="w-full p-2 border rounded bg-gray-50" required>
-                            </div>
+                        <h2 class="font-bold text-lg leading-tight" id="userDisplayName">Nama Guru</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs bg-blue-800 px-1.5 py-0.5 rounded text-blue-100" id="userDisplayRole">Guru</span>
+                            <p class="text-xs opacity-90" id="userDisplayMeta">Sekolah</p>
                         </div>
                     </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Uraian Kegiatan</label>
-                        <input list="activityList" id="kegiatan" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Ketik atau pilih kegiatan..." required autocomplete="off">
-                        <datalist id="activityList">
-                            <!-- Populated by JS from GAS -->
-                        </datalist>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Hasil / Output</label>
-                        <textarea id="output" rows="2" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Otomatis terisi jika ada di referensi..." required></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Dokumentasi (Foto)</label>
-                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition cursor-pointer relative" onclick="document.getElementById('fotoInput').click()">
-                            <input type="file" id="fotoInput" class="hidden" accept="image/*">
-                            <div id="previewContainer" class="hidden mb-2">
-                                <img id="fotoPreview" class="mx-auto h-32 object-contain rounded" />
-                                <p class="text-xs text-green-600 mt-1">Foto siap diupload</p>
-                            </div>
-                            <div id="uploadPlaceholder">
-                                <i class="fas fa-camera text-gray-400 text-2xl mb-2"></i>
-                                <p class="text-xs text-gray-500">Klik untuk ambil foto (Max 1MB)</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2">
-                        <span>SIMPAN JURNAL</span>
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
-            </div>
-
-            <!-- SECTION: RIWAYAT -->
-            <div id="view-history" class="p-4 hidden max-w-2xl mx-auto">
-                <!-- Filter Toolbar -->
-                <div class="bg-white p-3 rounded-lg shadow-sm mb-4 flex gap-2 items-center sticky top-0 z-20">
-                    <select id="historyMonth" class="flex-1 p-2 border rounded text-sm bg-gray-50" onchange="app.loadHistory()">
-                        <!-- Options generated by JS -->
-                    </select>
-                    <select id="historyYear" class="w-24 p-2 border rounded text-sm bg-gray-50" onchange="app.loadHistory()">
-                         <!-- Options generated by JS -->
-                    </select>
-                    <button onclick="app.loadHistory()" class="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-
-                <!-- Export / Import Actions -->
-                <div class="flex gap-2 mb-4">
-                    <button onclick="excelManager.export()" class="flex-1 bg-green-600 text-white py-2 rounded shadow-sm text-sm font-medium hover:bg-green-700 flex items-center justify-center gap-2">
-                        <i class="fas fa-file-excel"></i> Download Excel
-                    </button>
-                    <!-- Hidden Import -->
-                    <input type="file" id="importFile" class="hidden" accept=".xlsx" onchange="excelManager.handleImport(this)">
-                    <button onclick="document.getElementById('importFile').click()" class="px-4 bg-gray-200 text-gray-700 py-2 rounded shadow-sm text-sm font-medium hover:bg-gray-300">
-                        <i class="fas fa-file-upload"></i> Import
-                    </button>
-                </div>
-
-                <!-- List Container -->
-                <div id="historyList" class="space-y-3 pb-20">
-                    <!-- Cards injected by JS -->
-                    <div class="text-center py-10 text-gray-400">
-                        <i class="fas fa-spinner fa-spin text-2xl"></i>
-                        <p class="mt-2 text-sm">Memuat data...</p>
+                    <div class="flex items-center gap-1">
+                        <button onclick="fetchReferences()" class="text-blue-100 hover:text-white p-2 rounded-full hover:bg-blue-700" title="Refresh Referensi">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                        </button>
+                        <button onclick="handleLogout()" class="text-white bg-blue-800 p-2 rounded hover:bg-red-600 ml-1 shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION: KALENDER -->
-            <div id="view-calendar" class="p-4 hidden max-w-2xl mx-auto">
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <div class="bg-blue-600 p-4 text-white flex justify-between items-center">
-                        <button onclick="calendarManager.prevMonth()" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full"><i class="fas fa-chevron-left"></i></button>
-                        <h2 id="calTitle" class="font-bold text-lg">Januari 2026</h2>
-                        <button onclick="calendarManager.nextMonth()" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="grid grid-cols-7 gap-px bg-gray-200 text-center text-xs font-semibold text-gray-600 p-2">
-                        <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
-                    </div>
-                    <div id="calGrid" class="grid grid-cols-7 gap-px bg-gray-100">
-                        <!-- Days injected by JS -->
-                    </div>
-                </div>
-                <div class="mt-4 text-center">
-                    <p class="text-xs text-gray-500"><span class="inline-block w-2 h-2 rounded-full bg-blue-600 mr-1"></span> Menandakan tanggal dengan entri jurnal.</p>
+            <!-- TABS MENU -->
+            <div class="bg-white border-b sticky top-[72px] z-10">
+                <div class="flex max-w-5xl mx-auto">
+                    <button onclick="switchTab('input')" id="tab-input" class="flex-1 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 transition-colors">Input</button>
+                    <button onclick="switchTab('calendar')" id="tab-calendar" class="flex-1 py-3 text-sm font-medium text-gray-500 hover:text-blue-500 transition-colors">Kalender</button>
                 </div>
             </div>
 
-        </main>
-    </div>
-
-    <!-- FIREBASE & APP LOGIC -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // --- KONFIGURASI GOOGLE APPS SCRIPT ---
-        // PENTING: Ganti URL di bawah ini dengan URL Deployment GAS Anda (Web App: Execute as Me, Access: Anyone)
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz..."; 
-
-        // --- KONFIGURASI FIREBASE ---
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", 
-            authDomain: "your-app.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-app.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
-        };
-
-        // Initialize Firebase
-        let appFirebase, db;
-        try {
-            appFirebase = initializeApp(firebaseConfig);
-            db = getFirestore(appFirebase);
-        } catch (e) {
-            console.error("Firebase Init Error:", e);
-        }
-
-        // --- STATE MANAGEMENT ---
-        const state = {
-            user: JSON.parse(localStorage.getItem('user')) || null,
-            journals: [], 
-            currentDate: new Date(),
-            draft: JSON.parse(localStorage.getItem('journal_draft')) || {},
-            journalDates: new Set(),
-            refs: [], // Data Referensi dari GAS
-            settings: {} // Data Setting (FolderID dll) dari GAS
-        };
-
-        // --- DOM ELEMENTS ---
-        const els = {
-            loginSection: document.getElementById('loginSection'),
-            mainApp: document.getElementById('mainApp'),
-            loginForm: document.getElementById('loginForm'),
-            userMenuBtn: document.getElementById('userMenuBtn'),
-            userDropdown: document.getElementById('userDropdown'),
-            journalForm: document.getElementById('journalForm'),
-            historyList: document.getElementById('historyList'),
-            calGrid: document.getElementById('calGrid'),
-            calTitle: document.getElementById('calTitle'),
-            loading: document.getElementById('loginLoading'),
-            // Inputs
-            tgl: document.getElementById('tgl'),
-            jam_mulai: document.getElementById('jam_mulai'),
-            jam_selesai: document.getElementById('jam_selesai'),
-            kegiatan: document.getElementById('kegiatan'),
-            output: document.getElementById('output'),
-            previewContainer: document.getElementById('previewContainer'),
-            uploadPlaceholder: document.getElementById('uploadPlaceholder'),
-            fotoPreview: document.getElementById('fotoPreview'),
-            activityList: document.getElementById('activityList'),
-            btnSubmit: document.getElementById('btnSubmit')
-        };
-
-        // --- UTILS ---
-        const formatIDDate = (date) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'full' }).format(date);
-        const formatShortDate = (dateStr) => {
-            const date = new Date(dateStr);
-            return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
-        }
-        
-        // --- AUTH & GAS DATA MODULE ---
-        const authManager = {
-            login: async (email, password) => {
-                els.loading.classList.remove('hidden');
-                
-                try {
-                    // Fetch Users from GAS
-                    const response = await fetch(GAS_URL + '?action=users');
-                    const json = await response.json();
+            <!-- CONTENT AREA -->
+            <div class="flex-1 overflow-y-auto bg-gray-50 custom-scroll p-4 pb-20">
+                <div class="max-w-5xl mx-auto">
                     
-                    if (json.result !== 'success') throw new Error(json.message);
-
-                    const users = json.data;
-                    // Filter User (Case Insensitive Email)
-                    const user = users.find(u => 
-                        String(u['Email']).toLowerCase() === email.toLowerCase() && 
-                        String(u['PIN']) === password
-                    );
-
-                    if (user) {
-                        // Mapping Data GAS ke State App
-                        state.user = {
-                            nama: user['Nama Lengkap'],
-                            nip: user['NIP'],
-                            sekolah: user['Unit Kerja'],
-                            jabatan: user['Jabatan'],
-                            email: user['Email'],
-                            role: 'guru'
-                        };
-                        localStorage.setItem('user', JSON.stringify(state.user));
-                        app.init();
-                    } else {
-                        throw new Error("Email atau PIN salah. Pastikan terdaftar di Sheet DataGuru.");
-                    }
-                } catch (error) {
-                    Swal.fire('Login Gagal', 'Gagal terhubung ke Server Sheet: ' + error.message, 'error');
-                } finally {
-                    els.loading.classList.add('hidden');
-                }
-            },
-            logout: () => {
-                localStorage.removeItem('user');
-                state.user = null;
-                location.reload();
-            },
-            fetchRefs: async () => {
-                try {
-                    const response = await fetch(GAS_URL + '?action=refs');
-                    const json = await response.json();
-                    if(json.result === 'success') {
-                        state.refs = json.refs || [];
-                        state.settings = json.settings || {};
-                        
-                        // Populate Autocomplete
-                        els.activityList.innerHTML = state.refs.map(r => `<option value="${r.uraian}">`).join('');
-                    }
-                } catch (e) {
-                    console.error("Gagal ambil referensi:", e);
-                }
-            }
-        };
-
-        // --- APP CORE ---
-        window.app = {
-            init: () => {
-                if (!state.user) {
-                    els.loginSection.classList.remove('hidden');
-                    els.mainApp.classList.add('hidden');
-                    return;
-                }
-                
-                // Setup UI User
-                els.loginSection.classList.add('hidden');
-                els.mainApp.classList.remove('hidden');
-                document.getElementById('headerUserName').textContent = state.user.nama;
-                document.getElementById('dropdownName').textContent = state.user.nama;
-                document.getElementById('headerUserRole').textContent = state.user.jabatan || 'Guru';
-
-                // Setup Defaults
-                const today = new Date().toISOString().split('T')[0];
-                els.tgl.value = today;
-                
-                // Load Data
-                authManager.fetchRefs();
-                draftManager.load();
-                populateDateSelectors();
-                
-                // Default Tab
-                app.nav('input');
-            },
-            
-            nav: (tabName) => {
-                ['input', 'history', 'calendar'].forEach(t => {
-                    document.getElementById(`tab-${t}`).className = (t === tabName) 
-                        ? 'flex-1 py-3 text-sm font-medium text-center tab-active transition' 
-                        : 'flex-1 py-3 text-sm font-medium text-center tab-inactive transition';
-                    document.getElementById(`view-${t}`).classList.add('hidden');
-                });
-                document.getElementById(`view-${tabName}`).classList.remove('hidden');
-
-                if (tabName === 'history') app.loadHistory();
-                if (tabName === 'calendar') calendarManager.render();
-            },
-
-            loadHistory: async () => {
-                const listContainer = els.historyList;
-                listContainer.innerHTML = `<div class="text-center py-10"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
-
-                const m = parseInt(document.getElementById('historyMonth').value);
-                const y = parseInt(document.getElementById('historyYear').value);
-                const startDate = new Date(y, m, 1).toISOString().split('T')[0];
-                const endDate = new Date(y, m + 1, 0).toISOString().split('T')[0];
-
-                try {
-                    const q = query(
-                        collection(db, "jurnal"),
-                        where("email", "==", state.user.email),
-                        where("tanggal", ">=", startDate),
-                        where("tanggal", "<=", endDate),
-                        orderBy("tanggal", "desc")
-                    );
-
-                    const snapshot = await getDocs(q);
-                    state.journals = [];
-                    state.journalDates.clear();
-
-                    if (snapshot.empty) {
-                        listContainer.innerHTML = `
-                            <div class="text-center py-10 text-gray-400">
-                                <i class="fas fa-folder-open text-4xl mb-2"></i>
-                                <p>Belum ada jurnal bulan ini.</p>
-                            </div>`;
-                        return;
-                    }
-
-                    let html = '';
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        state.journals.push({ id: doc.id, ...data });
-                        state.journalDates.add(data.tanggal);
-
-                        html += `
-                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 relative group">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">${formatShortDate(data.tanggal)}</span>
-                                    <span class="text-xs text-gray-500 ml-2"><i class="far fa-clock"></i> ${data.jam_mulai} - ${data.jam_selesai}</span>
+                    <!-- TAB 1: INPUT & LIST (DEFAULT) -->
+                    <div id="viewInput" class="space-y-6">
+                        <!-- Form Input -->
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200" id="formContainer">
+                            <div class="mb-4 flex justify-between items-center">
+                                <h3 class="font-semibold text-gray-700 flex items-center" id="formTitle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                                    Input Jurnal
+                                </h3>
+                                <button type="button" id="btnCancel" onclick="resetForm()" class="hidden text-xs text-red-500 border border-red-200 bg-red-50 px-3 py-1 rounded hover:bg-red-100">Batal Edit</button>
+                            </div>
+                            
+                            <form id="jurnalForm" class="space-y-4">
+                                <input type="hidden" id="inpId"> <!-- Untuk menyimpan ID saat Edit -->
+                                
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs font-semibold text-gray-500 uppercase">Tanggal</label>
+                                        <input type="date" id="inpDate" required class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-semibold text-gray-500 uppercase">Mulai</label>
+                                            <input type="time" id="inpTimeStart" required class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-semibold text-gray-500 uppercase">Selesai</label>
+                                            <input type="time" id="inpTimeEnd" required class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border">
+                                        </div>
+                                    </div>
                                 </div>
-                                <button onclick="app.deleteJournal('${doc.id}')" class="text-gray-300 hover:text-red-500 transition">
-                                    <i class="fas fa-trash-alt"></i>
+
+                                <!-- Sugesti Kegiatan -->
+                                <div class="relative">
+                                    <label class="text-xs font-semibold text-gray-500 uppercase">Uraian Kegiatan</label>
+                                    <input type="text" id="inpSearchRef" list="listRefActivities" placeholder="Ketik untuk mencari referensi..." 
+                                           class="w-full mt-1 text-sm border-blue-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border bg-blue-50 mb-2"
+                                           onchange="handleRefSelect(this)">
+                                    <datalist id="listRefActivities">
+                                        <!-- Populated via JS -->
+                                    </datalist>
+                                    
+                                    <textarea id="inpActivity" required rows="3" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border" placeholder="Deskripsi lengkap kegiatan..."></textarea>
+                                </div>
+
+                                <!-- Output -->
+                                <div>
+                                    <label class="text-xs font-semibold text-gray-500 uppercase">Hasil / Output</label>
+                                    <textarea id="inpOutput" rows="2" class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-2 border" placeholder="Contoh: Siswa dapat memahami materi..."></textarea>
+                                </div>
+
+                                <!-- Upload Foto (OPSIONAL) -->
+                                <div>
+                                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-1">Dokumentasi (Opsional)</label>
+                                    <div class="flex items-start gap-3">
+                                        <label class="flex-1 cursor-pointer bg-white border border-dashed border-gray-400 rounded-lg p-4 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-400 transition-all">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <span class="text-xs" id="labelPhoto">Ambil Foto (Kecil)</span>
+                                            <input type="file" id="inpPhoto" accept="image/*,.heic,.heif" class="hidden">
+                                        </label>
+                                        
+                                        <!-- Preview -->
+                                        <div id="photoPreviewContainer" class="hidden relative w-24 h-24 border rounded bg-gray-100 flex-shrink-0">
+                                            <img id="photoPreview" class="w-full h-full object-cover rounded" />
+                                            <button type="button" onclick="clearPhoto()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mt-1 ml-1" id="photoSizeInfo"></p>
+                                </div>
+
+                                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-bold text-sm shadow-md transition-all active:scale-95 flex justify-center gap-2 items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                                    SIMPAN JURNAL
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- List Data Header -->
+                        <div class="flex justify-between items-center px-1 sticky top-[135px] bg-gray-50 py-2 z-10">
+                            <h3 class="font-bold text-gray-700" id="journalListTitle">Riwayat Bulan Ini</h3>
+                            <div class="flex gap-2">
+                                <button onclick="exportExcel()" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition shadow-sm flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    Unduh Excel
                                 </button>
                             </div>
-                            <h3 class="font-semibold text-gray-800 text-sm mb-1">${data.kegiatan}</h3>
-                            <p class="text-xs text-gray-600 mb-2 border-l-2 border-green-200 pl-2 italic">${data.output}</p>
-                            ${data.foto ? `<a href="${data.foto}" target="_blank" class="text-xs text-blue-500 hover:underline"><i class="fas fa-external-link-alt"></i> Lihat Dokumen (Drive)</a>` : ''}
-                        </div>`;
-                    });
+                        </div>
 
-                    listContainer.innerHTML = html;
-                } catch (e) {
-                    console.error(e);
-                    listContainer.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat data. Periksa koneksi.</div>`;
-                }
-            },
+                        <div id="journalList" class="space-y-3 pb-20">
+                            <!-- Items rendered here -->
+                        </div>
+                    </div>
 
-            deleteJournal: async (id) => {
-                const result = await Swal.fire({
-                    title: 'Hapus Jurnal?',
-                    text: "Data tidak bisa dikembalikan!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, Hapus',
-                    cancelButtonText: 'Batal'
-                });
+                    <!-- TAB 2: CALENDAR -->
+                    <div id="viewCalendar" class="hidden space-y-4">
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-gray-700">Kalender</h3>
+                                <div class="flex gap-2">
+                                    <select id="calMonth" onchange="renderCalendar()" class="text-sm border rounded p-1"></select>
+                                    <select id="calYear" onchange="renderCalendar()" class="text-sm border rounded p-1"></select>
+                                </div>
+                            </div>
+                            
+                            <div class="calendar-grid mb-2">
+                                <div class="text-center text-xs text-gray-400 font-semibold">Min</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Sen</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Sel</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Rab</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Kam</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Jum</div>
+                                <div class="text-center text-xs text-gray-400 font-semibold">Sab</div>
+                            </div>
+                            
+                            <div id="calendarDays" class="calendar-grid"></div>
+                            
+                            <div class="mt-4 flex items-center gap-2 text-xs text-gray-500 justify-center">
+                                <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                <span>Menandakan ada jurnal masuk</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                if (result.isConfirmed) {
-                    try {
-                        await deleteDoc(doc(db, "jurnal", id));
-                        Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success');
-                        app.loadHistory();
-                    } catch (e) {
-                        Swal.fire('Error', 'Gagal menghapus data', 'error');
-                    }
-                }
-            }
+    <!-- LOGIC JAVASCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, Timestamp, writeBatch, doc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAzU42xVCAbez0rsmS4OZOq2zZY0NOun5k",
+            authDomain: "jurnal-gtk-2.firebaseapp.com",
+            projectId: "jurnal-gtk-2",
+            storageBucket: "jurnal-gtk-2.firebasestorage.app",
+            messagingSenderId: "769907636874",
+            appId: "1:769907636874:web:d65c6ea03cfa2dd7578b73"
         };
 
-        // --- DRAFT MANAGER & AUTOCOMPLETE ---
-        const draftManager = {
-            save: () => {
-                const data = {
-                    kegiatan: els.kegiatan.value,
-                    output: els.output.value,
-                    jam_mulai: els.jam_mulai.value,
-                    jam_selesai: els.jam_selesai.value,
-                    tgl: els.tgl.value
-                };
-                localStorage.setItem('journal_draft', JSON.stringify(data));
-                document.getElementById('draftStatus').innerText = "Tersimpan (Draft)";
-            },
-            load: () => {
-                const draft = JSON.parse(localStorage.getItem('journal_draft'));
-                if (draft) {
-                    if(draft.kegiatan) els.kegiatan.value = draft.kegiatan;
-                    if(draft.output) els.output.value = draft.output;
-                    if(draft.jam_mulai) els.jam_mulai.value = draft.jam_mulai;
-                    if(draft.jam_selesai) els.jam_selesai.value = draft.jam_selesai;
-                }
-            },
-            clear: () => {
-                localStorage.removeItem('journal_draft');
-                els.kegiatan.value = '';
-                els.output.value = '';
-                document.getElementById('draftStatus').innerText = "Siap";
-                els.previewContainer.classList.add('hidden');
-                els.uploadPlaceholder.classList.remove('hidden');
-                els.fotoPreview.src = '';
-                document.getElementById('fotoInput').value = '';
-            }
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_c2YlEZuHsYoVhgwVeqvsHh4_IMrXH853vCuSnxI6yJEkThjiU0eQWmpt0esBKeaf/exec";
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentUser = JSON.parse(localStorage.getItem('guru_user')) || null;
+        let appRefs = JSON.parse(localStorage.getItem('guru_meta')) || { refs: [], settings: {} };
+        let currentPhotoBase64 = null;
+        let cachedJournals = [];
+
+        const el = (id) => document.getElementById(id);
+        const views = {
+            login: el('loginPage'),
+            dashboard: el('dashboardPage'),
+            loading: el('loadingOverlay')
         };
 
-        // Event Listener: Auto-fill Output based on Activity Reference
-        els.kegiatan.addEventListener('change', () => {
-            const val = els.kegiatan.value;
-            const ref = state.refs.find(r => r.uraian === val);
-            if (ref && ref.output) {
-                els.output.value = ref.output;
-                draftManager.save();
-            }
-        });
+        const showLoading = (msg) => { el('loadingText').innerText = msg || 'Memuat...'; views.loading.classList.remove('hidden'); };
+        const hideLoading = () => { views.loading.classList.add('hidden'); };
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
 
-        ['kegiatan', 'output', 'jam_mulai', 'jam_selesai', 'tgl'].forEach(id => {
-            document.getElementById(id).addEventListener('input', draftManager.save);
-        });
+        const checkSession = () => {
+            if (currentUser) initDashboard();
+            else { views.login.classList.remove('hidden'); views.dashboard.classList.add('hidden'); }
+        };
 
-        // --- IMAGE HANDLING & UPLOAD TO GAS ---
-        let currentBase64Image = null;
+        window.switchTab = (tabName) => {
+            ['input', 'calendar'].forEach(t => {
+                const btn = el(`tab-${t}`);
+                const div = el(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if(t === tabName) {
+                    btn.classList.remove('text-gray-500', 'hover:text-blue-500');
+                    btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+                    div.classList.remove('hidden');
+                } else {
+                    btn.classList.add('text-gray-500', 'hover:text-blue-500');
+                    btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                    div.classList.add('hidden');
+                }
+            });
+            if(tabName === 'calendar') renderCalendar();
+        };
 
-        document.getElementById('fotoInput').addEventListener('change', async function(e) {
-            if (e.target.files && e.target.files[0]) {
-                const file = e.target.files[0];
-                const compressed = await compressImage(file);
-                currentBase64Image = compressed; // returns data:image/jpeg;base64,....
-                els.fotoPreview.src = compressed;
-                els.previewContainer.classList.remove('hidden');
-                els.uploadPlaceholder.classList.add('hidden');
-            }
-        });
+        const initDashboard = () => {
+            el('userDisplayName').innerText = currentUser.nama || 'Guru';
+            el('userDisplayRole').innerText = (currentUser.role || 'Guru').toUpperCase();
+            el('userDisplayMeta').innerText = currentUser.sekolah || '';
+            resetForm();
+            initCalendarDropdowns();
+            populateReferenceUI();
+            if(!appRefs.refs || appRefs.refs.length === 0) fetchReferences(true);
+            loadJournals();
+            views.login.classList.add('hidden');
+            views.dashboard.classList.remove('hidden');
+            switchTab('input');
+        };
 
-        function compressImage(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800; 
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.6));
-                    }
+        window.fetchReferences = async (silent = false) => {
+            if (!silent) showLoading("Update Referensi...");
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=refs`);
+                const json = await response.json();
+                if (json.result === 'success') {
+                    appRefs = { refs: json.refs || [], settings: json.settings || {} };
+                    localStorage.setItem('guru_meta', JSON.stringify(appRefs));
+                    populateReferenceUI();
+                    if (!silent) Toast.fire({ icon: 'success', title: 'Referensi diperbarui' });
+                }
+            } catch (e) { console.error(e); } finally { if(!silent) hideLoading(); }
+        };
+
+        function populateReferenceUI() {
+            const list = el('listRefActivities');
+            list.innerHTML = '';
+            (appRefs.refs || []).forEach(item => {
+                if(item.uraian) {
+                    const opt = document.createElement('option');
+                    opt.value = item.uraian; 
+                    list.appendChild(opt);
                 }
             });
         }
 
-        // --- SUBMIT JURNAL ---
-        els.journalForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Check GAS URL
-            if(GAS_URL.includes("script.google.com") === false) {
-                 Swal.fire('Error Konfigurasi', 'Mohon isi variabel GAS_URL di dalam kode dengan URL Web App Anda.', 'error');
-                 return;
+        window.handleRefSelect = (input) => {
+            const val = input.value;
+            const ref = (appRefs.refs || []).find(r => r.uraian === val);
+            if(ref) {
+                el('inpActivity').value = ref.uraian;
+                if(ref.output) el('inpOutput').value = ref.output;
             }
+        };
 
-            Swal.fire({
-                title: 'Mengirim Data...',
-                html: 'Mengupload foto ke Drive...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+        async function processFile(file) {
+            showLoading('Kompresi Gambar...');
             try {
-                let driveUrl = "";
-
-                // 1. Upload ke GAS jika ada foto
-                if (currentBase64Image) {
-                    const rawBase64 = currentBase64Image.split(',')[1]; // Remove data:image/... prefix
-                    const payload = {
-                        base64: rawBase64,
-                        mimeType: 'image/jpeg',
-                        filename: `jurnal_${state.user.nip}_${Date.now()}.jpg`,
-                        folderId: state.settings.folderId || "" // Dari Setting GAS
-                    };
-
-                    const uploadResp = await fetch(GAS_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(payload)
-                    });
-                    const uploadJson = await uploadResp.json();
-
-                    if (uploadJson.result === 'success') {
-                        driveUrl = uploadJson.url;
-                    } else {
-                        throw new Error('Gagal Upload Foto: ' + uploadJson.message);
+                let blob = file;
+                if (file.name.toLowerCase().endsWith('.heic')) {
+                    const conversionResult = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.6 });
+                    blob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+                }
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX = 800; // Resize Max 800px (Sesuai request)
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } 
+                        else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1]; // Quality 50%
+                        el('photoPreview').src = canvas.toDataURL('image/jpeg', 0.5);
+                        el('photoPreviewContainer').classList.remove('hidden');
+                        el('labelPhoto').innerText = "Ganti Foto";
+                        el('photoSizeInfo').innerText = `~${Math.round(currentPhotoBase64.length * 0.75 / 1024)} KB`;
+                        hideLoading();
                     }
                 }
+            } catch (err) { Swal.fire('Error', err.message, 'error'); hideLoading(); clearPhoto(); }
+        }
 
-                // 2. Simpan Data ke Firestore
-                Swal.update({ html: 'Menyimpan data jurnal...' });
-                
-                const docData = {
-                    email: state.user.email,
-                    nama: state.user.nama,
-                    nip: state.user.nip,
-                    tanggal: els.tgl.value,
-                    jam_mulai: els.jam_mulai.value,
-                    jam_selesai: els.jam_selesai.value,
-                    kegiatan: els.kegiatan.value,
-                    output: els.output.value,
-                    foto: driveUrl, // URL Drive
-                    createdAt: Timestamp.now()
-                };
+        el('inpPhoto').addEventListener('change', (e) => { if(e.target.files[0]) processFile(e.target.files[0]); });
+        window.clearPhoto = () => { 
+            el('inpPhoto').value = ''; currentPhotoBase64 = null; 
+            el('photoPreviewContainer').classList.add('hidden'); 
+            el('labelPhoto').innerText = "Ambil Foto (Kecil)"; el('photoSizeInfo').innerText = ''; 
+        };
 
-                await addDoc(collection(db, "jurnal"), docData);
+        window.resetForm = () => {
+            el('jurnalForm').reset(); clearPhoto(); el('inpId').value = '';
+            const now = new Date();
+            el('inpDate').value = now.toISOString().split('T')[0];
+            el('inpTimeStart').value = "07:00";
+            el('inpTimeEnd').value = "14:00";
+            el('btnSubmit').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> SIMPAN JURNAL`;
+            el('formTitle').innerText = "Input Jurnal";
+            el('btnCancel').classList.add('hidden');
+        };
 
-                Swal.fire('Berhasil', 'Jurnal tersimpan!', 'success');
-                draftManager.clear();
-                currentBase64Image = null;
-
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Gagal', 'Terjadi kesalahan: ' + error.message, 'error');
+        window.handleEdit = (id) => {
+            const data = cachedJournals.find(j => j.docId === id);
+            if(!data) return;
+            el('inpId').value = id;
+            el('inpDate').value = data.tanggal;
+            el('inpTimeStart').value = data.jam_mulai || data.jam || "00:00";
+            el('inpTimeEnd').value = data.jam_selesai || "00:00";
+            el('inpActivity').value = data.kegiatan;
+            el('inpOutput').value = data.output;
+            clearPhoto();
+            el('btnSubmit').innerText = "UPDATE DATA";
+            el('formTitle').innerText = "Edit Jurnal";
+            el('btnCancel').classList.remove('hidden');
+            document.getElementById('formContainer').scrollIntoView({ behavior: 'smooth' });
+        };
+        
+        window.handleDelete = async (id) => {
+            const res = await Swal.fire({
+                title: 'Hapus Jurnal?', text: "Data akan dihapus permanen.", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus'
+            });
+            if (res.isConfirmed) {
+                showLoading("Menghapus...");
+                try {
+                    await deleteDoc(doc(db, "jurnal", id));
+                    loadJournals();
+                    Swal.fire('Terhapus', '', 'success');
+                } catch(e) { Swal.fire('Gagal', e.message, 'error'); } finally { hideLoading(); }
             }
+        };
+
+        el('jurnalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = el('inpId').value;
+            const isEdit = !!editId;
+            showLoading(isEdit ? 'Updating...' : 'Saving...');
+            try {
+                let photoUrl = ''; 
+                if (currentPhotoBase64) {
+                    showLoading('Upload Drive...');
+                    let driveId = (appRefs.settings['ID Drive'] || '').trim(); // Key: ID Drive
+                    const payload = { base64: currentPhotoBase64, filename: `jurnal_${currentUser.nip}_${Date.now()}.jpg`, mimeType: 'image/jpeg', folderId: driveId };
+                    const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                    const json = await res.json(); 
+                    if (json.result !== 'success') throw new Error(json.message || "Gagal upload");
+                    photoUrl = json.url;
+                } else if (isEdit) {
+                     const oldData = cachedJournals.find(j => j.docId === editId);
+                     photoUrl = oldData ? oldData.foto : '';
+                }
+                const commonData = {
+                    tanggal: el('inpDate').value, jam_mulai: el('inpTimeStart').value, jam_selesai: el('inpTimeEnd').value,
+                    kegiatan: el('inpActivity').value, output: el('inpOutput').value, foto: photoUrl
+                };
+                if (isEdit) { await updateDoc(doc(db, "jurnal", editId), { ...commonData, updatedAt: Timestamp.now() }); } 
+                else { await addDoc(collection(db, "jurnal"), { ...commonData, uid: currentUser.id, nip: currentUser.nip, nama: currentUser.nama, role: currentUser.role, sekolah: currentUser.sekolah, createdAt: Timestamp.now() }); }
+                resetForm(); loadJournals(); Swal.fire({ icon: 'success', title: 'Berhasil Disimpan', timer: 1500, showConfirmButton: false });
+            } catch (err) { Swal.fire('Error', err.message, 'error'); } finally { hideLoading(); }
         });
 
-        // --- EXCEL MANAGER ---
-        window.excelManager = {
-            export: () => {
-                if (state.journals.length === 0) {
-                    Swal.fire('Info', 'Tidak ada data untuk diekspor bulan ini', 'info');
-                    return;
-                }
-                const sortedData = state.journals.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
-                const m = document.getElementById('historyMonth');
-                const y = document.getElementById('historyYear');
-                const monthName = m.options[m.selectedIndex].text;
-                const yearVal = y.value;
-                const lastDay = new Date(yearVal, parseInt(m.value) + 1, 0).getDate();
+        async function loadJournals() {
+            const list = el('journalList');
+            // Simplified: Load only my journals, limit 50 recent
+            const q = query(collection(db, "jurnal"), where("uid", "==", currentUser.id), orderBy("createdAt", "desc"), limit(50));
+            try {
+                const snap = await getDocs(q);
+                cachedJournals = []; list.innerHTML = '';
+                if (snap.empty) { list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada jurnal bulan ini.</div>'; return; }
+                snap.forEach(d => { const dt = d.data(); dt.docId = d.id; cachedJournals.push(dt); });
+                
+                // Sort by Date Descending
+                cachedJournals.sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
 
-                // Format sesuai Screenshot User
+                cachedJournals.forEach(d => {
+                    const hasPhoto = d.foto && d.foto.length > 5; 
+                    list.innerHTML += `
+                        <div class="bg-white p-4 rounded-lg border border-gray-100 shadow-sm relative hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-2 border-b border-gray-50 pb-2">
+                                <div>
+                                    <span class="font-bold text-blue-700 block">${new Date(d.tanggal).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long'})}</span>
+                                    <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">${d.jam_mulai || '00:00'} - ${d.jam_selesai || '00:00'}</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="handleEdit('${d.docId}')" class="text-gray-400 hover:text-blue-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                                    <button onclick="handleDelete('${d.docId}')" class="text-gray-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-2.195-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                </div>
+                            </div>
+                            <p class="text-gray-800 text-sm mb-2 font-medium">${d.kegiatan}</p>
+                            <p class="text-xs text-gray-500 italic border-l-2 border-blue-200 pl-2 mb-2">${d.output}</p>
+                            ${hasPhoto ? `<a href="${d.foto}" target="_blank" class="inline-flex items-center text-xs text-blue-500 hover:underline bg-blue-50 px-2 py-1 rounded"><svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>Lihat Dokumentasi</a>` : ''}
+                        </div>
+                    `;
+                });
+                if(!el('viewCalendar').classList.contains('hidden')) renderCalendar();
+            } catch (err) { console.error(err); }
+        }
+
+        function initCalendarDropdowns() {
+            const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+            const mSel = el('calMonth');
+            months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
+            mSel.value = new Date().getMonth();
+            const ySel = el('calYear');
+            const curYear = new Date().getFullYear();
+            for(let y=curYear-1; y<=curYear+1; y++) { ySel.innerHTML += `<option value="${y}">${y}</option>` }
+            ySel.value = curYear;
+        }
+
+        window.renderCalendar = () => {
+            const month = parseInt(el('calMonth').value);
+            const year = parseInt(el('calYear').value);
+            const container = el('calendarDays');
+            container.innerHTML = '';
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const activeDates = new Set();
+            cachedJournals.forEach(j => {
+                const d = new Date(j.tanggal);
+                if(d.getMonth() === month && d.getFullYear() === year) activeDates.add(d.getDate());
+            });
+            for(let i=0; i<firstDay; i++) container.appendChild(document.createElement('div'));
+            for(let d=1; d<=daysInMonth; d++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day bg-white border border-gray-100 text-gray-600';
+                cell.innerText = d;
+                if(activeDates.has(d)) {
+                    cell.className += ' has-data font-bold text-blue-600 bg-blue-50 border-blue-200';
+                    cell.innerHTML += `<div class="indicator"></div>`;
+                }
+                container.appendChild(cell);
+            }
+        };
+
+        // --- EXPORT EXCEL FORMAT BARU (Advanced) ---
+        window.exportExcel = async () => {
+            const result = await Swal.fire({ title: 'Unduh Laporan?', text: "Format Laporan Kinerja Bulanan", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Unduh' });
+            if(!result.isConfirmed) return;
+            showLoading("Menyusun Excel...");
+            try {
+                // Filter data berdasarkan Bulan Kalender yang dipilih user (bukan semua riwayat)
+                const month = parseInt(el('calMonth').value);
+                const year = parseInt(el('calYear').value);
+                const filteredData = cachedJournals.filter(j => {
+                    const d = new Date(j.tanggal);
+                    return d.getMonth() === month && d.getFullYear() === year;
+                }).sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal)); // Ascending
+
+                if(filteredData.length === 0) throw new Error("Tidak ada data pada bulan yang dipilih.");
+
+                const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+                const monthName = months[month];
+                const lastDate = new Date(year, month + 1, 0).getDate();
+
+                // AMBIL KOTA DARI SETTING (Key: Kota)
+                const kota = appRefs.settings['Kota'] || 'Wonogiri';
+
                 const ws_data = [
-                    ["LAPORAN KINERJA HARIAN GURU"], 
-                    [`${state.user.sekolah || 'SD NEGERI...'}`], 
-                    [`Periode: 1 ${monthName} ${yearVal} s/d ${lastDay} ${monthName} ${yearVal}`], 
-                    [], 
-                    [`Nama : ${state.user.nama}`, "", "", `Unit Kerja : ${state.user.sekolah || '-'}`], 
-                    [`NIP : ${state.user.nip || '-'}`, "", "", `Jabatan : ${state.user.jabatan || 'Guru'}`], 
-                    [], 
-                    ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"] 
+                    ["LAPORAN KINERJA HARIAN GURU"], // A1
+                    [currentUser.sekolah || 'SD NEGERI ...'], // A2
+                    [`Periode: 1 ${monthName} ${year} s/d ${lastDate} ${monthName} ${year}`], // A3
+                    [],
+                    [`Nama : ${currentUser.nama}`, "", "", `Unit Kerja : ${currentUser.sekolah || '-'}`], 
+                    [`NIP : ${currentUser.nip || '-'}`, "", "", `Jabatan : ${currentUser.jabatan || 'Guru'}`], 
+                    [],
+                    ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"] // A8
                 ];
 
-                sortedData.forEach((item, index) => {
-                    const dateObj = new Date(item.tanggal);
-                    const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dateObj);
-                    
+                filteredData.forEach((item, idx) => {
+                    const d = new Date(item.tanggal);
+                    const dateStr = d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
                     ws_data.push([
-                        index + 1,
-                        dateStr,
-                        `${item.jam_mulai} - ${item.jam_selesai}`,
-                        item.kegiatan,
-                        item.output,
-                        item.foto ? item.foto : "-" 
+                        idx + 1, dateStr, `${item.jam_mulai} - ${item.jam_selesai}`, item.kegiatan, item.output, item.foto || '-'
                     ]);
                 });
 
-                ws_data.push([], []);
-                ws_data.push(["Mengetahui,", "", "", "", `Wonogiri, ${lastDay} ${monthName} ${yearVal}`]);
-                ws_data.push(["Kepala Sekolah", "", "", "", state.user.jabatan || "Guru Kelas"]);
-                ws_data.push([], [], []); 
-                
-                const namaKS = ".........................."; 
-                const nipKS = "..........................";
-                ws_data.push([namaKS, "", "", "", state.user.nama]);
-                ws_data.push([`NIP. ${nipKS}`, "", "", "", `NIP. ${state.user.nip}`]);
+                ws_data.push([],[]);
+                ws_data.push(["Mengetahui,", "", "", "", `${kota}, ${lastDate} ${monthName} ${year}`]);
+                ws_data.push(["Kepala Sekolah", "", "", "", "Guru Kelas/Mapel"]);
+                ws_data.push([],[],[]);
+                ws_data.push(["..........................", "", "", "", currentUser.nama]);
+                ws_data.push(["NIP. ..........................", "", "", "", `NIP. ${currentUser.nip}`]);
 
                 const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                // Simple Merge Logic
                 if(!ws['!merges']) ws['!merges'] = [];
-                ws['!merges'].push(
-                    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, 
-                    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, 
-                    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }  
-                );
-                ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 20 }];
+                ws['!merges'].push({s:{r:0,c:0},e:{r:0,c:5}}, {s:{r:1,c:0},e:{r:1,c:5}}, {s:{r:2,c:0},e:{r:2,c:5}});
+                ws['!cols'] = [{wch:5}, {wch:25}, {wch:15}, {wch:40}, {wch:40}, {wch:25}];
 
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Laporan Bulanan");
-                XLSX.writeFile(wb, `Jurnal_${state.user.nama}_${monthName}_${yearVal}.xlsx`);
-            },
-            
-            handleImport: (input) => {
-                Swal.fire('Fitur Import', 'Silakan gunakan data entry manual untuk sinkronisasi cloud yang lebih baik.', 'info');
-                // Logic import disederhanakan/dihapus sesuai request untuk fokus ke fitur utama
-                input.value = '';
-            }
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+                XLSX.writeFile(wb, `Jurnal_${currentUser.nama}_${monthName}_${year}.xlsx`);
+                Swal.fire('Berhasil', 'Laporan terunduh.', 'success');
+            } catch(e) { Swal.fire('Gagal', e.message, 'error'); } finally { hideLoading(); }
         };
 
-        // --- CALENDAR MANAGER ---
-        window.calendarManager = {
-            currentMonth: new Date().getMonth(),
-            currentYear: new Date().getFullYear(),
+        // SYNC USER
+        window.handleSyncUsers = async () => {
+            const { value: pass } = await Swal.fire({ title: 'Admin Sync', input: 'password', inputPlaceholder: 'Password Admin...', showCancelButton: true });
+            if (pass !== "admin123") return Swal.fire('Error', 'Password salah', 'error');
             
-            render: () => {
-                const dt = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1);
-                els.calTitle.innerText = dt.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-                
-                const daysInMonth = new Date(calendarManager.currentYear, calendarManager.currentMonth + 1, 0).getDate();
-                const firstDayIndex = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1).getDay();
-                
-                els.calGrid.innerHTML = "";
-                for (let i = 0; i < firstDayIndex; i++) els.calGrid.innerHTML += `<div class="bg-white calendar-day"></div>`;
-
-                for (let i = 1; i <= daysInMonth; i++) {
-                    const dateStr = `${calendarManager.currentYear}-${String(calendarManager.currentMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                    const hasEntry = state.journalDates.has(dateStr);
-                    
-                    els.calGrid.innerHTML += `
-                        <div class="bg-white calendar-day p-1 cursor-pointer hover:bg-blue-50 relative ${hasEntry ? 'has-journal' : ''}" onclick="Swal.fire('Info', 'Lihat detail di menu Riwayat', 'info')">
-                            <span class="text-xs font-semibold ${hasEntry ? 'text-blue-600' : 'text-gray-700'}">${i}</span>
-                            <div class="indicator"></div>
-                        </div>`;
-                }
-            },
-            prevMonth: () => {
-                calendarManager.currentMonth--;
-                if(calendarManager.currentMonth < 0) { calendarManager.currentMonth = 11; calendarManager.currentYear--; }
-                calendarManager.render();
-                triggerCalendarDataFetch();
-            },
-            nextMonth: () => {
-                calendarManager.currentMonth++;
-                if(calendarManager.currentMonth > 11) { calendarManager.currentMonth = 0; calendarManager.currentYear++; }
-                calendarManager.render();
-                triggerCalendarDataFetch();
-            }
+            showLoading("Sinkronisasi Database...");
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=users`);
+                const json = await res.json();
+                const batch = writeBatch(db);
+                let count = 0;
+                json.data.forEach(u => {
+                    if(!u['NIP']) return;
+                    // SINKRONISASI SESUAI SHEET DataGuru
+                    batch.set(doc(db, "users", String(u['NIP'])), {
+                        nama: u['Nama Lengkap'],
+                        nip: String(u['NIP']),
+                        pin: String(u['PIN']),
+                        jabatan: u['Jabatan'],
+                        sekolah: u['Satuan Pendidikan'], // Sesuaikan dengan Header Sheet
+                        npsn: u['NPSN'] || '', // Tambahan
+                        email: String(u['Email']).toLowerCase(),
+                        role: (u['Role']||'guru').toLowerCase(),
+                        updatedAt: Timestamp.now()
+                    }, {merge: true});
+                    count++;
+                });
+                await batch.commit();
+                Swal.fire('Sukses', `${count} data guru diperbarui.`, 'success');
+            } catch(e) { Swal.fire('Gagal', e.message, 'error'); } finally { hideLoading(); }
         };
 
-        async function triggerCalendarDataFetch() {
-            // Fetch indikator untuk kalender
-            const startDate = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1).toISOString().split('T')[0];
-            const endDate = new Date(calendarManager.currentYear, calendarManager.currentMonth + 1, 0).toISOString().split('T')[0];
-            const q = query(collection(db, "jurnal"), where("email", "==", state.user.email), where("tanggal", ">=", startDate), where("tanggal", "<=", endDate));
-            const snapshot = await getDocs(q);
-            state.journalDates.clear();
-            snapshot.forEach(doc => state.journalDates.add(doc.data().tanggal));
-            calendarManager.render();
-        }
-
-        // --- HELPERS ---
-        function populateDateSelectors() {
-            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            const mSelect = document.getElementById('historyMonth');
-            const ySelect = document.getElementById('historyYear');
-            mSelect.innerHTML = months.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-            mSelect.value = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            ySelect.innerHTML = '';
-            for(let i = currentYear; i >= currentYear - 5; i--) ySelect.innerHTML += `<option value="${i}">${i}</option>`;
-        }
-
-        // Events
-        els.userMenuBtn.addEventListener('click', () => els.userDropdown.classList.toggle('hidden'));
-        document.addEventListener('click', (e) => {
-            if (!els.userMenuBtn.contains(e.target) && !els.userDropdown.contains(e.target)) els.userDropdown.classList.add('hidden');
-        });
-        document.getElementById('logoutBtn').addEventListener('click', authManager.logout);
-        document.getElementById('syncProfileBtn').addEventListener('click', () => {
-            authManager.logout();
-            alert("Silakan login ulang untuk sinkronisasi data terbaru.");
-        });
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        el('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            authManager.login(document.getElementById('email').value, document.getElementById('password').value);
+            const email = el('loginEmail').value.trim().toLowerCase();
+            const pin = el('loginPin').value;
+            showLoading('Login...');
+            try {
+                const q = query(collection(db, "users"), where("email", "==", email), where("pin", "==", pin));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                    localStorage.setItem('guru_user', JSON.stringify(currentUser));
+                    initDashboard();
+                } else throw new Error("Email/PIN salah. Hubungi Admin.");
+            } catch (err) { Swal.fire('Login Gagal', err.message, 'error'); } finally { hideLoading(); }
         });
-
-        // Start
-        if(state.user) app.init(); else els.loginSection.classList.remove('hidden');
-
+        window.handleLogout = () => { localStorage.removeItem('guru_user'); currentUser = null; checkSession(); };
+        checkSession();
     </script>
 </body>
 </html>
