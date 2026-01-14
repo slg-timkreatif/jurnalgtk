@@ -28,6 +28,9 @@
         .calendar-day { min-height: 80px; transition: all 0.2s; }
         .has-journal .indicator { display: block; }
         .indicator { display: none; width: 6px; height: 6px; background-color: #2563eb; border-radius: 50%; margin: 2px auto 0; }
+        
+        /* Autocomplete Styles */
+        datalist { display: none; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -39,15 +42,16 @@
                 <i class="fas fa-book-open text-5xl text-blue-600"></i>
             </div>
             <h1 class="text-2xl font-bold text-gray-800 mb-2">E-Jurnal Guru</h1>
-            <p class="text-gray-500 mb-8">Masuk untuk mulai mengisi jurnal</p>
+            <p class="text-gray-500 mb-8">Masuk menggunakan Akun Terdaftar</p>
             
             <form id="loginForm" class="space-y-4">
                 <input type="email" id="email" placeholder="Email" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
                 <input type="password" id="password" placeholder="PIN / Password" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
                 <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">MASUK</button>
             </form>
-            <div id="loginLoading" class="hidden mt-4 justify-center">
-                <div class="loader"></div>
+            <div id="loginLoading" class="hidden mt-4 text-center">
+                <div class="loader mx-auto mb-2"></div>
+                <p class="text-xs text-gray-500">Menghubungkan ke Server...</p>
             </div>
         </div>
     </div>
@@ -81,7 +85,7 @@
                         <p id="dropdownName" class="text-sm font-bold text-gray-800 truncate">User</p>
                     </div>
                     <button id="syncProfileBtn" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        <i class="fas fa-sync-alt mr-2"></i> Update Profil
+                        <i class="fas fa-sync-alt mr-2"></i> Update Data Guru
                     </button>
                     <button id="logoutBtn" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                         <i class="fas fa-sign-out-alt mr-2"></i> Keluar
@@ -111,7 +115,7 @@
                 <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded mb-4 flex justify-between items-center">
                     <div>
                         <p class="text-xs text-blue-800 font-semibold">Status: <span id="draftStatus" class="text-gray-500">Siap</span></p>
-                        <p class="text-xs text-blue-600 mt-1">Data tersimpan otomatis di perangkat ini (Draft).</p>
+                        <p class="text-xs text-blue-600 mt-1">Data tersimpan otomatis (Draft).</p>
                     </div>
                 </div>
 
@@ -135,12 +139,15 @@
 
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Uraian Kegiatan</label>
-                        <textarea id="kegiatan" rows="3" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Contoh: Melaksanakan pembelajaran Matematika..." required></textarea>
+                        <input list="activityList" id="kegiatan" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Ketik atau pilih kegiatan..." required autocomplete="off">
+                        <datalist id="activityList">
+                            <!-- Populated by JS from GAS -->
+                        </datalist>
                     </div>
 
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Hasil / Output</label>
-                        <textarea id="output" rows="2" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Contoh: Siswa memahami materi perkalian..." required></textarea>
+                        <textarea id="output" rows="2" class="w-full p-3 border rounded bg-gray-50 focus:bg-white focus:ring-2 ring-blue-100 outline-none" placeholder="Otomatis terisi jika ada di referensi..." required></textarea>
                     </div>
 
                     <div>
@@ -158,7 +165,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2">
+                    <button type="submit" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2">
                         <span>SIMPAN JURNAL</span>
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -230,9 +237,11 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, query, where, getDocs, doc, deleteDoc, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // --- KONFIGURASI GOOGLE APPS SCRIPT ---
+        // PENTING: Ganti URL di bawah ini dengan URL Deployment GAS Anda (Web App: Execute as Me, Access: Anyone)
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz..."; 
+
         // --- KONFIGURASI FIREBASE ---
-        // PENTING: Gunakan config Anda sendiri di sini.
-        // Jika kode sebelumnya memiliki config, salin kembali ke sini.
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY", 
             authDomain: "your-app.firebaseapp.com",
@@ -248,17 +257,18 @@
             appFirebase = initializeApp(firebaseConfig);
             db = getFirestore(appFirebase);
         } catch (e) {
-            console.error("Firebase Init Error (Check Config):", e);
-            Swal.fire('Error Config', 'Mohon isi konfigurasi Firebase di kode index.html', 'error');
+            console.error("Firebase Init Error:", e);
         }
 
         // --- STATE MANAGEMENT ---
         const state = {
             user: JSON.parse(localStorage.getItem('user')) || null,
-            journals: [], // Data untuk bulan aktif
-            currentDate: new Date(), // Untuk kalender/riwayat
+            journals: [], 
+            currentDate: new Date(),
             draft: JSON.parse(localStorage.getItem('journal_draft')) || {},
-            journalDates: new Set() // Set tanggal yang ada isinya (untuk kalender)
+            journalDates: new Set(),
+            refs: [], // Data Referensi dari GAS
+            settings: {} // Data Setting (FolderID dll) dari GAS
         };
 
         // --- DOM ELEMENTS ---
@@ -281,7 +291,9 @@
             output: document.getElementById('output'),
             previewContainer: document.getElementById('previewContainer'),
             uploadPlaceholder: document.getElementById('uploadPlaceholder'),
-            fotoPreview: document.getElementById('fotoPreview')
+            fotoPreview: document.getElementById('fotoPreview'),
+            activityList: document.getElementById('activityList'),
+            btnSubmit: document.getElementById('btnSubmit')
         };
 
         // --- UTILS ---
@@ -291,38 +303,42 @@
             return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
         }
         
-        // --- AUTH MODULE ---
+        // --- AUTH & GAS DATA MODULE ---
         const authManager = {
             login: async (email, password) => {
                 els.loading.classList.remove('hidden');
-                // Simulasi login sederhana atau query ke koleksi 'users'
-                // Di sini kita query ke Firestore collection 'users'
+                
                 try {
-                    const q = query(collection(db, "users"), where("email", "==", email));
-                    const querySnapshot = await getDocs(q);
+                    // Fetch Users from GAS
+                    const response = await fetch(GAS_URL + '?action=users');
+                    const json = await response.json();
                     
-                    if (!querySnapshot.empty) {
-                        const userData = querySnapshot.docs[0].data();
-                        // Cek PIN/Password sederhana
-                        if (userData.pin == password || userData.password == password) {
-                            state.user = { id: querySnapshot.docs[0].id, ...userData };
-                            localStorage.setItem('user', JSON.stringify(state.user));
-                            app.init();
-                        } else {
-                            throw new Error("Password/PIN salah");
-                        }
+                    if (json.result !== 'success') throw new Error(json.message);
+
+                    const users = json.data;
+                    // Filter User (Case Insensitive Email)
+                    const user = users.find(u => 
+                        String(u['Email']).toLowerCase() === email.toLowerCase() && 
+                        String(u['PIN']) === password
+                    );
+
+                    if (user) {
+                        // Mapping Data GAS ke State App
+                        state.user = {
+                            nama: user['Nama Lengkap'],
+                            nip: user['NIP'],
+                            sekolah: user['Unit Kerja'],
+                            jabatan: user['Jabatan'],
+                            email: user['Email'],
+                            role: 'guru'
+                        };
+                        localStorage.setItem('user', JSON.stringify(state.user));
+                        app.init();
                     } else {
-                        // Fallback Mode Testing jika DB kosong
-                        if(email === 'demo@guru.com') {
-                            state.user = { nama: "Guru Demo", nip: "123456", sekolah: "SD N Demo", jabatan: "Guru Kelas", email: email };
-                            localStorage.setItem('user', JSON.stringify(state.user));
-                            app.init();
-                        } else {
-                            throw new Error("User tidak ditemukan");
-                        }
+                        throw new Error("Email atau PIN salah. Pastikan terdaftar di Sheet DataGuru.");
                     }
                 } catch (error) {
-                    Swal.fire('Login Gagal', error.message, 'error');
+                    Swal.fire('Login Gagal', 'Gagal terhubung ke Server Sheet: ' + error.message, 'error');
                 } finally {
                     els.loading.classList.add('hidden');
                 }
@@ -331,6 +347,21 @@
                 localStorage.removeItem('user');
                 state.user = null;
                 location.reload();
+            },
+            fetchRefs: async () => {
+                try {
+                    const response = await fetch(GAS_URL + '?action=refs');
+                    const json = await response.json();
+                    if(json.result === 'success') {
+                        state.refs = json.refs || [];
+                        state.settings = json.settings || {};
+                        
+                        // Populate Autocomplete
+                        els.activityList.innerHTML = state.refs.map(r => `<option value="${r.uraian}">`).join('');
+                    }
+                } catch (e) {
+                    console.error("Gagal ambil referensi:", e);
+                }
             }
         };
 
@@ -354,10 +385,9 @@
                 const today = new Date().toISOString().split('T')[0];
                 els.tgl.value = today;
                 
-                // Load Draft if exists
+                // Load Data
+                authManager.fetchRefs();
                 draftManager.load();
-
-                // Populate History Selectors
                 populateDateSelectors();
                 
                 // Default Tab
@@ -365,7 +395,6 @@
             },
             
             nav: (tabName) => {
-                // UI Toggle
                 ['input', 'history', 'calendar'].forEach(t => {
                     document.getElementById(`tab-${t}`).className = (t === tabName) 
                         ? 'flex-1 py-3 text-sm font-medium text-center tab-active transition' 
@@ -384,19 +413,16 @@
 
                 const m = parseInt(document.getElementById('historyMonth').value);
                 const y = parseInt(document.getElementById('historyYear').value);
-                
-                // Range Tanggal untuk Query
                 const startDate = new Date(y, m, 1).toISOString().split('T')[0];
                 const endDate = new Date(y, m + 1, 0).toISOString().split('T')[0];
 
                 try {
-                    // Query Firestore
                     const q = query(
                         collection(db, "jurnal"),
-                        where("email", "==", state.user.email), // Pastikan field ini sesuai DB Anda (bisa nip atau email)
+                        where("email", "==", state.user.email),
                         where("tanggal", ">=", startDate),
                         where("tanggal", "<=", endDate),
-                        orderBy("tanggal", "desc") // Perlu index di Firestore. Jika error, hapus orderBy sementara
+                        orderBy("tanggal", "desc")
                     );
 
                     const snapshot = await getDocs(q);
@@ -431,16 +457,14 @@
                             </div>
                             <h3 class="font-semibold text-gray-800 text-sm mb-1">${data.kegiatan}</h3>
                             <p class="text-xs text-gray-600 mb-2 border-l-2 border-green-200 pl-2 italic">${data.output}</p>
-                            ${data.foto ? `<a href="${data.foto}" target="_blank" class="text-xs text-blue-500 hover:underline"><i class="fas fa-image"></i> Lihat Foto</a>` : ''}
+                            ${data.foto ? `<a href="${data.foto}" target="_blank" class="text-xs text-blue-500 hover:underline"><i class="fas fa-external-link-alt"></i> Lihat Dokumen (Drive)</a>` : ''}
                         </div>`;
                     });
 
                     listContainer.innerHTML = html;
                 } catch (e) {
                     console.error(e);
-                    // Fallback jika index belum dibuat di Firestore (client-side filter)
-                    // ... (bisa ditambahkan logika fallback sort manual)
-                    listContainer.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat data. ${e.message}</div>`;
+                    listContainer.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat data. Periksa koneksi.</div>`;
                 }
             },
 
@@ -458,7 +482,7 @@
                     try {
                         await deleteDoc(doc(db, "jurnal", id));
                         Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success');
-                        app.loadHistory(); // Reload
+                        app.loadHistory();
                     } catch (e) {
                         Swal.fire('Error', 'Gagal menghapus data', 'error');
                     }
@@ -466,7 +490,7 @@
             }
         };
 
-        // --- DRAFT MANAGER (Auto Save) ---
+        // --- DRAFT MANAGER & AUTOCOMPLETE ---
         const draftManager = {
             save: () => {
                 const data = {
@@ -486,7 +510,6 @@
                     if(draft.output) els.output.value = draft.output;
                     if(draft.jam_mulai) els.jam_mulai.value = draft.jam_mulai;
                     if(draft.jam_selesai) els.jam_selesai.value = draft.jam_selesai;
-                    // if(draft.tgl) els.tgl.value = draft.tgl; // Opsional, biasanya tgl selalu hari ini
                 }
             },
             clear: () => {
@@ -501,25 +524,28 @@
             }
         };
 
-        // Event Listener untuk Draft
+        // Event Listener: Auto-fill Output based on Activity Reference
+        els.kegiatan.addEventListener('change', () => {
+            const val = els.kegiatan.value;
+            const ref = state.refs.find(r => r.uraian === val);
+            if (ref && ref.output) {
+                els.output.value = ref.output;
+                draftManager.save();
+            }
+        });
+
         ['kegiatan', 'output', 'jam_mulai', 'jam_selesai', 'tgl'].forEach(id => {
             document.getElementById(id).addEventListener('input', draftManager.save);
         });
 
-        // --- IMAGE COMPRESSION & UPLOAD ---
+        // --- IMAGE HANDLING & UPLOAD TO GAS ---
         let currentBase64Image = null;
 
         document.getElementById('fotoInput').addEventListener('change', async function(e) {
             if (e.target.files && e.target.files[0]) {
                 const file = e.target.files[0];
-                
-                // Show loading placeholder if needed
-                
-                // Compress Image
                 const compressed = await compressImage(file);
-                currentBase64Image = compressed;
-                
-                // Show Preview
+                currentBase64Image = compressed; // returns data:image/jpeg;base64,....
                 els.fotoPreview.src = compressed;
                 els.previewContainer.classList.remove('hidden');
                 els.uploadPlaceholder.classList.add('hidden');
@@ -535,17 +561,13 @@
                     img.src = event.target.result;
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800; // Resize ke max 800px width
+                        const MAX_WIDTH = 800; 
                         const scaleSize = MAX_WIDTH / img.width;
-                        
                         canvas.width = MAX_WIDTH;
                         canvas.height = img.height * scaleSize;
-                        
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        // Compress Quality 0.5 (50%)
-                        resolve(canvas.toDataURL('image/jpeg', 0.5));
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
                     }
                 }
             });
@@ -555,14 +577,47 @@
         els.journalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Check GAS URL
+            if(GAS_URL.includes("script.google.com") === false) {
+                 Swal.fire('Error Konfigurasi', 'Mohon isi variabel GAS_URL di dalam kode dengan URL Web App Anda.', 'error');
+                 return;
+            }
+
             Swal.fire({
-                title: 'Menyimpan...',
+                title: 'Mengirim Data...',
+                html: 'Mengupload foto ke Drive...',
+                allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
 
             try {
-                // Upload Foto ke Base64 String (Simpan di Firestore langsung jika kecil, atau gunakan Storage bucket idealnya)
-                // Karena request user "kompresi lebih rendah lagi", base64 string ~50-100kb aman untuk Firestore.
+                let driveUrl = "";
+
+                // 1. Upload ke GAS jika ada foto
+                if (currentBase64Image) {
+                    const rawBase64 = currentBase64Image.split(',')[1]; // Remove data:image/... prefix
+                    const payload = {
+                        base64: rawBase64,
+                        mimeType: 'image/jpeg',
+                        filename: `jurnal_${state.user.nip}_${Date.now()}.jpg`,
+                        folderId: state.settings.folderId || "" // Dari Setting GAS
+                    };
+
+                    const uploadResp = await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    const uploadJson = await uploadResp.json();
+
+                    if (uploadJson.result === 'success') {
+                        driveUrl = uploadJson.url;
+                    } else {
+                        throw new Error('Gagal Upload Foto: ' + uploadJson.message);
+                    }
+                }
+
+                // 2. Simpan Data ke Firestore
+                Swal.update({ html: 'Menyimpan data jurnal...' });
                 
                 const docData = {
                     email: state.user.email,
@@ -573,7 +628,7 @@
                     jam_selesai: els.jam_selesai.value,
                     kegiatan: els.kegiatan.value,
                     output: els.output.value,
-                    foto: currentBase64Image || "", // Simpan base64
+                    foto: driveUrl, // URL Drive
                     createdAt: Timestamp.now()
                 };
 
@@ -582,9 +637,6 @@
                 Swal.fire('Berhasil', 'Jurnal tersimpan!', 'success');
                 draftManager.clear();
                 currentBase64Image = null;
-                
-                // Refresh jika di tab history
-                // app.nav('history'); 
 
             } catch (error) {
                 console.error(error);
@@ -592,41 +644,33 @@
             }
         });
 
-        // --- EXCEL MANAGER (Export/Import) ---
+        // --- EXCEL MANAGER ---
         window.excelManager = {
             export: () => {
                 if (state.journals.length === 0) {
                     Swal.fire('Info', 'Tidak ada data untuk diekspor bulan ini', 'info');
                     return;
                 }
-
-                // Sorting data by date
                 const sortedData = state.journals.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
-
-                // 1. Setup Header Info
                 const m = document.getElementById('historyMonth');
                 const y = document.getElementById('historyYear');
                 const monthName = m.options[m.selectedIndex].text;
                 const yearVal = y.value;
-                
-                // Hitung tanggal akhir bulan
                 const lastDay = new Date(yearVal, parseInt(m.value) + 1, 0).getDate();
 
-                // 2. Buat Struktur Array (AOA) sesuai Screenshot
+                // Format sesuai Screenshot User
                 const ws_data = [
-                    ["LAPORAN KINERJA HARIAN GURU"], // A1
-                    [`${state.user.sekolah || 'SD NEGERI 3 KRISAK'}`], // A2
-                    [`Periode: 1 ${monthName} ${yearVal} s/d ${lastDay} ${monthName} ${yearVal}`], // A3
-                    [], // A4 (Empty)
-                    [`Nama : ${state.user.nama}`, "", "", `Unit Kerja : ${state.user.sekolah || '-'}`], // A5
-                    [`NIP : ${state.user.nip || '-'}`, "", "", `Jabatan : ${state.user.jabatan || 'Guru'}`], // A6
-                    [], // A7
-                    ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"] // A8 Header
+                    ["LAPORAN KINERJA HARIAN GURU"], 
+                    [`${state.user.sekolah || 'SD NEGERI...'}`], 
+                    [`Periode: 1 ${monthName} ${yearVal} s/d ${lastDay} ${monthName} ${yearVal}`], 
+                    [], 
+                    [`Nama : ${state.user.nama}`, "", "", `Unit Kerja : ${state.user.sekolah || '-'}`], 
+                    [`NIP : ${state.user.nip || '-'}`, "", "", `Jabatan : ${state.user.jabatan || 'Guru'}`], 
+                    [], 
+                    ["No", "Hari/Tanggal", "Waktu", "Kegiatan", "Hasil/Output", "Dokumentasi"] 
                 ];
 
-                // 3. Masukkan Data Jurnal
                 sortedData.forEach((item, index) => {
-                    // Format Tanggal: "Senin, 12 Januari 2026"
                     const dateObj = new Date(item.tanggal);
                     const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dateObj);
                     
@@ -636,137 +680,38 @@
                         `${item.jam_mulai} - ${item.jam_selesai}`,
                         item.kegiatan,
                         item.output,
-                        item.foto ? "Lihat Foto (Link/Base64)" : "-" // Di Excel asli mungkin hyperlink
+                        item.foto ? item.foto : "-" 
                     ]);
                 });
 
-                // 4. Tambah Baris Kosong
                 ws_data.push([], []);
-
-                // 5. Tambah Tanda Tangan
-                const signatureRowIndex = ws_data.length;
-                // Kiri: Mengetahui KS, Kanan: Guru/KS pembuat
                 ws_data.push(["Mengetahui,", "", "", "", `Wonogiri, ${lastDay} ${monthName} ${yearVal}`]);
                 ws_data.push(["Kepala Sekolah", "", "", "", state.user.jabatan || "Guru Kelas"]);
-                ws_data.push([], [], []); // Spasi TTD
+                ws_data.push([], [], []); 
                 
-                // Nama Penandatangan (Hardcode KS sementara atau ambil dari profil jika ada data KS)
                 const namaKS = ".........................."; 
                 const nipKS = "..........................";
-                
                 ws_data.push([namaKS, "", "", "", state.user.nama]);
                 ws_data.push([`NIP. ${nipKS}`, "", "", "", `NIP. ${state.user.nip}`]);
 
-                // 6. Buat Workbook
                 const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-                // 7. Styling (Merger Cells)
                 if(!ws['!merges']) ws['!merges'] = [];
                 ws['!merges'].push(
-                    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Title Row 1 Merge A-F
-                    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Title Row 2
-                    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }  // Title Row 3
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, 
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, 
+                    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }  
                 );
-                
-                // Set Column Widths
-                ws['!cols'] = [
-                    { wch: 5 },  // No
-                    { wch: 25 }, // Tanggal
-                    { wch: 15 }, // Waktu
-                    { wch: 40 }, // Kegiatan
-                    { wch: 40 }, // Output (Diperlebar sesuai request)
-                    { wch: 20 }  // Dok
-                ];
+                ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 20 }];
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Laporan Bulanan");
                 XLSX.writeFile(wb, `Jurnal_${state.user.nama}_${monthName}_${yearVal}.xlsx`);
             },
-
+            
             handleImport: (input) => {
-                const file = input.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    // Convert to JSON array (header di baris 8 biasanya, tapi kita scan)
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-                    let headerRowIndex = -1;
-                    // Cari baris header
-                    for(let i=0; i<Math.min(20, jsonData.length); i++) {
-                        const row = jsonData[i];
-                        if (row && row.some(cell => typeof cell === 'string' && cell.toLowerCase().includes('kegiatan'))) {
-                            headerRowIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (headerRowIndex === -1) {
-                        Swal.fire('Format Salah', 'Tidak dapat menemukan kolom "Kegiatan" di file Excel.', 'error');
-                        return;
-                    }
-
-                    const headers = jsonData[headerRowIndex].map(h => String(h).toLowerCase());
-                    const colIdx = {
-                        date: headers.findIndex(h => h.includes('tanggal')),
-                        time: headers.findIndex(h => h.includes('waktu')),
-                        act: headers.findIndex(h => h.includes('kegiatan')),
-                        out: headers.findIndex(h => h.includes('output') || h.includes('hasil')),
-                    };
-
-                    let importedCount = 0;
-                    // Loop data rows
-                    for(let i = headerRowIndex + 1; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if(!row || !row[colIdx.act]) continue; // Skip kosong
-
-                        // Parsing Tanggal & Waktu (Perlu penyesuaian format string Excel yang beragam)
-                        // Disini kita asumsikan user mengisi manual atau format standar
-                        // Implementasi basic untuk demo:
-                        
-                        try {
-                            const rawDate = row[colIdx.date];
-                            let dateStr = "";
-                            // Jika excel date number
-                            if(typeof rawDate === 'number') {
-                                const d = new Date(Math.round((rawDate - 25569)*86400*1000));
-                                dateStr = d.toISOString().split('T')[0];
-                            } else {
-                                // Try parse string "Senin, 12 Januari..." -> butuh logic parser kompleks
-                                // Untuk saat ini kita skip tanggal jika format string kompleks, atau default today
-                                dateStr = new Date().toISOString().split('T')[0]; 
-                            }
-
-                            const rawTime = row[colIdx.time] || "07:00 - 08:00";
-                            const times = rawTime.split('-');
-                            
-                            await addDoc(collection(db, "jurnal"), {
-                                email: state.user.email,
-                                nama: state.user.nama,
-                                nip: state.user.nip,
-                                tanggal: dateStr,
-                                jam_mulai: times[0] ? times[0].trim() : "07:00",
-                                jam_selesai: times[1] ? times[1].trim() : "08:00",
-                                kegiatan: row[colIdx.act],
-                                output: row[colIdx.out] || "-",
-                                foto: "",
-                                createdAt: Timestamp.now()
-                            });
-                            importedCount++;
-                        } catch (err) {
-                            console.log("Row skip error", err);
-                        }
-                    }
-                    
-                    Swal.fire('Selesai', `${importedCount} data berhasil diimpor!`, 'success');
-                    app.loadHistory();
-                };
-                reader.readAsArrayBuffer(file);
-                input.value = ''; // reset
+                Swal.fire('Fitur Import', 'Silakan gunakan data entry manual untuk sinkronisasi cloud yang lebih baik.', 'info');
+                // Logic import disederhanakan/dihapus sesuai request untuk fokus ke fitur utama
+                input.value = '';
             }
         };
 
@@ -780,28 +725,17 @@
                 els.calTitle.innerText = dt.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
                 
                 const daysInMonth = new Date(calendarManager.currentYear, calendarManager.currentMonth + 1, 0).getDate();
-                const firstDayIndex = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1).getDay(); // 0 = Sunday
+                const firstDayIndex = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1).getDay();
                 
                 els.calGrid.innerHTML = "";
-                
-                // Empty slots
-                for (let i = 0; i < firstDayIndex; i++) {
-                    els.calGrid.innerHTML += `<div class="bg-white calendar-day"></div>`;
-                }
+                for (let i = 0; i < firstDayIndex; i++) els.calGrid.innerHTML += `<div class="bg-white calendar-day"></div>`;
 
-                // Days
                 for (let i = 1; i <= daysInMonth; i++) {
                     const dateStr = `${calendarManager.currentYear}-${String(calendarManager.currentMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                    // Cek apakah ada jurnal di tanggal ini (perlu data terload)
-                    // Solusi: Kita cek di state.journalDates jika bulan sesuai, 
-                    // TAPI untuk kalender idealnya fetch semua tanggal events di bulan itu dulu.
-                    // Untuk simplifikasi, kita asumsikan user sudah buka tab 'Riwayat' atau kita fetch ringan.
-                    
-                    // Simple check based on currently loaded journals
                     const hasEntry = state.journalDates.has(dateStr);
                     
                     els.calGrid.innerHTML += `
-                        <div class="bg-white calendar-day p-1 cursor-pointer hover:bg-blue-50 relative ${hasEntry ? 'has-journal' : ''}" onclick="app.filterByDate('${dateStr}')">
+                        <div class="bg-white calendar-day p-1 cursor-pointer hover:bg-blue-50 relative ${hasEntry ? 'has-journal' : ''}" onclick="Swal.fire('Info', 'Lihat detail di menu Riwayat', 'info')">
                             <span class="text-xs font-semibold ${hasEntry ? 'text-blue-600' : 'text-gray-700'}">${i}</span>
                             <div class="indicator"></div>
                         </div>`;
@@ -809,43 +743,27 @@
             },
             prevMonth: () => {
                 calendarManager.currentMonth--;
-                if(calendarManager.currentMonth < 0) {
-                    calendarManager.currentMonth = 11;
-                    calendarManager.currentYear--;
-                }
-                // Refresh data events for calendar indicators here if needed
+                if(calendarManager.currentMonth < 0) { calendarManager.currentMonth = 11; calendarManager.currentYear--; }
                 calendarManager.render();
-                // Trigger fetch data background for indicators
                 triggerCalendarDataFetch();
             },
             nextMonth: () => {
                 calendarManager.currentMonth++;
-                if(calendarManager.currentMonth > 11) {
-                    calendarManager.currentMonth = 0;
-                    calendarManager.currentYear++;
-                }
+                if(calendarManager.currentMonth > 11) { calendarManager.currentMonth = 0; calendarManager.currentYear++; }
                 calendarManager.render();
                 triggerCalendarDataFetch();
             }
         };
 
         async function triggerCalendarDataFetch() {
-            // Fetch light data (only dates) for the visible month to show dots
+            // Fetch indikator untuk kalender
             const startDate = new Date(calendarManager.currentYear, calendarManager.currentMonth, 1).toISOString().split('T')[0];
             const endDate = new Date(calendarManager.currentYear, calendarManager.currentMonth + 1, 0).toISOString().split('T')[0];
-            
-            const q = query(
-                collection(db, "jurnal"),
-                where("email", "==", state.user.email),
-                where("tanggal", ">=", startDate),
-                where("tanggal", "<=", endDate)
-            );
+            const q = query(collection(db, "jurnal"), where("email", "==", state.user.email), where("tanggal", ">=", startDate), where("tanggal", "<=", endDate));
             const snapshot = await getDocs(q);
             state.journalDates.clear();
-            snapshot.forEach(doc => {
-                state.journalDates.add(doc.data().tanggal);
-            });
-            calendarManager.render(); // Re-render dots
+            snapshot.forEach(doc => state.journalDates.add(doc.data().tanggal));
+            calendarManager.render();
         }
 
         // --- HELPERS ---
@@ -853,40 +771,30 @@
             const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
             const mSelect = document.getElementById('historyMonth');
             const ySelect = document.getElementById('historyYear');
-            
             mSelect.innerHTML = months.map((m, i) => `<option value="${i}">${m}</option>`).join('');
             mSelect.value = new Date().getMonth();
-
             const currentYear = new Date().getFullYear();
             ySelect.innerHTML = '';
-            for(let i = currentYear; i >= currentYear - 5; i--) {
-                ySelect.innerHTML += `<option value="${i}">${i}</option>`;
-            }
+            for(let i = currentYear; i >= currentYear - 5; i--) ySelect.innerHTML += `<option value="${i}">${i}</option>`;
         }
 
-        // Dropdown Logic
-        els.userMenuBtn.addEventListener('click', () => {
-            els.userDropdown.classList.toggle('hidden');
-        });
+        // Events
+        els.userMenuBtn.addEventListener('click', () => els.userDropdown.classList.toggle('hidden'));
         document.addEventListener('click', (e) => {
-            if (!els.userMenuBtn.contains(e.target) && !els.userDropdown.contains(e.target)) {
-                els.userDropdown.classList.add('hidden');
-            }
+            if (!els.userMenuBtn.contains(e.target) && !els.userDropdown.contains(e.target)) els.userDropdown.classList.add('hidden');
         });
-
         document.getElementById('logoutBtn').addEventListener('click', authManager.logout);
+        document.getElementById('syncProfileBtn').addEventListener('click', () => {
+            authManager.logout();
+            alert("Silakan login ulang untuk sinkronisasi data terbaru.");
+        });
         document.getElementById('loginForm').addEventListener('submit', (e) => {
             e.preventDefault();
             authManager.login(document.getElementById('email').value, document.getElementById('password').value);
         });
 
         // Start
-        // Check localstorage user on load
-        if(state.user) {
-            app.init();
-        } else {
-            els.loginSection.classList.remove('hidden');
-        }
+        if(state.user) app.init(); else els.loginSection.classList.remove('hidden');
 
     </script>
 </body>
