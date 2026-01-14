@@ -393,14 +393,23 @@
             el('userDisplayName').innerText = currentUser.nama || 'Guru';
             el('userDisplayRole').innerText = (currentUser.role || 'Guru').toUpperCase();
             el('userDisplayMeta').innerText = currentUser.sekolah || '';
+            
+            // Get Local Date String for Today (YYYY-MM-DD)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
+            
             resetForm();
+            el('inpDate').value = todayStr; // Ensure input defaults to local today
+
             initCalendarDropdowns();
             
             // Set Default Report Dates
-            const now = new Date();
-            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-            el('reportStartDate').value = firstDay.toISOString().split('T')[0];
-            el('reportEndDate').value = now.toISOString().split('T')[0];
+            const firstDay = `${year}-${month}-01`;
+            el('reportStartDate').value = firstDay;
+            el('reportEndDate').value = todayStr;
 
             populateReferenceUI();
             if(!appRefs.refs || appRefs.refs.length === 0) fetchReferences(true);
@@ -415,18 +424,22 @@
             const list = el('journalList');
             list.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto"></div></div>';
             
-            // Calc 7 days ago
+            // Calc 7 days ago (Safe Local Calculation)
             const d = new Date();
             d.setDate(d.getDate() - 7);
-            const dateStr = d.toISOString().split('T')[0];
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`; // Safe local date string
+            
             el('dateRangeDisplay').innerText = `Data sejak ${new Date(dateStr).toLocaleDateString('id-ID')}`;
 
+            // REMOVED 'createdAt' ORDER to avoid Index Error
             const q = query(
                 collection(db, "jurnal"), 
                 where("uid", "==", currentUser.id), 
                 where("tanggal", ">=", dateStr),
-                orderBy("tanggal", "desc"),
-                orderBy("createdAt", "desc")
+                orderBy("tanggal", "desc")
             );
 
             try {
@@ -435,8 +448,21 @@
                 if (snap.empty) { list.innerHTML = '<div class="text-center text-gray-400 py-10">Belum ada jurnal minggu ini.</div>'; return; }
                 
                 snap.forEach(d => { const dt = d.data(); dt.docId = d.id; cachedJournals.push(dt); });
+                
+                // Manual Sort in JS to replace Firestore orderBy('createdAt')
+                cachedJournals.sort((a, b) => {
+                     // Primary: Date Desc
+                     if (a.tanggal !== b.tanggal) return b.tanggal.localeCompare(a.tanggal);
+                     // Secondary: CreatedAt Desc (if available)
+                     if (a.createdAt && b.createdAt) return b.createdAt.seconds - a.createdAt.seconds;
+                     return 0;
+                });
+
                 renderJournalList(cachedJournals, list);
-            } catch (err) { console.error(err); list.innerHTML = '<div class="text-red-400 text-center">Gagal memuat.</div>'; }
+            } catch (err) { 
+                console.error(err); 
+                list.innerHTML = `<div class="text-red-400 text-center text-xs p-4">Gagal memuat. ${err.message.includes('index') ? 'Database sedang dioptimasi, coba sesaat lagi.' : 'Periksa koneksi internet.'}</div>`; 
+            }
         }
 
         // --- CALENDAR LOGIC (ALL MONTH DATA) ---
@@ -444,25 +470,44 @@
             // Fetch data for the selected month/year to show indicators
             const m = parseInt(el('calMonth').value);
             const y = parseInt(el('calYear').value);
-            const start = new Date(y, m, 1).toISOString().split('T')[0];
-            const end = new Date(y, m + 1, 0).toISOString().split('T')[0];
+            
+            // Construct YYYY-MM-DD manually to be safe
+            const start = `${y}-${String(m+1).padStart(2,'0')}-01`;
+            // Get last day of month
+            const lastDay = new Date(y, m + 1, 0).getDate();
+            const end = `${y}-${String(m+1).padStart(2,'0')}-${lastDay}`;
 
-            const q = query(collection(db, "jurnal"), where("uid", "==", currentUser.id), where("tanggal", ">=", start), where("tanggal", "<=", end));
-            const snap = await getDocs(q);
-            calendarJournals = [];
-            snap.forEach(d => { const dt = d.data(); dt.docId = d.id; calendarJournals.push(dt); });
-            renderCalendar();
+            try {
+                const q = query(
+                    collection(db, "jurnal"), 
+                    where("uid", "==", currentUser.id), 
+                    where("tanggal", ">=", start), 
+                    where("tanggal", "<=", end)
+                );
+                const snap = await getDocs(q);
+                calendarJournals = [];
+                snap.forEach(d => { const dt = d.data(); dt.docId = d.id; calendarJournals.push(dt); });
+            } catch (err) {
+                console.error("Cal Fetch Error:", err);
+                // Even if fetch fails, we MUST render the empty calendar so user sees the grid
+                calendarJournals = [];
+                Toast.fire({ icon: 'error', title: 'Gagal memuat data kalender' });
+            } finally {
+                renderCalendar(); // ALWAYS RENDER
+            }
         }
 
         function initCalendarDropdowns() {
             const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
             const mSel = el('calMonth');
-            months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
-            mSel.value = new Date().getMonth();
-            const ySel = el('calYear');
-            const curYear = new Date().getFullYear();
-            for(let y=curYear-1; y<=curYear+1; y++) { ySel.innerHTML += `<option value="${y}">${y}</option>` }
-            ySel.value = curYear;
+            if(mSel.options.length === 0) { // Prevent duplicate on re-init
+                months.forEach((m,i) => { mSel.innerHTML += `<option value="${i}">${m}</option>` });
+                mSel.value = new Date().getMonth();
+                const ySel = el('calYear');
+                const curYear = new Date().getFullYear();
+                for(let y=curYear-1; y<=curYear+1; y++) { ySel.innerHTML += `<option value="${y}">${y}</option>` }
+                ySel.value = curYear;
+            }
         }
 
         window.renderCalendar = () => {
@@ -477,7 +522,8 @@
             // Map dates with data
             const dateMap = {};
             calendarJournals.forEach(j => {
-                const d = parseInt(j.tanggal.split('-')[2]); // Get day part
+                const parts = j.tanggal.split('-'); // YYYY-MM-DD
+                const d = parseInt(parts[2]); // Get day part
                 if(!dateMap[d]) dateMap[d] = [];
                 dateMap[d].push(j);
             });
@@ -523,7 +569,9 @@
             }
             
             // Scroll to detail slightly
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         };
 
         // --- RENDER HELPER ---
@@ -804,8 +852,14 @@
 
         window.resetForm = () => {
             el('jurnalForm').reset(); clearPhoto(); el('inpId').value = '';
+            
+            // Default to local today
             const now = new Date();
-            el('inpDate').value = now.toISOString().split('T')[0];
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            el('inpDate').value = `${year}-${month}-${day}`;
+
             el('inpTimeStart').value = "07:00";
             el('inpTimeEnd').value = "14:00";
             el('btnSubmit').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> SIMPAN JURNAL`;
