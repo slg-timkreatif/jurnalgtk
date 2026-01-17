@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Merger Laporan Kinerja</title>
+    <title>Merger Laporan Jurnal Harian</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -13,16 +13,8 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #F8FAFC; }
-        
-        /* Animasi */
-        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
         .loader { border: 2px solid rgba(255,255,255,0.3); border-left-color: #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; }
-        
-        /* Toast Notification */
+        @keyframes spin { to { transform: rotate(360deg); } }
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; transition: all 0.3s ease; z-index: 100; pointer-events: none; }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
@@ -35,7 +27,7 @@
                 <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-md">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
                 </div>
-                <h1 class="text-base font-bold text-slate-800 tracking-tight">Merger Laporan Kinerja</h1>
+                <h1 class="text-base font-bold text-slate-800 tracking-tight">Merger Laporan Jurnal Harian</h1>
             </div>
         </div>
     </header>
@@ -43,33 +35,32 @@
     <main class="flex-grow max-w-md mx-auto px-4 mt-6 w-full pb-32">
         
         <div class="relative group">
-            <input type="file" id="fileInput" multiple accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+            <input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
             
             <div class="border border-dashed border-slate-300 bg-white rounded-xl p-8 text-center group-hover:border-emerald-500 group-hover:bg-emerald-50/30 transition-all duration-300 shadow-sm">
                 <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 transition-transform duration-300">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
                 </div>
-                <h3 class="text-sm font-semibold text-slate-800">Tap untuk Upload Laporan</h3>
-                <p class="text-xs text-slate-400 mt-1">Pilih semua file Excel bulanan sekaligus</p>
+                <h3 class="text-sm font-semibold text-slate-800">Tap untuk Tambah File</h3>
+                <p class="text-xs text-slate-400 mt-1">Bisa pilih bertahap dari beda folder</p>
             </div>
         </div>
 
         <div id="previewArea" class="hidden mt-8">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">File Terpilih (<span id="fileCount">0</span>)</h2>
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total File: <span id="fileCount">0</span></h2>
                 <button onclick="clearAll()" class="text-xs text-red-500 font-medium hover:text-red-700 transition flex items-center gap-1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-                    Reset
+                    Hapus Semua
                 </button>
             </div>
 
-            <div id="cardContainer" class="space-y-3">
-                </div>
+            <div id="cardContainer" class="space-y-3"></div>
             
             <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex gap-3 items-start">
                 <svg class="w-4 h-4 text-blue-500 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <p class="text-[11px] text-blue-600 leading-snug">
-                    Nama Tab otomatis terdeteksi dari isi file ("Periode"). Ketuk pada nama Tab jika ingin mengubahnya manual.
+                    Aplikasi otomatis merapikan tabel (Garis & Wrap Text) pada hasil download.
                 </p>
             </div>
         </div>
@@ -84,15 +75,12 @@
                 2026 | Tim Kreatif Kecamatan Selogiri
             </p>
         </div>
-
     </main>
 
     <div id="actionContainer" class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
         <div class="max-w-md mx-auto">
             <button id="btnProcess" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-lg active:scale-[0.98] transition-all">
-                <span id="btnIcon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-                </span>
+                <span id="btnIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
                 <span id="btnText" class="text-sm">Gabungkan & Download</span>
                 <div id="loadingSpinner" class="loader hidden"></div>
             </button>
@@ -105,50 +93,40 @@
     </div>
 
     <script>
-        let filesData = [];
+        let filesData = []; 
 
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const msg = document.getElementById('toastMessage');
             const icon = document.getElementById('toastIcon');
-            
             msg.innerText = message;
-            
             if(type === 'success') {
                 icon.innerHTML = `<svg width="16" height="16" class="text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-            } else if (type === 'error') {
+            } else {
                 icon.innerHTML = `<svg width="16" height="16" class="text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
             }
-
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         document.getElementById('fileInput').addEventListener('change', async function(e) {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-
-            // Sort alphabetical
-            files.sort((a, b) => a.name.localeCompare(b.name));
+            const newFiles = Array.from(e.target.files);
+            if (newFiles.length === 0) return;
 
             document.getElementById('emptyState').classList.add('hidden');
             document.getElementById('previewArea').classList.remove('hidden');
             document.getElementById('actionContainer').classList.remove('translate-y-full');
             
-            const container = document.getElementById('cardContainer');
-            container.innerHTML = ''; 
-            filesData = [];
+            for (let i = 0; i < newFiles.length; i++) {
+                const file = newFiles[i];
+                if (filesData.some(f => f.file.name === file.name)) continue; 
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                
                 try {
                     const data = await file.arrayBuffer();
                     const workbook = XLSX.read(data, { cellStyles: true });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Smart Logic
                     let detectedSheetName = file.name.replace(/\.[^/.]+$/, "").substring(0, 15);
                     const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {header: 1, range: 0, defval: ""});
                     
@@ -167,8 +145,10 @@
                 }
             }
             
+            this.value = ''; 
+            filesData.sort((a, b) => a.file.name.localeCompare(b.file.name));
             renderCards();
-            showToast(`${files.length} file berhasil dimuat`);
+            showToast(`${newFiles.length} file ditambahkan`);
         });
 
         function renderCards() {
@@ -178,30 +158,22 @@
 
             filesData.forEach((item, index) => {
                 const card = document.createElement('div');
-                card.className = "group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all animate-fade-in flex flex-col gap-2 relative overflow-hidden";
-                
-                const sidebar = document.createElement('div');
-                sidebar.className = "absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity";
-                card.appendChild(sidebar);
-
-                card.innerHTML += `
+                card.className = "group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col gap-2 relative overflow-hidden";
+                card.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="flex justify-between items-start">
                         <div class="flex items-center gap-2">
                             <div class="p-1.5 bg-slate-100 rounded text-slate-500">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
                             </div>
                             <span class="text-[10px] text-slate-400 font-medium truncate max-w-[200px]">${item.file.name}</span>
                         </div>
                         <button onclick="removeFile(${index})" class="text-slate-300 hover:text-red-500 transition-colors">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                         </button>
                     </div>
-                    <div class="relative">
-                        <label class="text-[9px] uppercase tracking-wider text-slate-400 font-semibold absolute -top-1.5 left-0">Nama Tab</label>
-                        <input type="text" value="${item.sheetName}" onchange="updateName(${index}, this.value)" class="w-full text-slate-700 font-semibold text-lg bg-transparent border-b border-slate-100 focus:border-emerald-500 focus:outline-none py-1 mt-2 transition-colors" placeholder="Nama Tab">
-                        <div class="absolute right-0 bottom-2 text-slate-300 pointer-events-none">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                        </div>
+                    <div>
+                        <input type="text" value="${item.sheetName}" onchange="updateName(${index}, this.value)" class="w-full text-slate-700 font-semibold text-lg bg-transparent border-b border-slate-100 focus:border-emerald-500 focus:outline-none py-1 transition-colors" placeholder="Nama Tab">
                     </div>
                 `;
                 container.appendChild(card);
@@ -210,14 +182,11 @@
             if (filesData.length === 0) clearAll();
         }
 
-        function updateName(index, newName) {
-            filesData[index].sheetName = newName.trim();
-        }
+        function updateName(index, newName) { filesData[index].sheetName = newName.trim(); }
 
         function removeFile(index) {
             filesData.splice(index, 1);
             renderCards();
-            showToast("File dihapus", "error");
         }
 
         function clearAll() {
@@ -225,7 +194,39 @@
             document.getElementById('previewArea').classList.add('hidden');
             document.getElementById('emptyState').classList.remove('hidden');
             document.getElementById('actionContainer').classList.add('translate-y-full');
-            document.getElementById('fileInput').value = ''; 
+        }
+
+        function applyStylesToSheet(ws) {
+            const borderStyle = { style: "thin", color: { auto: 1 } };
+            const cellBorder = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+            
+            if(!ws['!ref']) return;
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const startRow = 5; 
+
+            for (let R = startRow; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                    if (!ws[cellAddress]) continue; 
+
+                    if (!ws[cellAddress].s) ws[cellAddress].s = {};
+                    ws[cellAddress].s.border = cellBorder;
+
+                    if (!ws[cellAddress].s.alignment) ws[cellAddress].s.alignment = {};
+                    ws[cellAddress].s.alignment.wrapText = true;
+                    ws[cellAddress].s.alignment.vertical = "top"; 
+
+                    if (R === 5) {
+                        ws[cellAddress].s.font = { bold: true };
+                        ws[cellAddress].s.alignment.horizontal = "center";
+                        ws[cellAddress].s.alignment.vertical = "center";
+                        ws[cellAddress].s.fill = { fgColor: { rgb: "EEEEEE" } }; 
+                    }
+                }
+            }
+            if (!ws['!cols']) {
+                ws['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 30 }, { wch: 20 }];
+            }
         }
 
         document.getElementById('btnProcess').addEventListener('click', function() {
@@ -235,23 +236,20 @@
             
             spinner.classList.remove('hidden');
             btnIcon.classList.add('hidden');
-            btnText.innerText = "Memproses...";
+            btnText.innerText = "Memproses Format...";
             this.disabled = true;
 
             setTimeout(() => {
                 try {
                     const newWb = XLSX.utils.book_new();
-                    
-                    // Metadata General
-                    newWb.Props = {
-                        Title: "Rekap Laporan Kinerja",
-                        Author: "Tim Kreatif Kecamatan Selogiri", // Updated Author
-                        CreatedDate: new Date()
-                    };
+                    // GANTI JUDUL METADATA FILE
+                    newWb.Props = { Title: "Rekap Laporan Jurnal Harian", Author: "Tim Kreatif Kecamatan Selogiri" };
 
                     filesData.forEach((item) => {
                         const firstSheetName = item.wb.SheetNames[0];
                         let ws = item.wb.Sheets[firstSheetName];
+                        
+                        applyStylesToSheet(ws);
                         
                         let safeName = item.sheetName.replace(/[:\\/?*\[\]]/g, "").substring(0, 31);
                         let counter = 1;
@@ -264,8 +262,7 @@
                     });
 
                     const dateStr = new Date().toISOString().slice(0,10);
-                    XLSX.writeFile(newWb, `Laporan_Gabungan_${dateStr}.xlsx`);
-                    
+                    XLSX.writeFile(newWb, `Laporan_Jurnal_Harian_${dateStr}.xlsx`);
                     showToast("Download Berhasil!", "success");
                     
                 } catch (err) {
