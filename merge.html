@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabung Laporan Bulanan Guru</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #16a34a; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-50 p-8 font-sans">
+
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-lg border-t-4 border-green-600">
+        <h1 class="text-2xl font-bold mb-1 text-gray-800">Aplikasi Gabung Laporan Bulanan</h1>
+        <p class="text-sm text-gray-600 mb-6">Satukan file laporan bulanan (Januari, Februari, dst) menjadi 1 file Excel utuh.</p>
+
+        <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center hover:bg-gray-100 transition">
+            <label class="cursor-pointer w-full block">
+                <div class="text-4xl mb-2">📂</div>
+                <span class="text-sm font-medium text-gray-700">Klik untuk pilih file Excel Laporan Bulanan</span>
+                <p class="text-xs text-gray-500 mt-1">(Bisa pilih banyak file sekaligus)</p>
+                <input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" class="hidden">
+            </label>
+        </div>
+
+        <div id="previewArea" class="hidden mb-6">
+            <h3 class="font-semibold text-gray-700 mb-3 flex justify-between items-center">
+                Preview Urutan Tab:
+                <span class="text-xs font-normal text-gray-500 bg-gray-200 px-2 py-1 rounded">Pastikan urutan bulan benar</span>
+            </h3>
+            <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3">Nama File Asli</th>
+                            <th class="px-4 py-3">Nama Sheet Baru (Otomatis)</th>
+                            <th class="px-4 py-3 w-10">Hapus</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody">
+                        </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 italic">*Nama Sheet bisa diklik dan diedit jika deteksi bulan kurang tepat.</p>
+        </div>
+
+        <button id="btnProcess" class="hidden w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-bold rounded-lg text-sm px-5 py-3 shadow-md transition transform active:scale-95">
+            <span class="flex items-center justify-center gap-2">
+                <div class="loader" id="loadingSpinner"></div>
+                <span>DOWNLOAD FILE GABUNGAN</span>
+            </span>
+        </button>
+    </div>
+
+    <script>
+        let filesData = [];
+
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            const previewArea = document.getElementById('previewArea');
+            const tbody = document.getElementById('previewTableBody');
+            const btn = document.getElementById('btnProcess');
+            
+            // Kita tidak mereset filesData agar user bisa nambah file bertahap jika mau
+            // filesData = []; 
+            // Tapi untuk kesederhanaan UX, kita reset saat input change:
+            filesData = [];
+            tbody.innerHTML = '';
+            
+            if (files.length > 0) {
+                previewArea.classList.remove('hidden');
+                btn.classList.remove('hidden');
+
+                // Sort file berdasarkan nama agar urutan bulan kemungkinan urut (opsional)
+                files.sort((a, b) => a.name.localeCompare(b.name));
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data);
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // --- LOGIKA DETEKSI BULAN (SMART MONTH DETECTION) ---
+                    let detectedSheetName = file.name.replace(/\.[^/.]+$/, "").substring(0, 30); // Default: Nama File
+                    
+                    // Ubah range sheet ke JSON array (baris demi baris) untuk memudahkan pencarian
+                    // Kita ambil header saja (misal 6 baris pertama)
+                    const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {header: 1, range: 0, defval: ""});
+                    
+                    // Loop 6 baris pertama cari kata "Periode"
+                    for(let rowIdx = 0; rowIdx < Math.min(6, jsonSheet.length); rowIdx++){
+                        const rowData = jsonSheet[rowIdx].join(" "); // Gabung kolom jadi satu string panjang
+                        if(rowData.includes("Periode") || rowData.includes("PERIODE")) {
+                            // Regex mencari pola bulan Indonesia (Januari s/d Desember) + Tahun
+                            // Contoh target: "Periode: 1 Januari 2026 s/d ..." -> Ambil "Januari 2026"
+                            const regexBulan = /(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s\d{4}/i;
+                            const match = rowData.match(regexBulan);
+                            if(match) {
+                                detectedSheetName = match[0]; // Set nama sheet jadi "Januari 2026"
+                                break; // Ketemu, stop looping
+                            }
+                        }
+                    }
+
+                    filesData.push({ file: file, wb: workbook, sheetName: detectedSheetName });
+                    renderTable();
+                }
+            }
+        });
+
+        function renderTable() {
+            const tbody = document.getElementById('previewTableBody');
+            tbody.innerHTML = '';
+            filesData.forEach((item, index) => {
+                const row = `
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        <td class="px-4 py-2 font-medium text-gray-800 truncate max-w-xs" title="${item.file.name}">${item.file.name}</td>
+                        <td class="px-4 py-2 text-green-700 font-bold border border-transparent hover:border-gray-300 rounded cursor-text bg-green-50" 
+                            contenteditable="true" 
+                            onblur="updateName(${index}, this.innerText)">${item.sheetName}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="removeFile(${index})" class="text-red-500 hover:text-red-700 font-bold">✕</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function updateName(index, newName) {
+            filesData[index].sheetName = newName.trim();
+        }
+
+        function removeFile(index) {
+            filesData.splice(index, 1);
+            renderTable();
+            if(filesData.length === 0) {
+                document.getElementById('previewArea').classList.add('hidden');
+                document.getElementById('btnProcess').classList.add('hidden');
+            }
+        }
+
+        document.getElementById('btnProcess').addEventListener('click', function() {
+            const spinner = document.getElementById('loadingSpinner');
+            const btnText = this.querySelector('span span');
+            
+            spinner.style.display = 'block';
+            btnText.innerText = "SEDANG MEMPROSES...";
+            
+            setTimeout(() => {
+                try {
+                    const newWb = XLSX.utils.book_new();
+                    
+                    // Set metadata properties (Opsional)
+                    newWb.Props = {
+                        Title: "Rekap Laporan Kinerja",
+                        Subject: "Gabungan Laporan Bulanan",
+                        Author: "SD Negeri 3 Krisak",
+                        CreatedDate: new Date()
+                    };
+
+                    filesData.forEach((item) => {
+                        const firstSheetName = item.wb.SheetNames[0];
+                        const ws = item.wb.Sheets[firstSheetName];
+                        
+                        // Bersihkan nama sheet (Excel melarang karakter: : \ / ? * [ ])
+                        let safeName = item.sheetName.replace(/[:\\/?*\[\]]/g, "").substring(0, 31);
+                        
+                        // Handle duplikat nama sheet (misal ada 2 file Januari)
+                        let counter = 1;
+                        let originalSafeName = safeName;
+                        while (newWb.SheetNames.includes(safeName)) {
+                            safeName = `${originalSafeName} (${counter})`;
+                            counter++;
+                        }
+
+                        XLSX.utils.book_append_sheet(newWb, ws, safeName);
+                    });
+
+                    XLSX.writeFile(newWb, "Laporan_Kinerja_Gabungan_Semester.xlsx");
+                } catch (err) {
+                    alert("Terjadi kesalahan: " + err.message);
+                } finally {
+                    spinner.style.display = 'none';
+                    btnText.innerText = "DOWNLOAD FILE GABUNGAN";
+                }
+            }, 800);
+        });
+    </script>
+</body>
+</html>
