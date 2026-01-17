@@ -2,133 +2,212 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gabung Laporan Bulanan Guru</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aplikasi Merger Laporan Kinerja</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #16a34a; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #F8FAFC; }
+        
+        /* Animasi */
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        .loader { border: 2px solid rgba(255,255,255,0.3); border-left-color: #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; }
+        
+        /* Toast Notification */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; transition: all 0.3s ease; z-index: 100; pointer-events: none; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
-<body class="bg-gray-50 p-8 font-sans">
+<body class="text-slate-600 flex flex-col min-h-screen">
 
-    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-lg border-t-4 border-green-600">
-        <h1 class="text-2xl font-bold mb-1 text-gray-800">Aplikasi Gabung Laporan Bulanan</h1>
-        <p class="text-sm text-gray-600 mb-6">Satukan file laporan bulanan (Januari, Februari, dst) menjadi 1 file Excel utuh.</p>
-
-        <div class="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center hover:bg-gray-100 transition">
-            <label class="cursor-pointer w-full block">
-                <div class="text-4xl mb-2">📂</div>
-                <span class="text-sm font-medium text-gray-700">Klik untuk pilih file Excel Laporan Bulanan</span>
-                <p class="text-xs text-gray-500 mt-1">(Bisa pilih banyak file sekaligus)</p>
-                <input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" class="hidden">
-            </label>
-        </div>
-
-        <div id="previewArea" class="hidden mb-6">
-            <h3 class="font-semibold text-gray-700 mb-3 flex justify-between items-center">
-                Preview Urutan Tab:
-                <span class="text-xs font-normal text-gray-500 bg-gray-200 px-2 py-1 rounded">Pastikan urutan bulan benar</span>
-            </h3>
-            <div class="overflow-x-auto border rounded-lg">
-                <table class="w-full text-sm text-left text-gray-600">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
-                        <tr>
-                            <th class="px-4 py-3">Nama File Asli</th>
-                            <th class="px-4 py-3">Nama Sheet Baru (Otomatis)</th>
-                            <th class="px-4 py-3 w-10">Hapus</th>
-                        </tr>
-                    </thead>
-                    <tbody id="previewTableBody">
-                        </tbody>
-                </table>
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-center relative">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-md">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+                </div>
+                <h1 class="text-base font-bold text-slate-800 tracking-tight">Merger Laporan Kinerja</h1>
             </div>
-            <p class="text-xs text-gray-500 mt-2 italic">*Nama Sheet bisa diklik dan diedit jika deteksi bulan kurang tepat.</p>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-md mx-auto px-4 mt-6 w-full pb-32">
+        
+        <div class="relative group">
+            <input type="file" id="fileInput" multiple accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+            
+            <div class="border border-dashed border-slate-300 bg-white rounded-xl p-8 text-center group-hover:border-emerald-500 group-hover:bg-emerald-50/30 transition-all duration-300 shadow-sm">
+                <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 transition-transform duration-300">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">Tap untuk Upload Laporan</h3>
+                <p class="text-xs text-slate-400 mt-1">Pilih semua file Excel bulanan sekaligus</p>
+            </div>
         </div>
 
-        <button id="btnProcess" class="hidden w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-bold rounded-lg text-sm px-5 py-3 shadow-md transition transform active:scale-95">
-            <span class="flex items-center justify-center gap-2">
-                <div class="loader" id="loadingSpinner"></div>
-                <span>DOWNLOAD FILE GABUNGAN</span>
-            </span>
-        </button>
+        <div id="previewArea" class="hidden mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">File Terpilih (<span id="fileCount">0</span>)</h2>
+                <button onclick="clearAll()" class="text-xs text-red-500 font-medium hover:text-red-700 transition flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                    Reset
+                </button>
+            </div>
+
+            <div id="cardContainer" class="space-y-3">
+                </div>
+            
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex gap-3 items-start">
+                <svg class="w-4 h-4 text-blue-500 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <p class="text-[11px] text-blue-600 leading-snug">
+                    Nama Tab otomatis terdeteksi dari isi file ("Periode"). Ketuk pada nama Tab jika ingin mengubahnya manual.
+                </p>
+            </div>
+        </div>
+
+        <div id="emptyState" class="mt-12 text-center opacity-60">
+             <svg class="mx-auto text-slate-200 mb-3" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+             <p class="text-sm text-slate-400">Belum ada file yang dipilih</p>
+        </div>
+        
+        <div class="mt-12 text-center">
+            <p class="text-[10px] text-slate-400 font-medium uppercase tracking-widest border-t border-slate-100 pt-6 inline-block px-4">
+                2026 | Tim Kreatif Kecamatan Selogiri
+            </p>
+        </div>
+
+    </main>
+
+    <div id="actionContainer" class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+        <div class="max-w-md mx-auto">
+            <button id="btnProcess" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-lg active:scale-[0.98] transition-all">
+                <span id="btnIcon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                </span>
+                <span id="btnText" class="text-sm">Gabungkan & Download</span>
+                <div id="loadingSpinner" class="loader hidden"></div>
+            </button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast bg-slate-800 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 min-w-[250px]">
+        <div id="toastIcon"></div>
+        <p id="toastMessage" class="text-xs font-medium"></p>
     </div>
 
     <script>
         let filesData = [];
 
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+            
+            msg.innerText = message;
+            
+            if(type === 'success') {
+                icon.innerHTML = `<svg width="16" height="16" class="text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            } else if (type === 'error') {
+                icon.innerHTML = `<svg width="16" height="16" class="text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
         document.getElementById('fileInput').addEventListener('change', async function(e) {
             const files = Array.from(e.target.files);
-            const previewArea = document.getElementById('previewArea');
-            const tbody = document.getElementById('previewTableBody');
-            const btn = document.getElementById('btnProcess');
+            if (files.length === 0) return;
+
+            // Sort alphabetical
+            files.sort((a, b) => a.name.localeCompare(b.name));
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('previewArea').classList.remove('hidden');
+            document.getElementById('actionContainer').classList.remove('translate-y-full');
             
-            // Kita tidak mereset filesData agar user bisa nambah file bertahap jika mau
-            // filesData = []; 
-            // Tapi untuk kesederhanaan UX, kita reset saat input change:
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = ''; 
             filesData = [];
-            tbody.innerHTML = '';
-            
-            if (files.length > 0) {
-                previewArea.classList.remove('hidden');
-                btn.classList.remove('hidden');
 
-                // Sort file berdasarkan nama agar urutan bulan kemungkinan urut (opsional)
-                files.sort((a, b) => a.name.localeCompare(b.name));
-
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                try {
                     const data = await file.arrayBuffer();
-                    const workbook = XLSX.read(data);
+                    const workbook = XLSX.read(data, { cellStyles: true });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // --- LOGIKA DETEKSI BULAN (SMART MONTH DETECTION) ---
-                    let detectedSheetName = file.name.replace(/\.[^/.]+$/, "").substring(0, 30); // Default: Nama File
-                    
-                    // Ubah range sheet ke JSON array (baris demi baris) untuk memudahkan pencarian
-                    // Kita ambil header saja (misal 6 baris pertama)
+                    // Smart Logic
+                    let detectedSheetName = file.name.replace(/\.[^/.]+$/, "").substring(0, 15);
                     const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {header: 1, range: 0, defval: ""});
                     
-                    // Loop 6 baris pertama cari kata "Periode"
-                    for(let rowIdx = 0; rowIdx < Math.min(6, jsonSheet.length); rowIdx++){
-                        const rowData = jsonSheet[rowIdx].join(" "); // Gabung kolom jadi satu string panjang
-                        if(rowData.includes("Periode") || rowData.includes("PERIODE")) {
-                            // Regex mencari pola bulan Indonesia (Januari s/d Desember) + Tahun
-                            // Contoh target: "Periode: 1 Januari 2026 s/d ..." -> Ambil "Januari 2026"
+                    for(let rowIdx = 0; rowIdx < Math.min(10, jsonSheet.length); rowIdx++){
+                        const rowData = jsonSheet[rowIdx].join(" ");
+                        if(rowData.toUpperCase().includes("PERIODE")) {
                             const regexBulan = /(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s\d{4}/i;
                             const match = rowData.match(regexBulan);
-                            if(match) {
-                                detectedSheetName = match[0]; // Set nama sheet jadi "Januari 2026"
-                                break; // Ketemu, stop looping
-                            }
+                            if(match) detectedSheetName = match[0];
                         }
                     }
 
                     filesData.push({ file: file, wb: workbook, sheetName: detectedSheetName });
-                    renderTable();
+                } catch (error) {
+                    console.error("Gagal baca file:", file.name);
                 }
             }
+            
+            renderCards();
+            showToast(`${files.length} file berhasil dimuat`);
         });
 
-        function renderTable() {
-            const tbody = document.getElementById('previewTableBody');
-            tbody.innerHTML = '';
+        function renderCards() {
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = '';
+            document.getElementById('fileCount').innerText = filesData.length;
+
             filesData.forEach((item, index) => {
-                const row = `
-                    <tr class="bg-white border-b hover:bg-gray-50">
-                        <td class="px-4 py-2 font-medium text-gray-800 truncate max-w-xs" title="${item.file.name}">${item.file.name}</td>
-                        <td class="px-4 py-2 text-green-700 font-bold border border-transparent hover:border-gray-300 rounded cursor-text bg-green-50" 
-                            contenteditable="true" 
-                            onblur="updateName(${index}, this.innerText)">${item.sheetName}</td>
-                        <td class="px-4 py-2 text-center">
-                            <button onclick="removeFile(${index})" class="text-red-500 hover:text-red-700 font-bold">✕</button>
-                        </td>
-                    </tr>
+                const card = document.createElement('div');
+                card.className = "group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all animate-fade-in flex flex-col gap-2 relative overflow-hidden";
+                
+                const sidebar = document.createElement('div');
+                sidebar.className = "absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity";
+                card.appendChild(sidebar);
+
+                card.innerHTML += `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2">
+                            <div class="p-1.5 bg-slate-100 rounded text-slate-500">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-medium truncate max-w-[200px]">${item.file.name}</span>
+                        </div>
+                        <button onclick="removeFile(${index})" class="text-slate-300 hover:text-red-500 transition-colors">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <label class="text-[9px] uppercase tracking-wider text-slate-400 font-semibold absolute -top-1.5 left-0">Nama Tab</label>
+                        <input type="text" value="${item.sheetName}" onchange="updateName(${index}, this.value)" class="w-full text-slate-700 font-semibold text-lg bg-transparent border-b border-slate-100 focus:border-emerald-500 focus:outline-none py-1 mt-2 transition-colors" placeholder="Nama Tab">
+                        <div class="absolute right-0 bottom-2 text-slate-300 pointer-events-none">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </div>
+                    </div>
                 `;
-                tbody.innerHTML += row;
+                container.appendChild(card);
             });
+
+            if (filesData.length === 0) clearAll();
         }
 
         function updateName(index, newName) {
@@ -137,58 +216,67 @@
 
         function removeFile(index) {
             filesData.splice(index, 1);
-            renderTable();
-            if(filesData.length === 0) {
-                document.getElementById('previewArea').classList.add('hidden');
-                document.getElementById('btnProcess').classList.add('hidden');
-            }
+            renderCards();
+            showToast("File dihapus", "error");
+        }
+
+        function clearAll() {
+            filesData = [];
+            document.getElementById('previewArea').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('actionContainer').classList.add('translate-y-full');
+            document.getElementById('fileInput').value = ''; 
         }
 
         document.getElementById('btnProcess').addEventListener('click', function() {
             const spinner = document.getElementById('loadingSpinner');
-            const btnText = this.querySelector('span span');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
             
-            spinner.style.display = 'block';
-            btnText.innerText = "SEDANG MEMPROSES...";
-            
+            spinner.classList.remove('hidden');
+            btnIcon.classList.add('hidden');
+            btnText.innerText = "Memproses...";
+            this.disabled = true;
+
             setTimeout(() => {
                 try {
                     const newWb = XLSX.utils.book_new();
                     
-                    // Set metadata properties (Opsional)
+                    // Metadata General
                     newWb.Props = {
                         Title: "Rekap Laporan Kinerja",
-                        Subject: "Gabungan Laporan Bulanan",
-                        Author: "SD Negeri 3 Krisak",
+                        Author: "Tim Kreatif Kecamatan Selogiri", // Updated Author
                         CreatedDate: new Date()
                     };
 
                     filesData.forEach((item) => {
                         const firstSheetName = item.wb.SheetNames[0];
-                        const ws = item.wb.Sheets[firstSheetName];
+                        let ws = item.wb.Sheets[firstSheetName];
                         
-                        // Bersihkan nama sheet (Excel melarang karakter: : \ / ? * [ ])
                         let safeName = item.sheetName.replace(/[:\\/?*\[\]]/g, "").substring(0, 31);
-                        
-                        // Handle duplikat nama sheet (misal ada 2 file Januari)
                         let counter = 1;
                         let originalSafeName = safeName;
                         while (newWb.SheetNames.includes(safeName)) {
                             safeName = `${originalSafeName} (${counter})`;
                             counter++;
                         }
-
                         XLSX.utils.book_append_sheet(newWb, ws, safeName);
                     });
 
-                    XLSX.writeFile(newWb, "Laporan_Kinerja_Gabungan_Semester.xlsx");
+                    const dateStr = new Date().toISOString().slice(0,10);
+                    XLSX.writeFile(newWb, `Laporan_Gabungan_${dateStr}.xlsx`);
+                    
+                    showToast("Download Berhasil!", "success");
+                    
                 } catch (err) {
-                    alert("Terjadi kesalahan: " + err.message);
+                    showToast("Gagal: " + err.message, "error");
                 } finally {
-                    spinner.style.display = 'none';
-                    btnText.innerText = "DOWNLOAD FILE GABUNGAN";
+                    spinner.classList.add('hidden');
+                    btnIcon.classList.remove('hidden');
+                    btnText.innerText = "Gabungkan & Download";
+                    this.disabled = false;
                 }
-            }, 800);
+            }, 1000);
         });
     </script>
 </body>
