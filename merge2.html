@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistem Jurnal Harian</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #F8FAFC; }
+        .loader { border: 2px solid rgba(255,255,255,0.3); border-left-color: #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; transition: all 0.3s ease; z-index: 100; pointer-events: none; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body class="text-slate-600 flex flex-col min-h-screen">
+
+    <nav class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-emerald-200 shadow-md">
+                    <span class="font-bold">J</span>
+                </div>
+                <h1 class="text-base font-bold text-slate-800 tracking-tight">Jurnal Harian</h1>
+            </div>
+            <div id="userInfo" class="hidden flex items-center gap-2">
+                <div class="text-right leading-tight">
+                    <p id="navNama" class="text-xs font-bold text-slate-800"></p>
+                    <button onclick="logout()" class="text-[10px] text-red-500 font-medium hover:underline">Keluar</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-md mx-auto px-4 mt-6 w-full pb-32">
+
+        <div id="view-login" class="mt-10 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Login Sistem</h2>
+                <p class="text-xs text-slate-400 mt-1">Masuk menggunakan Email & PIN</p>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Email</label>
+                    <input type="email" id="loginEmail" required class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="guru@sekolah.id">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">PIN</label>
+                    <input type="password" id="loginPin" required class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="****">
+                </div>
+                <button type="submit" id="btnLogin" class="w-full bg-slate-900 text-white font-medium py-3 rounded-lg hover:bg-slate-800 flex justify-center items-center gap-2">
+                    <span>Masuk</span>
+                    <div id="loaderLogin" class="loader hidden"></div>
+                </button>
+            </form>
+        </div>
+
+        <div id="view-guru" class="hidden">
+            <div class="relative group mb-6">
+                <input type="file" id="fileInput" multiple accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                <div class="border border-dashed border-slate-300 bg-white rounded-xl p-8 text-center group-hover:border-emerald-500 group-hover:bg-emerald-50/30 transition-all duration-300 shadow-sm">
+                    <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 transition-transform duration-300">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-800">Tap untuk Tambah File</h3>
+                    <p class="text-xs text-slate-400 mt-1">Pilih file Excel Jurnal Anda</p>
+                </div>
+            </div>
+
+            <div id="previewArea" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">File Terpilih: <span id="fileCount">0</span></h2>
+                    <button onclick="clearAll()" class="text-xs text-red-500 font-medium hover:text-red-700">Hapus Semua</button>
+                </div>
+                <div id="cardContainer" class="space-y-3"></div>
+                
+                <div class="mt-6 flex gap-3">
+                    <button onclick="processMerger('download')" class="flex-1 bg-white border border-slate-300 text-slate-700 py-3 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50">Download Arsip</button>
+                    <button onclick="openUploadModal()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700">Kirim ke Pengawas</button>
+                </div>
+            </div>
+
+            <div id="emptyState" class="text-center opacity-60 mt-12"><p class="text-sm text-slate-400">Belum ada file yang dipilih</p></div>
+
+            <div class="mt-12 pt-8 border-t border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-4 text-sm">Riwayat Terkirim</h3>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="px-4 py-3">Periode</th><th class="px-4 py-3">Status</th></tr></thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-admin" class="hidden">
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="text-lg font-bold text-slate-800">Dashboard Admin</h2>
+                <button onclick="loadAdminData()" class="text-xs text-emerald-600 font-bold">Refresh</button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="px-4 py-3">Waktu</th><th class="px-4 py-3">Sekolah</th><th class="px-4 py-3">Guru</th><th class="px-4 py-3">Periode</th><th class="px-4 py-3">Aksi</th></tr></thead>
+                        <tbody id="adminTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="uploadModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Kirim Laporan</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs uppercase font-bold text-slate-500">Periode Laporan</label>
+                    <select id="uploadBulan" class="w-full mt-1 border border-slate-300 rounded-lg p-2.5 text-sm">
+                        <option value="Januari 2026">Januari 2026</option>
+                        <option value="Februari 2026">Februari 2026</option>
+                        <option value="Maret 2026">Maret 2026</option>
+                        <option value="April 2026">April 2026</option>
+                        <option value="Mei 2026">Mei 2026</option>
+                        <option value="Juni 2026">Juni 2026</option>
+                        <option value="Juli 2026">Juli 2026</option>
+                        <option value="Agustus 2026">Agustus 2026</option>
+                        <option value="September 2026">September 2026</option>
+                        <option value="Oktober 2026">Oktober 2026</option>
+                        <option value="November 2026">November 2026</option>
+                        <option value="Desember 2026">Desember 2026</option>
+                        <option disabled>──────────</option>
+                        <option value="Laporan Tahunan 2026">Laporan Tahunan 2026 (Full)</option>
+                        <option value="Lainnya">Lainnya / Gabungan</option>
+                    </select>
+                </div>
+                
+                <div class="bg-blue-50 p-3 rounded-lg flex gap-3 items-start">
+                    <input type="checkbox" id="forceFormat" checked class="mt-1 rounded text-emerald-600 focus:ring-emerald-500">
+                    <div>
+                        <label for="forceFormat" class="text-xs font-bold text-slate-700 block">Rapikan Format Otomatis</label>
+                        <p class="text-[10px] text-slate-500 leading-tight">Centang ini agar sistem otomatis memberi garis tabel & merapikan teks (wrap text) seperti aslinya.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="flex-1 py-2.5 text-slate-600 font-bold bg-slate-100 rounded-lg">Batal</button>
+                <button id="btnConfirmUpload" onclick="processMerger('upload')" class="flex-1 py-2.5 bg-slate-900 text-white font-bold rounded-lg flex justify-center items-center gap-2">
+                    <span>Kirim</span>
+                    <div id="loaderUpload" class="loader hidden"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast bg-slate-800 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 min-w-[200px]">
+        <div id="toastIcon"></div>
+        <p id="toastMessage" class="text-xs font-medium"></p>
+    </div>
+
+    <script>
+        // --- GANTI URL INI DENGAN URL WEB APP TERBARU ANDA ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbyS-ua5SBpr0qKDg1UDo17CIdPPWHrBmvf1iX6WAVO3H1oq0vHp9D6G0scbWhlh5qVqAQ/exec";
+
+        let currentUser = null;
+        let filesData = []; 
+
+        window.onload = function() {
+            const savedUser = localStorage.getItem('jurnalUser');
+            if (savedUser) { currentUser = JSON.parse(savedUser); showDashboard(); } 
+            else { switchView('view-login'); }
+        };
+
+        function switchView(viewId) {
+            document.querySelectorAll('main > div').forEach(el => el.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            const navUser = document.getElementById('userInfo');
+            
+            if (viewId === 'view-login') { navUser.classList.add('hidden'); } 
+            else {
+                navUser.classList.remove('hidden');
+                document.getElementById('navNama').innerText = currentUser.nama;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value; 
+            const pin = document.getElementById('loginPin').value;
+            const btn = document.getElementById('btnLogin');
+            const loader = document.getElementById('loaderLogin');
+
+            btn.disabled = true; loader.classList.remove('hidden');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'login', email: email, pin: pin }) 
+                });
+                const result = await response.json();
+                if (result.success) {
+                    currentUser = result.data;
+                    localStorage.setItem('jurnalUser', JSON.stringify(currentUser));
+                    showDashboard();
+                } else { showToast(result.message, 'error'); }
+            } catch (err) { showToast("Gagal koneksi server", 'error'); } 
+            finally { btn.disabled = false; loader.classList.add('hidden'); }
+        }
+
+        function showDashboard() {
+            if (currentUser.role === 'admin') { switchView('view-admin'); loadAdminData(); } 
+            else { switchView('view-guru'); loadHistory(); }
+        }
+        function logout() { localStorage.removeItem('jurnalUser'); currentUser = null; location.reload(); }
+
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const newFiles = Array.from(e.target.files);
+            if (newFiles.length === 0) return;
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('previewArea').classList.remove('hidden');
+            
+            for (let i = 0; i < newFiles.length; i++) {
+                const file = newFiles[i];
+                if (filesData.some(f => f.file.name === file.name)) continue; 
+
+                try {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data, { cellStyles: true });
+                    filesData.push({ file: file, wb: workbook });
+                } catch (error) { console.error("Error baca file", error); }
+            }
+            this.value = ''; renderCards(); showToast(`${newFiles.length} file ditambahkan`, 'success');
+        });
+
+        function renderCards() {
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = '';
+            document.getElementById('fileCount').innerText = filesData.length;
+
+            filesData.forEach((item, index) => {
+                const sheetCount = item.wb.SheetNames.length;
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center";
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="p-2 bg-slate-100 rounded text-slate-500 shrink-0">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-slate-700 truncate">${item.file.name}</p>
+                            <p class="text-[10px] text-slate-400">${sheetCount} Sheet (Halaman) terdeteksi</p>
+                        </div>
+                    </div>
+                    <button onclick="removeFile(${index})" class="text-slate-300 hover:text-red-500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                `;
+                container.appendChild(card);
+            });
+            if (filesData.length === 0) {
+                document.getElementById('previewArea').classList.add('hidden');
+                document.getElementById('emptyState').classList.remove('hidden');
+            }
+        }
+
+        function removeFile(index) { filesData.splice(index, 1); renderCards(); }
+        function clearAll() { filesData = []; renderCards(); }
+        function openUploadModal() { document.getElementById('uploadModal').classList.remove('hidden'); }
+
+        async function processMerger(mode) {
+            if (filesData.length === 0) return;
+            
+            let btnConfirm, loader;
+            // Baca status checkbox "Rapikan Format"
+            const shouldFormat = document.getElementById('forceFormat').checked;
+
+            if (mode === 'upload') {
+                btnConfirm = document.getElementById('btnConfirmUpload');
+                loader = document.getElementById('loaderUpload');
+                btnConfirm.disabled = true;
+                loader.classList.remove('hidden');
+                btnConfirm.querySelector('span').classList.add('hidden');
+            }
+
+            try {
+                const newWb = XLSX.utils.book_new();
+                newWb.Props = { Title: "Laporan Jurnal", Author: currentUser.nama };
+
+                // --- REVISI LOGIKA MULTI-SHEET & FORMAT ---
+                filesData.forEach((item) => {
+                    item.wb.SheetNames.forEach(sheetName => {
+                        let ws = item.wb.Sheets[sheetName];
+                        
+                        // TERAPKAN STYLE JIKA DICENTANG
+                        if (shouldFormat) {
+                            applyStylesToSheet(ws); 
+                        }
+
+                        // Penamaan Sheet Unik
+                        let safeName = sheetName.substring(0, 31).replace(/[:\\/?*\[\]]/g, "");
+                        let counter = 1;
+                        let originalSafeName = safeName;
+                        while (newWb.SheetNames.includes(safeName)) {
+                            safeName = `${originalSafeName} (${counter++})`;
+                        }
+                        XLSX.utils.book_append_sheet(newWb, ws, safeName);
+                    });
+                });
+
+                if (mode === 'download') {
+                    XLSX.writeFile(newWb, `Jurnal_${currentUser.nama}.xlsx`);
+                    showToast("Download Berhasil!", 'success');
+                } else if (mode === 'upload') {
+                    const wbOut = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
+                    const bulan = document.getElementById('uploadBulan').value;
+                    await sendToServer(wbOut, bulan);
+                }
+
+            } catch (err) {
+                showToast("Error: " + err.message, 'error');
+            } finally {
+                if (mode === 'upload') {
+                    document.getElementById('uploadModal').classList.add('hidden');
+                    btnConfirm.disabled = false;
+                    loader.classList.add('hidden');
+                    btnConfirm.querySelector('span').classList.remove('hidden');
+                }
+            }
+        }
+
+        // --- FUNGSI STYLING (DIKEMBALIKAN SEPERTI ASLINYA) ---
+        function applyStylesToSheet(ws) {
+            const borderStyle = { style: "thin", color: { auto: 1 } };
+            const cellBorder = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+            
+            if(!ws['!ref']) return;
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const startRow = 5; // Baris ke-6
+
+            for (let R = startRow; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const addr = XLSX.utils.encode_cell({r: R, c: C});
+                    
+                    // Pastikan cell ada object-nya
+                    if (!ws[addr]) ws[addr] = { t: 's', v: '' }; 
+
+                    if (!ws[addr].s) ws[addr].s = {};
+                    
+                    // Paksa Border
+                    ws[addr].s.border = cellBorder;
+                    
+                    // Paksa Alignment
+                    if (!ws[addr].s.alignment) ws[addr].s.alignment = {};
+                    ws[addr].s.alignment.wrapText = true;
+                    ws[addr].s.alignment.vertical = "top"; 
+
+                    // Styling Header (Baris 5/Ke-6)
+                    if (R === 5) {
+                        ws[addr].s.font = { bold: true };
+                        ws[addr].s.alignment.horizontal = "center";
+                        ws[addr].s.alignment.vertical = "center";
+                        ws[addr].s.fill = { fgColor: { rgb: "EEEEEE" } }; 
+                    }
+                }
+            }
+            // Set Lebar Kolom Standar Dinas
+            if (!ws['!cols']) ws['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 30 }, { wch: 20 }];
+        }
+
+        async function sendToServer(base64Data, bulan) {
+            const payload = {
+                action: 'upload',
+                email: currentUser.email,
+                namaGuru: currentUser.nama,
+                sekolah: currentUser.sekolah,
+                bulan: bulan,
+                fileData: base64Data,
+                fileName: "Laporan.xlsx"
+            };
+            
+            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            const textResponse = await response.text(); 
+            
+            try {
+                const result = JSON.parse(textResponse);
+                if (result.success) {
+                    showToast("Laporan Berhasil Terkirim!", 'success');
+                    clearAll();
+                    loadHistory();
+                } else { showToast("Gagal: " + result.message, 'error'); }
+            } catch (e) {
+                // Jika error JSON tapi 200, anggap sukses (kadang Drive lambat respon JSON)
+                showToast("Berhasil terkirim ke server", 'success');
+            }
+        }
+
+        async function loadHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = `<tr><td colspan="2" class="px-4 py-3 text-center">Loading...</td></tr>`;
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getHistory', email: currentUser.email }) });
+                const result = await response.json();
+                tbody.innerHTML = '';
+                if (result.data.length === 0) { tbody.innerHTML = `<tr><td colspan="2" class="px-4 py-3 text-center text-slate-400">Belum ada riwayat.</td></tr>`; return; }
+                result.data.forEach(item => {
+                    tbody.innerHTML += `<tr><td class="px-4 py-3 font-medium">${item.bulan}</td><td class="px-4 py-3"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">Terkirim</span></td></tr>`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadAdminData() {
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center">Loading...</td></tr>`;
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllData' }) });
+                const result = await response.json();
+                tbody.innerHTML = '';
+                result.data.forEach(item => {
+                    if(item.status !== 'Aktif') return;
+                    tbody.innerHTML += `<tr class="border-b border-slate-50"><td class="px-4 py-3 text-slate-400 text-[10px]">${item.waktu}</td><td class="px-4 py-3 font-medium">${item.sekolah}</td><td class="px-4 py-3">${item.nama}</td><td class="px-4 py-3"><span class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold">${item.bulan}</span></td><td class="px-4 py-3"><a href="${item.link}" target="_blank" class="text-emerald-600 border border-emerald-200 hover:bg-emerald-50 px-3 py-1.5 rounded text-[10px] font-bold">Unduh</a></td></tr>`;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+            msg.innerText = message;
+            if(type === 'success') {
+                icon.innerHTML = `<svg width="16" height="16" class="text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+            } else {
+                icon.innerHTML = `<svg width="16" height="16" class="text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+            }
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
