@@ -19,35 +19,18 @@
     </style>
 </head>
 <body class="text-slate-800 bg-slate-50">
-
-    <script>
-        // MASUKKAN URL TERBARU DISINI
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
-    </script>
-    
+    <script>const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec";</script>
     <div class="blob bg-blue-600 w-96 h-96 rounded-full top-0 left-0 fixed"></div>
     <div class="blob bg-purple-600 w-96 h-96 rounded-full bottom-0 right-0 fixed"></div>
 
     <nav class="glass sticky top-0 z-50 px-4 md:px-8 py-3 shadow-sm flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
-                <i class="fas fa-database"></i>
-            </div>
-            <div>
-                <h1 class="text-base font-bold text-slate-900 leading-tight">DATABASE GTK</h1>
-                <p class="text-[10px] text-slate-500 font-bold tracking-wider">SISTEM KINERJA</p>
-            </div>
+            <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-md"><i class="fas fa-database"></i></div>
+            <div><h1 class="text-base font-bold text-slate-900 leading-tight">DATABASE GTK</h1><p class="text-[10px] text-slate-500 font-bold tracking-wider">SISTEM KINERJA</p></div>
         </div>
-
         <button id="navProfile" onclick="confirmLogout()" class="hidden flex items-center gap-3 bg-slate-100 hover:bg-red-50 hover:border-red-200 transition rounded-full pl-2 pr-4 py-1.5 border border-slate-200 group">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs group-hover:from-red-500 group-hover:to-red-600">
-                <i class="fas fa-user group-hover:hidden"></i>
-                <i class="fas fa-power-off hidden group-hover:block"></i>
-            </div>
-            <div class="text-right leading-none">
-                <p class="text-sm font-bold text-slate-800 group-hover:text-red-600 transition" id="navName">...</p>
-                <p class="text-[10px] text-slate-500 font-medium group-hover:text-red-400" id="navRole">...</p>
-            </div>
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs group-hover:from-red-500 group-hover:to-red-600"><i class="fas fa-user group-hover:hidden"></i><i class="fas fa-power-off hidden group-hover:block"></i></div>
+            <div class="text-right leading-none"><p class="text-sm font-bold text-slate-800 group-hover:text-red-600 transition" id="navName">...</p><p class="text-[10px] text-slate-500 font-medium group-hover:text-red-400" id="navRole">...</p></div>
         </button>
     </nav>
 
@@ -75,7 +58,7 @@
                 <button onclick="switchTab('upload')" id="tab-upload" class="tab-active px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-upload mr-2"></i> Setor Jurnal</button>
                 <button onclick="loadJournalData()" id="tab-data" class="tab-inactive px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-table mr-2"></i> Data Saya</button>
                 <button onclick="switchTab('report')" id="tab-report" class="tab-inactive px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-print mr-2"></i> Laporan</button>
-                <button onclick="loadSchoolData()" id="tab-monitoring" class="hidden bg-orange-50 text-orange-700 border border-orange-200 px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-eye mr-2"></i> Monitoring</button>
+                <button onclick="loadSchoolData()" id="tab-monitoring" class="hidden bg-indigo-50 text-indigo-700 border border-indigo-200 px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-users-cog mr-2"></i> <span id="lblMonitoring">Monitoring</span></button>
             </div>
 
             <div id="view-upload" class="view-section">
@@ -86,61 +69,33 @@
                         <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition"><i class="fas fa-cloud-upload-alt text-3xl text-blue-500"></i></div>
                         <p class="font-bold text-slate-700">Klik untuk memilih file</p>
                     </div>
-                    <div id="filePreview" class="hidden mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl flex justify-between items-center">
-                        <div class="flex items-center gap-3"><i class="fas fa-file-excel text-green-600 text-2xl"></i><div><p class="font-bold text-sm text-slate-700" id="fileName">...</p><p class="text-xs text-slate-400" id="fileSize">...</p></div></div>
-                        <button onclick="clearFile()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times-circle text-xl"></i></button>
-                    </div>
+                    <div id="filePreview" class="hidden mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl flex justify-between items-center"><div class="flex items-center gap-3"><i class="fas fa-file-excel text-green-600 text-2xl"></i><div><p class="font-bold text-sm text-slate-700" id="fileName">...</p><p class="text-xs text-slate-400" id="fileSize">...</p></div></div><button onclick="clearFile()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times-circle text-xl"></i></button></div>
                     <button onclick="handleUpload()" id="btnUpload" disabled class="mt-6 w-full bg-slate-200 text-slate-400 py-3 rounded-xl font-bold transition cursor-not-allowed">Kirim Data</button>
                 </div>
             </div>
 
             <div id="view-data" class="view-section hidden">
                 <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-lg min-h-[500px] flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold">Riwayat Jurnal</h3>
-                        <div class="flex gap-2">
-                            <select id="filterMonth" onchange="applyFilter()" class="bg-slate-50 border text-sm rounded-lg p-2 font-bold outline-none">
-                                <option value="all">Semua</option><option value="Jan">Januari</option><option value="Feb">Februari</option><option value="Mar">Maret</option>
-                            </select>
-                            <button onclick="loadJournalData()" class="bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                    </div>
-                    <div class="flex-1 overflow-x-auto rounded-xl border border-slate-200 mb-4">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 z-10">
-                                <tr>
-                                    <th class="px-4 py-3 min-w-[120px]">Tanggal</th>
-                                    <th class="px-4 py-3 w-24">Waktu</th>
-                                    <th class="px-4 py-3 min-w-[200px]">Kegiatan</th>
-                                    <th class="px-4 py-3 min-w-[150px]">Hasil</th>
-                                    <th class="px-4 py-3 w-24 text-center">Bukti</th>
-                                </tr>
-                            </thead>
-                            <tbody id="journalTableBody" class="divide-y bg-white text-slate-700"></tbody>
-                        </table>
-                    </div>
-                    <div class="flex justify-between items-center border-t pt-4">
-                        <span class="text-xs text-slate-500 font-bold" id="pageInfo">...</span>
-                        <div class="flex gap-2"><button onclick="prevPage()" id="btnPrev" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Prev</button><button onclick="nextPage()" id="btnNext" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Next</button></div>
-                    </div>
+                    <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">Riwayat Jurnal</h3><div class="flex gap-2"><select id="filterMonth" onchange="applyFilter()" class="bg-slate-50 border text-sm rounded-lg p-2 font-bold outline-none"><option value="all">Semua</option><option value="Jan">Januari</option><option value="Feb">Februari</option><option value="Mar">Maret</option></select><button onclick="loadJournalData()" class="bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm"><i class="fas fa-sync-alt"></i></button></div></div>
+                    <div class="flex-1 overflow-x-auto rounded-xl border border-slate-200 mb-4"><table class="w-full text-sm text-left"><thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 z-10"><tr><th class="px-4 py-3 min-w-[120px]">Tanggal</th><th class="px-4 py-3 w-24">Waktu</th><th class="px-4 py-3 min-w-[200px]">Kegiatan</th><th class="px-4 py-3 min-w-[150px]">Hasil</th><th class="px-4 py-3 w-24 text-center">Bukti</th></tr></thead><tbody id="journalTableBody" class="divide-y bg-white text-slate-700"></tbody></table></div>
+                    <div class="flex justify-between items-center border-t pt-4"><span class="text-xs text-slate-500 font-bold" id="pageInfo">...</span><div class="flex gap-2"><button onclick="prevPage()" id="btnPrev" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Prev</button><button onclick="nextPage()" id="btnNext" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Next</button></div></div>
                 </div>
             </div>
 
             <div id="view-report" class="view-section hidden">
-                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-lg">
-                    <h3 class="text-lg font-bold mb-6">Download Laporan</h3>
-                    <div class="space-y-4">
-                        <div><label class="text-xs font-bold text-slate-500 uppercase">Jenis</label><select id="repType" onchange="toggleMonthSelect()" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="bulanan">Bulanan</option><option value="semester1">Semester 1</option><option value="semester2">Semester 2</option><option value="tahunan">Tahunan</option></select></div>
-                        <div class="flex gap-3" id="monthContainer"><div class="flex-1"><label class="text-xs font-bold text-slate-500 uppercase">Bulan</label><select id="repMonth" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option></select></div><div class="w-1/3"><label class="text-xs font-bold text-slate-500 uppercase">Tahun</label><select id="repYear" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="2025">2025</option><option value="2026">2026</option></select></div></div>
-                    </div>
-                    <button onclick="downloadReport()" id="btnDownload" class="mt-6 w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 hover:scale-[1.02] transition"><i class="fas fa-file-excel mr-2"></i> Download XLSX</button>
-                </div>
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-lg"><h3 class="text-lg font-bold mb-6">Download Laporan</h3><div class="space-y-4"><div><label class="text-xs font-bold text-slate-500 uppercase">Jenis</label><select id="repType" onchange="toggleMonthSelect()" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="bulanan">Bulanan</option><option value="semester1">Semester 1</option><option value="semester2">Semester 2</option><option value="tahunan">Tahunan</option></select></div><div class="flex gap-3" id="monthContainer"><div class="flex-1"><label class="text-xs font-bold text-slate-500 uppercase">Bulan</label><select id="repMonth" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option></select></div><div class="w-1/3"><label class="text-xs font-bold text-slate-500 uppercase">Tahun</label><select id="repYear" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="2025">2025</option><option value="2026">2026</option></select></div></div></div><button onclick="downloadReport()" id="btnDownload" class="mt-6 w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 hover:scale-[1.02] transition"><i class="fas fa-file-excel mr-2"></i> Download XLSX</button></div>
             </div>
 
             <div id="view-monitoring" class="view-section hidden">
                 <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-lg">
-                    <h3 class="text-lg font-bold mb-4">Monitoring Guru</h3>
-                    <div id="ksListArea" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold" id="titleMonitoring">Monitoring</h3>
+                        <div id="adminSearch" class="hidden relative w-64">
+                            <input type="text" id="searchInput" onkeyup="filterTeachers()" placeholder="Cari Guru..." class="w-full pl-8 pr-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
+                    </div>
+                    <div id="ksListArea" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-2"></div>
                 </div>
             </div>
         </section>
@@ -154,11 +109,11 @@
     </main>
 
     <script>
-        let currentUser = null, allJournalData = [], filteredJournalData = [], currentPage = 1;
+        let currentUser = null, allJournalData = [], filteredJournalData = [], currentPage = 1, allTeachers = [];
         const ITEMS_PER_PAGE = 10;
 
         window.onload = () => {
-            const saved = localStorage.getItem("gtk_final_fix");
+            const saved = localStorage.getItem("gtk_v6_admin");
             if (saved) { currentUser = JSON.parse(saved); initApp(); }
             document.getElementById("repMonth").value = String(new Date().getMonth() + 1).padStart(2, '0');
         };
@@ -172,24 +127,32 @@
             document.getElementById("userUnit").innerText = currentUser.user.unit;
             document.getElementById("userNip").innerText = currentUser.user.nip || "-";
             document.getElementById("statMonth").innerText = currentUser.stats.thisMonth;
-            if(currentUser.user.role === "Kepala Sekolah") document.getElementById("tab-monitoring").classList.remove("hidden");
+
+            // CEK ROLE
+            if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
+                document.getElementById("tab-monitoring").classList.remove("hidden");
+                
+                // JIKA ADMIN
+                if(currentUser.user.role === "Admin") {
+                    document.getElementById("lblMonitoring").innerText = "Global Admin";
+                    document.getElementById("titleMonitoring").innerText = "Global Data Guru";
+                    document.getElementById("adminSearch").classList.remove("hidden"); // Munculkan Search
+                }
+            }
         }
 
         async function handleLogin(e) {
             e.preventDefault(); setBtnLoading("btnLogin", true);
             try {
                 const res = await fetchAPI({ action: "login", email: document.getElementById("email").value, pin: document.getElementById("pin").value });
-                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_final_fix", JSON.stringify(res)); initApp(); } 
+                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_v6_admin", JSON.stringify(res)); initApp(); } 
                 else Swal.fire("Login Gagal", res.message, "error");
             } catch (err) { Swal.fire("Error", "Koneksi Bermasalah", "error"); }
             setBtnLoading("btnLogin", false, "Masuk Dashboard");
         }
 
-        function confirmLogout() {
-            Swal.fire({ title: 'Logout?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya' })
-            .then((result) => { if (result.isConfirmed) { localStorage.removeItem("gtk_final_fix"); location.reload(); } });
-        }
-
+        function confirmLogout() { Swal.fire({ title: 'Logout?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya' }).then((r) => { if (r.isConfirmed) { localStorage.removeItem("gtk_v6_admin"); location.reload(); } }); }
+        
         function switchTab(name) {
             document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
             document.getElementById("view-" + name).classList.remove("hidden");
@@ -197,97 +160,60 @@
             document.getElementById("tab-" + name).classList.remove("tab-inactive"); document.getElementById("tab-" + name).classList.add("tab-active");
         }
 
-        async function loadJournalData() {
-            switchTab("data");
-            const tbody = document.getElementById("journalTableBody");
-            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i></td></tr>`;
-            try {
-                const res = await fetchAPI({ action: "fetch_journal", dbId: currentUser.user.dbId });
-                if (res.status === "success") { allJournalData = res.data; applyFilter(); } else tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">${res.message}</td></tr>`;
-            } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Error load data.</td></tr>`; }
-        }
-
-        function applyFilter() {
-            const val = document.getElementById("filterMonth").value;
-            filteredJournalData = val === "all" ? allJournalData : allJournalData.filter(i => i.tgl.includes(val));
-            currentPage = 1; renderTable();
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById("journalTableBody");
-            if (filteredJournalData.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Data Kosong</td></tr>`; return; }
-            
-            const start = (currentPage - 1) * ITEMS_PER_PAGE;
-            const pageData = filteredJournalData.slice(start, start + ITEMS_PER_PAGE);
-            
-            tbody.innerHTML = pageData.map(r => `
-                <tr class="hover:bg-slate-50 transition border-b align-top">
-                    <td class="px-4 py-3 text-xs text-slate-600 font-bold whitespace-normal leading-tight">${r.tgl}</td>
-                    <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${r.waktu || '-'}</td>
-                    <td class="px-4 py-3 text-sm text-slate-800">${r.kegiatan}</td>
-                    <td class="px-4 py-3 text-xs text-slate-600">${r.hasil || '-'}</td>
-                    <td class="px-4 py-3 text-center">
-                        ${r.dok && r.dok.length > 5 ? `<a href="${r.dok}" target="_blank" class="inline-block bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white p-2 rounded-lg transition"><i class="fas fa-link"></i></a>` : '<span class="text-slate-300">-</span>'}
-                    </td>
-                </tr>`).join("");
-            
-            document.getElementById("pageInfo").innerText = `Hal ${currentPage} / ${Math.ceil(filteredJournalData.length / ITEMS_PER_PAGE)}`;
-            document.getElementById("btnPrev").disabled = currentPage === 1;
-            document.getElementById("btnNext").disabled = currentPage === Math.ceil(filteredJournalData.length / ITEMS_PER_PAGE);
-        }
-
-        function prevPage() { if(currentPage > 1) { currentPage--; renderTable(); } }
-        function nextPage() { if(currentPage < Math.ceil(filteredJournalData.length / ITEMS_PER_PAGE)) { currentPage++; renderTable(); } }
-
-        function previewFile() {
-            const f = document.getElementById("fileInput").files[0];
-            if(f) {
-                document.getElementById("dropzone").classList.add("hidden"); document.getElementById("filePreview").classList.remove("hidden");
-                document.getElementById("fileName").innerText = f.name; document.getElementById("fileSize").innerText = (f.size/1024).toFixed(1) + " KB";
-                document.getElementById("btnUpload").disabled = false; document.getElementById("btnUpload").className = "mt-6 w-full bg-slate-900 text-white py-3 rounded-xl font-bold transition hover:bg-slate-800 shadow-lg";
-            }
-        }
-        function clearFile() {
-            document.getElementById("fileInput").value = ""; document.getElementById("dropzone").classList.remove("hidden"); document.getElementById("filePreview").classList.add("hidden"); document.getElementById("btnUpload").disabled = true; document.getElementById("btnUpload").className = "mt-6 w-full bg-slate-200 text-slate-400 py-3 rounded-xl font-bold transition cursor-not-allowed";
-        }
-        async function handleUpload() {
-            const f = document.getElementById("fileInput").files[0];
-            if(!(await Swal.fire({title:'Kirim?', icon:'question', showCancelButton:true})).isConfirmed) return;
-            setBtnLoading("btnUpload", true);
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const res = await fetchAPI({ action: "upload", email: currentUser.user.email, fileName: f.name, fileData: e.target.result.split(",")[1] });
-                if(res.status==="success") { Swal.fire("Sukses", res.message, "success"); clearFile(); } else Swal.fire("Gagal", res.message, "error");
-                setBtnLoading("btnUpload", false, "Kirim Data");
-            }; reader.readAsDataURL(f);
-        }
-        function toggleMonthSelect() { document.getElementById("monthContainer").className = document.getElementById("repType").value === "bulanan" ? "flex gap-3" : "hidden"; }
-        async function downloadReport() {
-            setBtnLoading("btnDownload", true);
-            try {
-                const res = await fetchAPI({ action: "download_report", email: currentUser.user.email, type: document.getElementById("repType").value, month: document.getElementById("repMonth").value, year: document.getElementById("repYear").value });
-                if(res.status==="success") window.open(res.downloadUrl, "_blank"); else Swal.fire("Gagal", res.message, "warning");
-            } catch(e) { Swal.fire("Error", "Gagal download.", "error"); }
-            setBtnLoading("btnDownload", false, '<i class="fas fa-file-excel mr-2"></i> Download XLSX');
-        }
         async function loadSchoolData() {
             switchTab("monitoring");
-            const area = document.getElementById("ksListArea"); area.innerHTML = `<div class="col-span-2 text-center p-4"><i class="fas fa-spinner fa-spin"></i></div>`;
-            const res = await fetchAPI({ action: "fetch_school_data", unit: currentUser.user.unit, email: currentUser.user.email });
+            const area = document.getElementById("ksListArea"); area.innerHTML = `<div class="col-span-2 text-center p-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
+            // KIRIM ROLE KE BACKEND
+            const res = await fetchAPI({ action: "fetch_school_data", unit: currentUser.user.unit, email: currentUser.user.email, role: currentUser.user.role });
+            
             if(res.status==="success") {
-                area.innerHTML = res.teachers.map(t => `<div class="bg-white border p-4 rounded-xl hover:shadow-md transition flex justify-between items-center"><div><h4 class="font-bold text-slate-800">${t.nama}</h4><p class="text-xs text-slate-500">${t.hasDb?'Data Tersedia':'Belum Ada Data'}</p></div><button onclick="inspectGuru('${t.email}','${t.nama}')" class="bg-slate-100 px-3 py-1 rounded text-xs font-bold hover:bg-slate-200">Lihat</button></div>`).join("");
+                allTeachers = res.teachers; // Simpan untuk filtering di client
+                renderTeacherList(allTeachers);
             }
         }
-        async function inspectGuru(email, nama) {
-            document.getElementById("modalKS").classList.remove("hidden"); document.getElementById("modalTitle").innerText = nama;
-            document.getElementById("modalBody").innerHTML = `<tr><td colspan="2" class="p-4 text-center">Loading...</td></tr>`;
-            const res = await fetchAPI({ action: "fetch_journal", targetEmail: email });
-            if(res.status==="success" && res.data.length>0) document.getElementById("modalBody").innerHTML = res.data.map(r => `<tr class="border-b"><td class="p-3 text-xs font-mono">${r.tgl}</td><td class="p-3 text-sm">${r.kegiatan}</td></tr>`).join("");
-            else document.getElementById("modalBody").innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400">Kosong</td></tr>`;
+
+        function renderTeacherList(list) {
+            const area = document.getElementById("ksListArea");
+            if(list.length === 0) { area.innerHTML = `<div class="col-span-2 text-center text-slate-400 p-4">Tidak ada data.</div>`; return; }
+
+            area.innerHTML = list.map(t => `
+                <div class="bg-white border p-4 rounded-xl hover:shadow-md transition flex justify-between items-center group">
+                    <div class="overflow-hidden">
+                        <h4 class="font-bold text-slate-800 truncate">${t.nama}</h4>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase">${t.unit}</p> 
+                        <span class="text-[10px] ${t.hasDb?'text-green-600 bg-green-50':'text-red-500 bg-red-50'} px-2 py-0.5 rounded font-bold">${t.hasDb?'DATA ADA':'KOSONG'}</span>
+                    </div>
+                    <button onclick="inspectGuru('${t.email}','${t.nama}')" class="bg-slate-100 px-3 py-1 rounded text-xs font-bold hover:bg-slate-900 hover:text-white transition">Lihat</button>
+                </div>`).join("");
         }
+
+        function filterTeachers() {
+            const keyword = document.getElementById("searchInput").value.toLowerCase();
+            const filtered = allTeachers.filter(t => t.nama.toLowerCase().includes(keyword) || t.unit.toLowerCase().includes(keyword));
+            renderTeacherList(filtered);
+        }
+
+        async function loadJournalData() { switchTab("data"); const b = document.getElementById("journalTableBody"); b.innerHTML = `<tr><td colspan="5" class="p-8 text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>`; const r = await fetchAPI({action:"fetch_journal", dbId:currentUser.user.dbId}); if(r.status==="success"){allJournalData=r.data; applyFilter();} else b.innerHTML="Error"; }
+        function applyFilter() { const v = document.getElementById("filterMonth").value; filteredJournalData = v === "all" ? allJournalData : allJournalData.filter(i => i.tgl.includes(v)); currentPage = 1; renderTable(); }
+        function renderTable() { 
+            const b = document.getElementById("journalTableBody");
+            if(filteredJournalData.length===0){b.innerHTML=`<tr><td colspan="5" class="p-8 text-center text-slate-400">Kosong</td></tr>`; return;}
+            const start=(currentPage-1)*ITEMS_PER_PAGE;
+            b.innerHTML = filteredJournalData.slice(start, start+ITEMS_PER_PAGE).map(r => `<tr class="border-b align-top"><td class="p-3 text-xs font-bold w-24 leading-tight">${r.tgl}</td><td class="p-3 text-xs w-20">${r.waktu||'-'}</td><td class="p-3 text-sm">${r.kegiatan}</td><td class="p-3 text-xs text-slate-500">${r.hasil||'-'}</td><td class="p-3 text-center">${r.dok && r.dok.length>5?`<a href="${r.dok}" target="_blank" class="text-blue-600"><i class="fas fa-link"></i></a>`:'-'}</td></tr>`).join("");
+            document.getElementById("pageInfo").innerText = `Hal ${currentPage}/${Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)}`;
+            document.getElementById("btnPrev").disabled = currentPage===1; document.getElementById("btnNext").disabled = currentPage===Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE);
+        }
+        function prevPage(){if(currentPage>1){currentPage--; renderTable();}} function nextPage(){if(currentPage<Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)){currentPage++; renderTable();}}
+        
+        async function inspectGuru(e,n) { document.getElementById("modalKS").classList.remove("hidden"); document.getElementById("modalTitle").innerText = n; document.getElementById("modalBody").innerHTML="Loading..."; const r = await fetchAPI({action:"fetch_journal", targetEmail:e}); document.getElementById("modalBody").innerHTML = r.status==="success" && r.data.length>0 ? r.data.map(d=>`<tr class="border-b"><td class="p-3 text-xs w-24 font-bold">${d.tgl}</td><td class="p-3 text-sm">${d.kegiatan}</td></tr>`).join("") : "Kosong"; }
         function closeModal() { document.getElementById("modalKS").classList.add("hidden"); }
-        async function fetchAPI(data) { const r = await fetch(GAS_API_URL, {method:"POST", body:JSON.stringify(data)}); return await r.json(); }
-        function setBtnLoading(id, l, t="") { const b = document.getElementById(id); if(l){b.disabled=true; b.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';}else{b.disabled=false; b.innerHTML=t} }
+        function previewFile(){const f=document.getElementById("fileInput").files[0]; if(f){document.getElementById("dropzone").classList.add("hidden"); document.getElementById("filePreview").classList.remove("hidden"); document.getElementById("fileName").innerText=f.name; document.getElementById("fileSize").innerText=(f.size/1024).toFixed(1)+" KB"; document.getElementById("btnUpload").disabled=false; document.getElementById("btnUpload").className="mt-6 w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 shadow-lg";}}
+        function clearFile(){document.getElementById("fileInput").value=""; document.getElementById("dropzone").classList.remove("hidden"); document.getElementById("filePreview").classList.add("hidden"); document.getElementById("btnUpload").disabled=true; document.getElementById("btnUpload").className="mt-6 w-full bg-slate-200 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed";}
+        async function handleUpload(){const f=document.getElementById("fileInput").files[0]; if(!(await Swal.fire({title:'Kirim?',icon:'question',showCancelButton:true})).isConfirmed)return; setBtnLoading("btnUpload",true); const r=new FileReader(); r.onload=async(e)=>{const res=await fetchAPI({action:"upload",email:currentUser.user.email,fileName:f.name,fileData:e.target.result.split(",")[1]}); if(res.status==="success"){Swal.fire("Sukses",res.message,"success");clearFile();}else Swal.fire("Gagal",res.message,"error"); setBtnLoading("btnUpload",false,"Kirim Data");}; r.readAsDataURL(f);}
+        function toggleMonthSelect(){document.getElementById("monthContainer").className = document.getElementById("repType").value==="bulanan"?"flex gap-3":"hidden";}
+        async function downloadReport(){setBtnLoading("btnDownload",true); try{const r=await fetchAPI({action:"download_report",email:currentUser.user.email,type:document.getElementById("repType").value,month:document.getElementById("repMonth").value,year:document.getElementById("repYear").value}); if(r.status==="success")window.open(r.downloadUrl,"_blank"); else Swal.fire("Gagal",r.message,"warning");}catch(e){Swal.fire("Error","Gagal","error");}setBtnLoading("btnDownload",false,'Download XLSX');}
+        async function fetchAPI(d){const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(d)}); return await r.json();}
+        function setBtnLoading(id,l,t=""){const b=document.getElementById(id); if(l){b.disabled=true; b.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';}else{b.disabled=false; b.innerHTML=t;}}
     </script>
 </body>
 </html>
