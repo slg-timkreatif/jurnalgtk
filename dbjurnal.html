@@ -19,7 +19,12 @@
     </style>
 </head>
 <body class="text-slate-800 bg-slate-50">
-    <script>const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec";</script>
+
+    <script>
+        // MASUKKAN URL TERBARU
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
+    </script>
+    
     <div class="blob bg-blue-600 w-96 h-96 rounded-full top-0 left-0 fixed"></div>
     <div class="blob bg-purple-600 w-96 h-96 rounded-full bottom-0 right-0 fixed"></div>
 
@@ -88,11 +93,18 @@
 
             <div id="view-monitoring" class="view-section hidden">
                 <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                         <h3 class="text-lg font-bold" id="titleMonitoring">Monitoring</h3>
-                        <div id="adminSearch" class="hidden relative w-64">
-                            <input type="text" id="searchInput" onkeyup="filterTeachers()" placeholder="Cari Guru..." class="w-full pl-8 pr-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                            <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        
+                        <div id="adminControls" class="hidden flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                            <select id="filterUnitAdmin" onchange="loadSchoolData()" class="px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none font-bold">
+                                <option value="all">Semua Sekolah</option>
+                            </select>
+                            
+                            <div class="relative w-full md:w-56">
+                                <input type="text" id="searchInput" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full pl-8 pr-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            </div>
                         </div>
                     </div>
                     <div id="ksListArea" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-2"></div>
@@ -113,7 +125,7 @@
         const ITEMS_PER_PAGE = 10;
 
         window.onload = () => {
-            const saved = localStorage.getItem("gtk_v6_admin");
+            const saved = localStorage.getItem("gtk_v7_ent");
             if (saved) { currentUser = JSON.parse(saved); initApp(); }
             document.getElementById("repMonth").value = String(new Date().getMonth() + 1).padStart(2, '0');
         };
@@ -128,15 +140,15 @@
             document.getElementById("userNip").innerText = currentUser.user.nip || "-";
             document.getElementById("statMonth").innerText = currentUser.stats.thisMonth;
 
-            // CEK ROLE
+            // ROLE HANDLING
             if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
                 document.getElementById("tab-monitoring").classList.remove("hidden");
                 
-                // JIKA ADMIN
                 if(currentUser.user.role === "Admin") {
                     document.getElementById("lblMonitoring").innerText = "Global Admin";
-                    document.getElementById("titleMonitoring").innerText = "Global Data Guru";
-                    document.getElementById("adminSearch").classList.remove("hidden"); // Munculkan Search
+                    document.getElementById("titleMonitoring").innerText = "Data Guru se-Kabupaten";
+                    document.getElementById("adminControls").classList.remove("hidden");
+                    loadSchoolList(); // Load Dropdown
                 }
             }
         }
@@ -145,13 +157,13 @@
             e.preventDefault(); setBtnLoading("btnLogin", true);
             try {
                 const res = await fetchAPI({ action: "login", email: document.getElementById("email").value, pin: document.getElementById("pin").value });
-                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_v6_admin", JSON.stringify(res)); initApp(); } 
+                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_v7_ent", JSON.stringify(res)); initApp(); } 
                 else Swal.fire("Login Gagal", res.message, "error");
             } catch (err) { Swal.fire("Error", "Koneksi Bermasalah", "error"); }
             setBtnLoading("btnLogin", false, "Masuk Dashboard");
         }
 
-        function confirmLogout() { Swal.fire({ title: 'Logout?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya' }).then((r) => { if (r.isConfirmed) { localStorage.removeItem("gtk_v6_admin"); location.reload(); } }); }
+        function confirmLogout() { Swal.fire({ title: 'Logout?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya' }).then((r) => { if (r.isConfirmed) { localStorage.removeItem("gtk_v7_ent"); location.reload(); } }); }
         
         function switchTab(name) {
             document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
@@ -160,22 +172,44 @@
             document.getElementById("tab-" + name).classList.remove("tab-inactive"); document.getElementById("tab-" + name).classList.add("tab-active");
         }
 
+        // --- ADMIN FEATURES ---
+        async function loadSchoolList() {
+            // Ambil daftar sekolah unik dari backend
+            const res = await fetchAPI({ action: "fetch_school_list" });
+            if (res.status === "success") {
+                const sel = document.getElementById("filterUnitAdmin");
+                // Reset (tetap simpan opsi 'Semua')
+                sel.innerHTML = '<option value="all">Semua Sekolah</option>';
+                res.schools.forEach(s => {
+                   if(s) sel.innerHTML += `<option value="${s}">${s}</option>`;
+                });
+            }
+        }
+
         async function loadSchoolData() {
             switchTab("monitoring");
             const area = document.getElementById("ksListArea"); area.innerHTML = `<div class="col-span-2 text-center p-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
-            // KIRIM ROLE KE BACKEND
-            const res = await fetchAPI({ action: "fetch_school_data", unit: currentUser.user.unit, email: currentUser.user.email, role: currentUser.user.role });
+            
+            const filterUnit = document.getElementById("filterUnitAdmin").value;
+            
+            const res = await fetchAPI({ 
+                action: "fetch_school_data", 
+                unit: currentUser.user.unit, 
+                email: currentUser.user.email, 
+                role: currentUser.user.role,
+                filterUnit: filterUnit // Kirim filter ke backend
+            });
             
             if(res.status==="success") {
-                allTeachers = res.teachers; // Simpan untuk filtering di client
+                allTeachers = res.teachers;
                 renderTeacherList(allTeachers);
             }
         }
 
         function renderTeacherList(list) {
             const area = document.getElementById("ksListArea");
-            if(list.length === 0) { area.innerHTML = `<div class="col-span-2 text-center text-slate-400 p-4">Tidak ada data.</div>`; return; }
-
+            if(list.length === 0) { area.innerHTML = `<div class="col-span-2 text-center text-slate-400 p-4">Tidak ada data guru.</div>`; return; }
+            
             area.innerHTML = list.map(t => `
                 <div class="bg-white border p-4 rounded-xl hover:shadow-md transition flex justify-between items-center group">
                     <div class="overflow-hidden">
@@ -189,7 +223,7 @@
 
         function filterTeachers() {
             const keyword = document.getElementById("searchInput").value.toLowerCase();
-            const filtered = allTeachers.filter(t => t.nama.toLowerCase().includes(keyword) || t.unit.toLowerCase().includes(keyword));
+            const filtered = allTeachers.filter(t => t.nama.toLowerCase().includes(keyword));
             renderTeacherList(filtered);
         }
 
