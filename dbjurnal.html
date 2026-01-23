@@ -21,9 +21,9 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        /* Sticky Header Fix */
+        /* Sticky Header Fix (Agar judul tabel tetap terlihat saat discroll) */
         .table-container {
-            max-height: calc(100vh - 280px); /* Agar scroll terjadi di dalam tabel */
+            max-height: calc(100vh - 280px); /* Membatasi tinggi agar scroll terjadi di dalam tabel */
             overflow-y: auto;
         }
         thead th {
@@ -38,7 +38,8 @@
 <body class="text-slate-800">
 
     <script>
-        // URL SCRIPT GAS (JANGAN LUPA GANTI JIKA URL BERUBAH)
+        // --- KONFIGURASI URL BACKEND ---
+        // Ganti URL di bawah ini jika Anda melakukan Deploy New Version di Apps Script
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
     </script>
 
@@ -83,7 +84,8 @@
         <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 z-40 hidden md:hidden glass-effect transition-opacity"></div>
         
         <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform -translate-x-full md:translate-x-0 md:static md:h-screen transition-transform duration-300 flex flex-col shadow-2xl md:shadow-none">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between h-[73px]"> <div class="flex items-center gap-3">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between h-[73px]">
+                <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm"><i class="fas fa-database"></i></div>
                     <span class="font-bold text-slate-800 tracking-tight text-lg">Database Jurnal</span>
                 </div>
@@ -173,20 +175,31 @@
                         <input type="text" id="searchData" onkeyup="applyFilter()" placeholder="Cari kata kunci (mis: Rapat, KBM)..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition">
                         <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
                     </div>
+                    
                     <div class="col-span-1 md:col-span-3">
                         <select id="filterYear" onchange="applyFilter()" class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="all">Semua Tahun</option>
                         </select>
                     </div>
+
                     <div class="col-span-1 md:col-span-3">
                         <select id="filterMonth" onchange="applyFilter()" class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="all">Semua Bulan</option>
-                            <option value="Jan">Januari</option><option value="Feb">Februari</option><option value="Mar">Maret</option>
-                            <option value="Apr">April</option><option value="Mei">Mei</option><option value="Jun">Juni</option>
-                            <option value="Jul">Juli</option><option value="Agu">Agustus</option><option value="Sep">September</option>
-                            <option value="Okt">Oktober</option><option value="Nov">November</option><option value="Des">Desember</option>
+                            <option value="01">Januari</option>
+                            <option value="02">Februari</option>
+                            <option value="03">Maret</option>
+                            <option value="04">April</option>
+                            <option value="05">Mei</option>
+                            <option value="06">Juni</option>
+                            <option value="07">Juli</option>
+                            <option value="08">Agustus</option>
+                            <option value="09">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
                         </select>
                     </div>
+
                     <div class="col-span-2 md:col-span-1">
                         <button onclick="loadJournalData()" class="w-full py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-100 transition"><i class="fas fa-sync-alt"></i></button>
                     </div>
@@ -395,28 +408,62 @@
         }
 
         function populateYearDropdown() {
-            // Ambil tahun unik dari data tanggal (Format: 21 Jan 2026)
+            // Ambil tahun unik dari data tanggal (Format backend: 21 Jan 2026 atau 21/01/2026)
             const s = new Set(); 
             allJournalData.forEach(i=> { 
-                const p = i.tgl.split(" "); 
-                if(p.length > 2) s.add(p[2]); // Ambil tahun
+                let p = i.tgl.split(" "); 
+                if(p.length < 3) p = i.tgl.split("/"); // Support format slash juga
+                if(p.length >= 3) s.add(p[2]); // Ambil tahun
             });
+            
             const y = Array.from(s).sort().reverse();
             const el = document.getElementById("filterYear"); 
             el.innerHTML='<option value="all">Semua Tahun</option>';
             y.forEach(v => el.innerHTML+=`<option value="${v}">${v}</option>`);
         }
 
+        // --- FILTER LOGIC (SUPER ROBUST) ---
         function applyFilter() {
             const fY = document.getElementById("filterYear").value;
-            const fM = document.getElementById("filterMonth").value;
+            const fM = document.getElementById("filterMonth").value; // Nilainya sudah angka "01", "02"
             const fS = document.getElementById("searchData").value.toLowerCase();
 
+            // KAMUS PENERJEMAH (Semua jenis tulisan bulan -> Angka 2 digit)
+            const monthToNumber = {
+                // Singkatan & Full Inggris
+                "jan": "01", "feb": "02", "mar": "03", "apr": "04", "may": "05", "jun": "06",
+                "jul": "07", "aug": "08", "sep": "09", "oct": "10", "nov": "11", "dec": "12",
+                "january": "01", "february": "02", "march": "03", "april": "04", "may": "05", "june": "06",
+                "july": "07", "august": "08", "september": "09", "october": "10", "november": "11", "december": "12",
+                // Indonesia
+                "mei": "05", "agt": "08", "agu": "08", "okt": "10", "des": "12",
+                "januari": "01", "februari": "02", "maret": "03", "juni": "06", "juli": "07", "agustus": "08", "oktober": "10", "desember": "12",
+                // Angka
+                "01":"01", "02":"02", "03":"03", "04":"04", "05":"05", "06":"06", 
+                "07":"07", "08":"08", "09":"09", "10":"10", "11":"11", "12":"12",
+                "1":"01", "2":"02", "3":"03", "4":"04", "5":"05", "6":"06", "7":"07", "8":"08", "9":"09"
+            };
+
             filteredJournalData = allJournalData.filter(i => {
-                const p = i.tgl.split(" "); // ["21", "Jan", "2026"]
-                const matchY = fY==="all" || (p[2]===fY);
-                const matchM = fM==="all" || (p[1]===fM);
-                const matchS = (i.kegiatan && i.kegiatan.toLowerCase().includes(fS)) || (i.hasil && i.hasil.toLowerCase().includes(fS));
+                // Parsing Tanggal yang Fleksibel
+                let parts = i.tgl.split(" "); 
+                if (parts.length < 3) parts = i.tgl.split("-");
+                if (parts.length < 3) parts = i.tgl.split("/");
+                
+                // Jika format tanggal rusak/tidak dikenali, loloskan saja (fallback)
+                if (parts.length < 3) return true; 
+
+                let rawMonth = parts[1].toLowerCase(); 
+                let dataYear = parts[2];
+
+                // Standarisasi Bulan Data ke Angka "01" - "12"
+                let standardizedMonth = monthToNumber[rawMonth] || rawMonth;
+
+                const matchY = (fY === "all") || (dataYear === fY);
+                const matchM = (fM === "all") || (standardizedMonth === fM);
+                const matchS = (i.kegiatan && i.kegiatan.toLowerCase().includes(fS)) || 
+                               (i.hasil && i.hasil.toLowerCase().includes(fS));
+
                 return matchY && matchM && matchS;
             });
             currentPage=1; renderTable();
