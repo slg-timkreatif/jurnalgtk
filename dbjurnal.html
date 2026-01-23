@@ -2,252 +2,526 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Database Jurnal GTK</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; overflow-x: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.98); border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
-        .tab-active { background: #0f172a; color: white; border-color: #0f172a; }
-        .tab-inactive { background: white; color: #64748b; border-color: #e2e8f0; }
-        .blob { position: absolute; filter: blur(80px); opacity: 0.4; z-index: -1; }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-effect { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* Sticky Header Fix */
+        .table-container {
+            max-height: calc(100vh - 280px); /* Agar scroll terjadi di dalam tabel */
+            overflow-y: auto;
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #f8fafc;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
-<body class="text-slate-800 bg-slate-50">
+<body class="text-slate-800">
 
     <script>
-        // MASUKKAN URL TERBARU
+        // URL SCRIPT GAS (JANGAN LUPA GANTI JIKA URL BERUBAH)
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
     </script>
-    
-    <div class="blob bg-blue-600 w-96 h-96 rounded-full top-0 left-0 fixed"></div>
-    <div class="blob bg-purple-600 w-96 h-96 rounded-full bottom-0 right-0 fixed"></div>
 
-    <nav class="glass sticky top-0 z-50 px-4 md:px-8 py-3 shadow-sm flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-md"><i class="fas fa-database"></i></div>
-            <div><h1 class="text-base font-bold text-slate-900 leading-tight">DATABASE GTK</h1><p class="text-[10px] text-slate-500 font-bold tracking-wider">SISTEM KINERJA</p></div>
+    <section id="loginPage" class="min-h-screen flex items-center justify-center p-4 bg-slate-900">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm fade-in overflow-hidden flex flex-col">
+            <div class="bg-blue-600 p-8 text-center">
+                <i class="fas fa-database text-5xl text-white mb-4 opacity-90"></i>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Database Jurnal</h2>
+                <p class="text-blue-100 text-xs mt-1 font-medium">Sistem Informasi Kinerja Guru</p>
+            </div>
+            
+            <form onsubmit="handleLogin(event)" class="p-8 space-y-5 flex-1">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Email Dinas</label>
+                    <input type="email" id="email" class="w-full mt-1.5 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition bg-slate-50" placeholder="nama@sekolah.id" required>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">PIN Akses</label>
+                    <input type="password" id="pin" class="w-full mt-1.5 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition bg-slate-50" placeholder="••••••" required>
+                </div>
+                <button type="submit" id="btnLogin" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-slate-800 transform active:scale-[0.98] transition shadow-lg">Masuk Aplikasi</button>
+            </form>
+
+            <div class="bg-slate-50 p-4 text-center border-t border-slate-100">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tim Kreatif Selogiri | 2026</p>
+            </div>
         </div>
-        <button id="navProfile" onclick="confirmLogout()" class="hidden flex items-center gap-3 bg-slate-100 hover:bg-red-50 hover:border-red-200 transition rounded-full pl-2 pr-4 py-1.5 border border-slate-200 group">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs group-hover:from-red-500 group-hover:to-red-600"><i class="fas fa-user group-hover:hidden"></i><i class="fas fa-power-off hidden group-hover:block"></i></div>
-            <div class="text-right leading-none"><p class="text-sm font-bold text-slate-800 group-hover:text-red-600 transition" id="navName">...</p><p class="text-[10px] text-slate-500 font-medium group-hover:text-red-400" id="navRole">...</p></div>
-        </button>
-    </nav>
+    </section>
 
-    <main class="max-w-6xl mx-auto p-4 py-6 relative">
-        <section id="loginPage" class="max-w-md mx-auto mt-16 fade-in">
-            <div class="bg-white/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-t-4 border-blue-600">
-                <h2 class="text-2xl font-bold text-center mb-6 text-slate-800">Login Sistem</h2>
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <input type="email" id="email" class="w-full px-4 py-3 rounded-xl border bg-slate-50 outline-none" placeholder="Email" required>
-                    <input type="password" id="pin" class="w-full px-4 py-3 rounded-xl border bg-slate-50 outline-none" placeholder="PIN" required>
-                    <button type="submit" id="btnLogin" class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:scale-[1.02] transition shadow-lg">Masuk Dashboard</button>
-                </form>
+    <div id="dashboardPage" class="hidden min-h-screen flex flex-col md:flex-row relative">
+        
+        <header class="md:hidden bg-white border-b border-slate-200 p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200"><i class="fas fa-database"></i></div>
+                <span class="font-bold text-slate-800 text-lg">Database Jurnal</span>
             </div>
-        </section>
+            <button onclick="toggleSidebar()" class="w-10 h-10 flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </header>
 
-        <section id="dashboardPage" class="hidden space-y-6 fade-in">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><p class="text-xs text-slate-500 font-bold uppercase">Unit Kerja</p><p class="text-sm font-bold text-slate-800 truncate" id="userUnit">...</p></div>
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><p class="text-xs text-slate-500 font-bold uppercase">NIP</p><p class="text-sm font-bold text-slate-800 truncate" id="userNip">...</p></div>
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><p class="text-xs text-slate-500 font-bold uppercase">Kegiatan Bulan Ini</p><p class="text-lg font-bold text-blue-600" id="statMonth">0</p></div>
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100"><p class="text-xs text-slate-500 font-bold uppercase">Status Database</p><span class="text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">Aktif</span></div>
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 z-40 hidden md:hidden glass-effect transition-opacity"></div>
+        
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform -translate-x-full md:translate-x-0 md:static md:h-screen transition-transform duration-300 flex flex-col shadow-2xl md:shadow-none">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between h-[73px]"> <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm"><i class="fas fa-database"></i></div>
+                    <span class="font-bold text-slate-800 tracking-tight text-lg">Database Jurnal</span>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-red-500"><i class="fas fa-times text-lg"></i></button>
             </div>
-
-            <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="menuTabs">
-                <button onclick="switchTab('upload')" id="tab-upload" class="tab-active px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-upload mr-2"></i> Setor Jurnal</button>
-                <button onclick="loadJournalData()" id="tab-data" class="tab-inactive px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-table mr-2"></i> Data Saya</button>
-                <button onclick="switchTab('report')" id="tab-report" class="tab-inactive px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-print mr-2"></i> Laporan</button>
-                <button onclick="loadSchoolData()" id="tab-monitoring" class="hidden bg-indigo-50 text-indigo-700 border border-indigo-200 px-5 py-2.5 rounded-xl font-bold shadow-sm transition whitespace-nowrap text-sm"><i class="fas fa-users-cog mr-2"></i> <span id="lblMonitoring">Monitoring</span></button>
-            </div>
-
-            <div id="view-upload" class="view-section">
-                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-lg">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Upload Jurnal Harian</h3>
-                    <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center cursor-pointer hover:bg-slate-50 transition relative group">
-                        <input type="file" id="fileInput" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewFile()">
-                        <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition"><i class="fas fa-cloud-upload-alt text-3xl text-blue-500"></i></div>
-                        <p class="font-bold text-slate-700">Klik untuk memilih file</p>
+            
+            <div class="p-6 bg-slate-50 border-b border-slate-100">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500"><i class="fas fa-user"></i></div>
+                    <div class="overflow-hidden">
+                        <h3 class="font-bold text-slate-800 truncate text-sm" id="navName">User</h3>
+                        <p class="text-xs text-slate-500 truncate font-medium" id="navRole">Role</p>
                     </div>
-                    <div id="filePreview" class="hidden mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl flex justify-between items-center"><div class="flex items-center gap-3"><i class="fas fa-file-excel text-green-600 text-2xl"></i><div><p class="font-bold text-sm text-slate-700" id="fileName">...</p><p class="text-xs text-slate-400" id="fileSize">...</p></div></div><button onclick="clearFile()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times-circle text-xl"></i></button></div>
-                    <button onclick="handleUpload()" id="btnUpload" disabled class="mt-6 w-full bg-slate-200 text-slate-400 py-3 rounded-xl font-bold transition cursor-not-allowed">Kirim Data</button>
+                </div>
+                <span class="inline-block px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-md truncate max-w-full" id="userUnit">Unit Kerja</span>
+            </div>
+
+            <nav class="p-4 space-y-1.5 flex-1 overflow-y-auto">
+                <button onclick="switchTab('upload')" id="menu-upload" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition group">
+                    <i class="fas fa-paper-plane w-5 text-center group-hover:text-blue-600"></i> Kirim Jurnal
+                </button>
+                <button onclick="loadJournalData()" id="menu-data" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition group">
+                    <i class="fas fa-table w-5 text-center group-hover:text-blue-600"></i> Data Saya
+                </button>
+                <button onclick="switchTab('report')" id="menu-report" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition group">
+                    <i class="fas fa-print w-5 text-center group-hover:text-blue-600"></i> Laporan
+                </button>
+                
+                <div id="menu-monitoring-wrapper" class="hidden pt-4 mt-2 border-t border-slate-100">
+                    <p class="px-4 text-[10px] font-bold text-slate-400 uppercase mb-2">Administrasi</p>
+                    <button onclick="loadMonitoringData()" id="menu-monitoring" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100">
+                        <i class="fas fa-users-cog w-5 text-center"></i> Monitoring
+                    </button>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-slate-100">
+                <button onclick="confirmLogout()" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-red-600 hover:bg-red-50 transition">
+                    <i class="fas fa-sign-out-alt w-5 text-center"></i> Keluar
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-8 overflow-hidden h-[calc(100vh-73px)] md:h-screen flex flex-col bg-slate-50/50">
+            
+            <div id="view-upload" class="view-section fade-in hidden h-full overflow-y-auto">
+                <div class="max-w-xl mx-auto mt-4 md:mt-10">
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 md:p-10">
+                        <div class="text-center mb-8">
+                            <h2 class="text-2xl font-bold text-slate-800">Kirim Jurnal Harian</h2>
+                            <p class="text-sm text-slate-500 mt-1">Upload file Excel (.xlsx) sesuai format.</p>
+                        </div>
+
+                        <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition group relative">
+                            <input type="file" id="fileInput" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewFile()">
+                            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition duration-300">
+                                <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 group-hover:text-blue-500"></i>
+                            </div>
+                            <p class="font-bold text-slate-700">Klik untuk memilih file</p>
+                            <p class="text-xs text-slate-400 mt-2">Maksimal 5 MB</p>
+                        </div>
+
+                        <div id="filePreview" class="hidden mt-6 bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center gap-4 overflow-hidden">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-600 flex-shrink-0"><i class="fas fa-file-excel"></i></div>
+                                <div class="overflow-hidden">
+                                    <p class="font-bold text-sm text-slate-700 truncate" id="fileName">Filename.xlsx</p>
+                                    <p class="text-xs text-slate-400">Siap diupload</p>
+                                </div>
+                            </div>
+                            <button onclick="clearFile()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><i class="fas fa-times"></i></button>
+                        </div>
+
+                        <button onclick="handleUpload()" id="btnUpload" disabled class="mt-8 w-full py-3.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 transition cursor-not-allowed shadow-none">Kirim Data Sekarang</button>
+                    </div>
                 </div>
             </div>
 
-            <div id="view-data" class="view-section hidden">
-                <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-lg min-h-[500px] flex flex-col">
-                    <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">Riwayat Jurnal</h3><div class="flex gap-2"><select id="filterMonth" onchange="applyFilter()" class="bg-slate-50 border text-sm rounded-lg p-2 font-bold outline-none"><option value="all">Semua</option><option value="Jan">Januari</option><option value="Feb">Februari</option><option value="Mar">Maret</option></select><button onclick="loadJournalData()" class="bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm"><i class="fas fa-sync-alt"></i></button></div></div>
-                    <div class="flex-1 overflow-x-auto rounded-xl border border-slate-200 mb-4"><table class="w-full text-sm text-left"><thead class="bg-slate-50 text-slate-700 uppercase font-bold text-xs sticky top-0 z-10"><tr><th class="px-4 py-3 min-w-[120px]">Tanggal</th><th class="px-4 py-3 w-24">Waktu</th><th class="px-4 py-3 min-w-[200px]">Kegiatan</th><th class="px-4 py-3 min-w-[150px]">Hasil</th><th class="px-4 py-3 w-24 text-center">Bukti</th></tr></thead><tbody id="journalTableBody" class="divide-y bg-white text-slate-700"></tbody></table></div>
-                    <div class="flex justify-between items-center border-t pt-4"><span class="text-xs text-slate-500 font-bold" id="pageInfo">...</span><div class="flex gap-2"><button onclick="prevPage()" id="btnPrev" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Prev</button><button onclick="nextPage()" id="btnNext" class="px-3 py-1 text-xs font-bold bg-slate-100 rounded">Next</button></div></div>
+            <div id="view-data" class="view-section fade-in hidden h-full flex flex-col">
+                <div class="flex-shrink-0 mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Riwayat Jurnal</h2>
+                    <p class="text-slate-500 text-sm">Arsip kegiatan yang telah Anda laporkan.</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-4 flex-shrink-0 grid grid-cols-2 md:grid-cols-12 gap-3">
+                    <div class="col-span-2 md:col-span-5 relative">
+                        <input type="text" id="searchData" onkeyup="applyFilter()" placeholder="Cari kata kunci (mis: Rapat, KBM)..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                    </div>
+                    <div class="col-span-1 md:col-span-3">
+                        <select id="filterYear" onchange="applyFilter()" class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Semua Tahun</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1 md:col-span-3">
+                        <select id="filterMonth" onchange="applyFilter()" class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Semua Bulan</option>
+                            <option value="Jan">Januari</option><option value="Feb">Februari</option><option value="Mar">Maret</option>
+                            <option value="Apr">April</option><option value="Mei">Mei</option><option value="Jun">Juni</option>
+                            <option value="Jul">Juli</option><option value="Agu">Agustus</option><option value="Sep">September</option>
+                            <option value="Okt">Oktober</option><option value="Nov">November</option><option value="Des">Desember</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 md:col-span-1">
+                        <button onclick="loadJournalData()" class="w-full py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-100 transition"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
+                    <div class="table-container flex-1">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4 w-32 whitespace-nowrap">Tanggal</th>
+                                    <th class="p-4">Deskripsi Kegiatan</th>
+                                    <th class="p-4 w-20 text-center">Bukti</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journalTableBody" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-shrink-0">
+                        <span class="text-xs font-bold text-slate-500" id="pageInfo">Halaman 1</span>
+                        <div class="flex gap-2">
+                            <button onclick="prevPage()" id="btnPrev" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 shadow-sm disabled:opacity-50 transition">Prev</button>
+                            <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 shadow-sm disabled:opacity-50 transition">Next</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div id="view-report" class="view-section hidden">
-                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-lg"><h3 class="text-lg font-bold mb-6">Download Laporan</h3><div class="space-y-4"><div><label class="text-xs font-bold text-slate-500 uppercase">Jenis</label><select id="repType" onchange="toggleMonthSelect()" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="bulanan">Bulanan</option><option value="semester1">Semester 1</option><option value="semester2">Semester 2</option><option value="tahunan">Tahunan</option></select></div><div class="flex gap-3" id="monthContainer"><div class="flex-1"><label class="text-xs font-bold text-slate-500 uppercase">Bulan</label><select id="repMonth" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option></select></div><div class="w-1/3"><label class="text-xs font-bold text-slate-500 uppercase">Tahun</label><select id="repYear" class="w-full p-3 rounded-xl border bg-slate-50 font-bold outline-none"><option value="2025">2025</option><option value="2026">2026</option></select></div></div></div><button onclick="downloadReport()" id="btnDownload" class="mt-6 w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 hover:scale-[1.02] transition"><i class="fas fa-file-excel mr-2"></i> Download XLSX</button></div>
-            </div>
+            <div id="view-report" class="view-section fade-in hidden h-full overflow-y-auto">
+                <div class="max-w-lg mx-auto mt-4 md:mt-10 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600"><i class="fas fa-file-invoice text-xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">Cetak Laporan</h2>
+                            <p class="text-xs text-slate-500">Unduh format Excel (.xlsx)</p>
+                        </div>
+                    </div>
 
-            <div id="view-monitoring" class="view-section hidden">
-                <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-lg">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                        <h3 class="text-lg font-bold" id="titleMonitoring">Monitoring</h3>
-                        
-                        <div id="adminControls" class="hidden flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                            <select id="filterUnitAdmin" onchange="loadSchoolData()" class="px-3 py-2 bg-slate-50 border rounded-lg text-sm outline-none font-bold">
-                                <option value="all">Semua Sekolah</option>
+                    <div class="space-y-5">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Periode Laporan</label>
+                            <select id="repType" onchange="toggleMonthSelect()" class="w-full mt-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="bulanan">Laporan Bulanan</option>
+                                <option value="semester1">Semester 1 (Jan - Jun)</option>
+                                <option value="semester2">Semester 2 (Jul - Des)</option>
+                                <option value="tahunan">Satu Tahun Penuh</option>
                             </select>
-                            
-                            <div class="relative w-full md:w-56">
-                                <input type="text" id="searchInput" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full pl-8 pr-4 py-2 bg-slate-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
+                        <div class="flex gap-3" id="monthContainer">
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Bulan</label>
+                                <select id="repMonth" class="w-full mt-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
+                                    <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                                    <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
+                                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                                </select>
+                            </div>
+                            <div class="w-32">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Tahun</label>
+                                <select id="repYear" class="w-full mt-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
                             </div>
                         </div>
                     </div>
-                    <div id="ksListArea" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-2"></div>
+                    <button onclick="downloadReport()" id="btnDownload" class="mt-8 w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:scale-[1.01] transition shadow-lg flex items-center justify-center gap-2">
+                        <i class="fas fa-download"></i> Download Excel
+                    </button>
                 </div>
             </div>
-        </section>
 
-        <div id="modalKS" class="fixed inset-0 bg-black/50 hidden z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl">
-                <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-2xl"><h3 class="font-bold text-slate-800" id="modalTitle">...</h3><button onclick="closeModal()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button></div>
-                <div class="p-0 overflow-y-auto flex-1 bg-slate-50"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-xs uppercase font-bold text-slate-600 sticky top-0"><tr><th class="p-3">Tanggal</th><th class="p-3">Kegiatan</th></tr></thead><tbody id="modalBody" class="bg-white divide-y"></tbody></table></div>
+            <div id="view-monitoring" class="view-section fade-in hidden h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6 flex-shrink-0">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Monitoring Guru</h2>
+                        <p class="text-sm text-slate-500">Pantau kinerja guru di unit Anda.</p>
+                    </div>
+                </div>
+
+                <div id="adminControls" class="hidden bg-indigo-50 p-4 rounded-2xl mb-4 border border-indigo-100 flex flex-col md:flex-row gap-3 flex-shrink-0">
+                    <select id="filterUnitAdmin" onchange="loadMonitoringData()" class="px-4 py-2.5 bg-white border border-indigo-200 rounded-xl text-xs font-bold outline-none w-full md:w-auto focus:ring-2 focus:ring-indigo-500">
+                        <option value="all">Semua Sekolah</option>
+                    </select>
+                </div>
+
+                <div class="relative mb-4 flex-shrink-0">
+                     <input type="text" id="searchGuru" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none shadow-sm focus:ring-2 focus:ring-indigo-500 transition">
+                     <i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                </div>
+
+                <div id="ksListArea" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 content-start">
+                    </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="modalKS" class="fixed inset-0 bg-black/60 hidden z-[60] flex items-end md:items-center justify-center backdrop-blur-sm p-0 md:p-4">
+        <div class="bg-white rounded-t-3xl md:rounded-3xl w-full max-w-3xl h-[85vh] md:h-[80vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden">
+            <div class="p-5 border-b flex justify-between items-center bg-slate-50 flex-shrink-0">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg" id="modalTitle">Nama Guru</h3>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wide">Detail Aktivitas</p>
+                </div>
+                <button onclick="closeModal()" class="w-9 h-9 bg-slate-200 rounded-full flex items-center justify-center hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-0">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-100 text-xs uppercase font-bold text-slate-600 sticky top-0 z-10 shadow-sm">
+                        <tr><th class="p-4">Tanggal & Waktu</th><th class="p-4">Kegiatan</th></tr>
+                    </thead>
+                    <tbody id="modalBody" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
         </div>
-    </main>
+    </div>
 
     <script>
         let currentUser = null, allJournalData = [], filteredJournalData = [], currentPage = 1, allTeachers = [];
-        const ITEMS_PER_PAGE = 10;
+        const ITEMS_PER_PAGE = 15;
 
+        // --- INIT ---
         window.onload = () => {
             const saved = localStorage.getItem("gtk_v7_ent");
             if (saved) { currentUser = JSON.parse(saved); initApp(); }
             document.getElementById("repMonth").value = String(new Date().getMonth() + 1).padStart(2, '0');
         };
 
-        function initApp() {
-            document.getElementById("loginPage").classList.add("hidden");
-            document.getElementById("dashboardPage").classList.remove("hidden");
-            document.getElementById("navProfile").classList.remove("hidden");
-            document.getElementById("navName").innerText = currentUser.user.nama.split(" ")[0];
-            document.getElementById("navRole").innerText = currentUser.user.role;
-            document.getElementById("userUnit").innerText = currentUser.user.unit;
-            document.getElementById("userNip").innerText = currentUser.user.nip || "-";
-            document.getElementById("statMonth").innerText = currentUser.stats.thisMonth;
-
-            // ROLE HANDLING
-            if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
-                document.getElementById("tab-monitoring").classList.remove("hidden");
-                
-                if(currentUser.user.role === "Admin") {
-                    document.getElementById("lblMonitoring").innerText = "Global Admin";
-                    document.getElementById("titleMonitoring").innerText = "Data Guru se-Kabupaten";
-                    document.getElementById("adminControls").classList.remove("hidden");
-                    loadSchoolList(); // Load Dropdown
-                }
+        // --- UI TOGGLES ---
+        function toggleSidebar() {
+            const sb = document.getElementById("sidebar");
+            const ov = document.getElementById("sidebarOverlay");
+            if (sb.classList.contains("-translate-x-full")) { 
+                sb.classList.remove("-translate-x-full"); ov.classList.remove("hidden"); 
+            } else { 
+                sb.classList.add("-translate-x-full"); ov.classList.add("hidden"); 
             }
         }
 
+        function switchTab(name) {
+            document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
+            document.getElementById("view-" + name).classList.remove("hidden");
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        function setBtnLoading(id, l, t="") {
+            const b = document.getElementById(id);
+            if(l) { b.disabled=true; b.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Loading...'; }
+            else { b.disabled=false; b.innerHTML=t; }
+        }
+
+        // --- AUTH ---
         async function handleLogin(e) {
             e.preventDefault(); setBtnLoading("btnLogin", true);
             try {
                 const res = await fetchAPI({ action: "login", email: document.getElementById("email").value, pin: document.getElementById("pin").value });
-                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_v7_ent", JSON.stringify(res)); initApp(); } 
+                if (res.status === "success") { currentUser = res; localStorage.setItem("gtk_v7_ent", JSON.stringify(res)); initApp(); }
                 else Swal.fire("Login Gagal", res.message, "error");
-            } catch (err) { Swal.fire("Error", "Koneksi Bermasalah", "error"); }
-            setBtnLoading("btnLogin", false, "Masuk Dashboard");
+            } catch (err) { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+            setBtnLoading("btnLogin", false, "Masuk Aplikasi");
         }
 
-        function confirmLogout() { Swal.fire({ title: 'Logout?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya' }).then((r) => { if (r.isConfirmed) { localStorage.removeItem("gtk_v7_ent"); location.reload(); } }); }
-        
-        function switchTab(name) {
-            document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
-            document.getElementById("view-" + name).classList.remove("hidden");
-            document.querySelectorAll("#menuTabs button").forEach(b => { b.classList.remove("tab-active"); b.classList.add("tab-inactive"); });
-            document.getElementById("tab-" + name).classList.remove("tab-inactive"); document.getElementById("tab-" + name).classList.add("tab-active");
-        }
+        function initApp() {
+            document.getElementById("loginPage").classList.add("hidden");
+            document.getElementById("dashboardPage").classList.remove("hidden");
+            document.getElementById("navName").innerText = currentUser.user.nama;
+            document.getElementById("navRole").innerText = currentUser.user.role;
+            document.getElementById("userUnit").innerText = currentUser.user.unit;
 
-        // --- ADMIN FEATURES ---
-        async function loadSchoolList() {
-            // Ambil daftar sekolah unik dari backend
-            const res = await fetchAPI({ action: "fetch_school_list" });
-            if (res.status === "success") {
-                const sel = document.getElementById("filterUnitAdmin");
-                // Reset (tetap simpan opsi 'Semua')
-                sel.innerHTML = '<option value="all">Semua Sekolah</option>';
-                res.schools.forEach(s => {
-                   if(s) sel.innerHTML += `<option value="${s}">${s}</option>`;
-                });
+            if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
+                document.getElementById("menu-monitoring-wrapper").classList.remove("hidden");
+                if(currentUser.user.role === "Admin") {
+                    document.getElementById("adminControls").classList.remove("hidden");
+                    loadSchoolList();
+                }
             }
+            loadJournalData();
         }
 
-        async function loadSchoolData() {
-            switchTab("monitoring");
-            const area = document.getElementById("ksListArea"); area.innerHTML = `<div class="col-span-2 text-center p-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
+        function confirmLogout() {
+            Swal.fire({
+                title: 'Keluar?', 
+                text: 'Sesi Anda akan diakhiri.', 
+                icon: 'warning', 
+                showCancelButton: true, 
+                confirmButtonText: 'Ya, Keluar', 
+                confirmButtonColor: '#0f172a'
+            }).then((r)=>{if(r.isConfirmed){localStorage.removeItem("gtk_v7_ent");location.reload();}});
+        }
+
+        // --- DATA HANDLER ---
+        async function loadJournalData() {
+            switchTab("data");
+            const b = document.getElementById("journalTableBody");
+            b.innerHTML = `<tr><td colspan="3" class="p-10 text-center text-slate-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><br>Sedang memuat data...</td></tr>`;
             
-            const filterUnit = document.getElementById("filterUnitAdmin").value;
-            
-            const res = await fetchAPI({ 
-                action: "fetch_school_data", 
-                unit: currentUser.user.unit, 
-                email: currentUser.user.email, 
-                role: currentUser.user.role,
-                filterUnit: filterUnit // Kirim filter ke backend
+            const r = await fetchAPI({action:"fetch_journal", dbId:currentUser.user.dbId});
+            if(r.status==="success"){ 
+                allJournalData=r.data; 
+                populateYearDropdown(); 
+                applyFilter(); 
+            } else b.innerHTML = `<tr><td colspan="3" class="p-10 text-center text-red-500 font-bold">Gagal mengambil data</td></tr>`;
+        }
+
+        function populateYearDropdown() {
+            // Ambil tahun unik dari data tanggal (Format: 21 Jan 2026)
+            const s = new Set(); 
+            allJournalData.forEach(i=> { 
+                const p = i.tgl.split(" "); 
+                if(p.length > 2) s.add(p[2]); // Ambil tahun
             });
+            const y = Array.from(s).sort().reverse();
+            const el = document.getElementById("filterYear"); 
+            el.innerHTML='<option value="all">Semua Tahun</option>';
+            y.forEach(v => el.innerHTML+=`<option value="${v}">${v}</option>`);
+        }
+
+        function applyFilter() {
+            const fY = document.getElementById("filterYear").value;
+            const fM = document.getElementById("filterMonth").value;
+            const fS = document.getElementById("searchData").value.toLowerCase();
+
+            filteredJournalData = allJournalData.filter(i => {
+                const p = i.tgl.split(" "); // ["21", "Jan", "2026"]
+                const matchY = fY==="all" || (p[2]===fY);
+                const matchM = fM==="all" || (p[1]===fM);
+                const matchS = (i.kegiatan && i.kegiatan.toLowerCase().includes(fS)) || (i.hasil && i.hasil.toLowerCase().includes(fS));
+                return matchY && matchM && matchS;
+            });
+            currentPage=1; renderTable();
+        }
+
+        function renderTable() {
+            const b = document.getElementById("journalTableBody");
+            if(filteredJournalData.length===0){ b.innerHTML=`<tr><td colspan="3" class="p-10 text-center text-slate-400 flex flex-col items-center"><i class="far fa-folder-open text-3xl mb-2"></i><span>Data tidak ditemukan</span></td></tr>`; return;}
             
+            const start=(currentPage-1)*ITEMS_PER_PAGE;
+            const pageData = filteredJournalData.slice(start, start+ITEMS_PER_PAGE);
+            
+            b.innerHTML = pageData.map(r => `
+                <tr class="hover:bg-slate-50 transition border-b last:border-0 align-top">
+                    <td class="p-4 align-top">
+                        <span class="block text-sm font-bold text-slate-800">${r.tgl}</span>
+                        <span class="block text-xs text-slate-400 font-mono mt-0.5">${r.waktu||'-'}</span>
+                    </td>
+                    <td class="p-4 align-top">
+                        <p class="text-sm text-slate-800 leading-relaxed font-medium">${r.kegiatan}</p>
+                        <p class="text-xs text-slate-500 mt-1 italic">${r.hasil||'-'}</p>
+                    </td>
+                    <td class="p-4 text-center align-top">
+                        ${r.dok && r.dok.length>5 ? `<a href="${r.dok}" target="_blank" class="inline-flex w-8 h-8 rounded-full bg-blue-50 text-blue-600 items-center justify-center hover:bg-blue-600 hover:text-white transition"><i class="fas fa-external-link-alt text-xs"></i></a>` : '<span class="text-slate-300">-</span>'}
+                    </td>
+                </tr>`).join("");
+            
+            document.getElementById("pageInfo").innerText = `Halaman ${currentPage} / ${Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)}`;
+            document.getElementById("btnPrev").disabled=currentPage===1;
+            document.getElementById("btnNext").disabled=currentPage===Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE);
+        }
+        function prevPage(){if(currentPage>1){currentPage--;renderTable();}} function nextPage(){if(currentPage<Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)){currentPage++;renderTable();}}
+
+        // --- MONITORING ---
+        async function loadSchoolList() {
+            const res = await fetchAPI({action:"fetch_school_list"});
             if(res.status==="success") {
-                allTeachers = res.teachers;
-                renderTeacherList(allTeachers);
+                const sel = document.getElementById("filterUnitAdmin");
+                sel.innerHTML = '<option value="all">Semua Sekolah</option>';
+                res.schools.forEach(s => sel.innerHTML += `<option value="${s}">${s}</option>`);
             }
+        }
+
+        async function loadMonitoringData() {
+            switchTab("monitoring");
+            const area = document.getElementById("ksListArea");
+            area.innerHTML = `<div class="col-span-full text-center p-10"><i class="fas fa-circle-notch fa-spin text-2xl text-indigo-500"></i><p class="mt-2 text-slate-500">Mengambil Data Guru...</p></div>`;
+            const res = await fetchAPI({ action: "fetch_school_data", unit: currentUser.user.unit, email: currentUser.user.email, role: currentUser.user.role, filterUnit: document.getElementById("filterUnitAdmin").value });
+            if(res.status === "success") { allTeachers = res.teachers; renderTeacherList(allTeachers); } 
+            else { area.innerHTML = `<div class="col-span-full text-center text-red-500">Gagal memuat data.</div>`; }
         }
 
         function renderTeacherList(list) {
             const area = document.getElementById("ksListArea");
-            if(list.length === 0) { area.innerHTML = `<div class="col-span-2 text-center text-slate-400 p-4">Tidak ada data guru.</div>`; return; }
-            
+            if(list.length===0) { area.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">Tidak ada data guru yang ditemukan.</div>`; return; }
             area.innerHTML = list.map(t => `
-                <div class="bg-white border p-4 rounded-xl hover:shadow-md transition flex justify-between items-center group">
-                    <div class="overflow-hidden">
-                        <h4 class="font-bold text-slate-800 truncate">${t.nama}</h4>
-                        <p class="text-[10px] text-slate-500 font-bold uppercase">${t.unit}</p> 
-                        <span class="text-[10px] ${t.hasDb?'text-green-600 bg-green-50':'text-red-500 bg-red-50'} px-2 py-0.5 rounded font-bold">${t.hasDb?'DATA ADA':'KOSONG'}</span>
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl hover:shadow-lg transition flex flex-col justify-between h-full group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-slate-100 to-transparent rounded-bl-[40px] z-0"></div>
+                    <div class="relative z-10">
+                        <h4 class="font-bold text-slate-800 text-sm line-clamp-1 mb-1" title="${t.nama}">${t.nama}</h4>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-3 tracking-wide truncate">${t.unit}</p> 
+                        <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold ${t.hasDb?'bg-green-50 text-green-700':'bg-red-50 text-red-600'}">
+                            <i class="fas fa-circle text-[6px] mr-1.5 ${t.hasDb?'text-green-500':'text-red-500'}"></i> ${t.hasDb?'DATABASE AKTIF':'BELUM AKTIF'}
+                        </span>
                     </div>
-                    <button onclick="inspectGuru('${t.email}','${t.nama}')" class="bg-slate-100 px-3 py-1 rounded text-xs font-bold hover:bg-slate-900 hover:text-white transition">Lihat</button>
+                    <button onclick="inspectGuru('${t.email}','${t.nama}')" class="mt-4 w-full py-2.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl hover:bg-indigo-600 hover:text-white transition flex items-center justify-center gap-2 group-hover:shadow-md">
+                        <i class="fas fa-eye"></i> Lihat Jurnal
+                    </button>
                 </div>`).join("");
         }
 
         function filterTeachers() {
-            const keyword = document.getElementById("searchInput").value.toLowerCase();
-            const filtered = allTeachers.filter(t => t.nama.toLowerCase().includes(keyword));
-            renderTeacherList(filtered);
+            const k = document.getElementById("searchGuru").value.toLowerCase();
+            renderTeacherList(allTeachers.filter(t => t.nama.toLowerCase().includes(k)));
         }
 
-        async function loadJournalData() { switchTab("data"); const b = document.getElementById("journalTableBody"); b.innerHTML = `<tr><td colspan="5" class="p-8 text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>`; const r = await fetchAPI({action:"fetch_journal", dbId:currentUser.user.dbId}); if(r.status==="success"){allJournalData=r.data; applyFilter();} else b.innerHTML="Error"; }
-        function applyFilter() { const v = document.getElementById("filterMonth").value; filteredJournalData = v === "all" ? allJournalData : allJournalData.filter(i => i.tgl.includes(v)); currentPage = 1; renderTable(); }
-        function renderTable() { 
-            const b = document.getElementById("journalTableBody");
-            if(filteredJournalData.length===0){b.innerHTML=`<tr><td colspan="5" class="p-8 text-center text-slate-400">Kosong</td></tr>`; return;}
-            const start=(currentPage-1)*ITEMS_PER_PAGE;
-            b.innerHTML = filteredJournalData.slice(start, start+ITEMS_PER_PAGE).map(r => `<tr class="border-b align-top"><td class="p-3 text-xs font-bold w-24 leading-tight">${r.tgl}</td><td class="p-3 text-xs w-20">${r.waktu||'-'}</td><td class="p-3 text-sm">${r.kegiatan}</td><td class="p-3 text-xs text-slate-500">${r.hasil||'-'}</td><td class="p-3 text-center">${r.dok && r.dok.length>5?`<a href="${r.dok}" target="_blank" class="text-blue-600"><i class="fas fa-link"></i></a>`:'-'}</td></tr>`).join("");
-            document.getElementById("pageInfo").innerText = `Hal ${currentPage}/${Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)}`;
-            document.getElementById("btnPrev").disabled = currentPage===1; document.getElementById("btnNext").disabled = currentPage===Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE);
+        async function inspectGuru(email, nama) {
+            document.getElementById("modalKS").classList.remove("hidden");
+            document.getElementById("modalTitle").innerText = nama;
+            document.getElementById("modalBody").innerHTML = `<tr><td colspan="2" class="p-8 text-center"><i class="fas fa-spinner fa-spin text-xl text-slate-400"></i></td></tr>`;
+            const r = await fetchAPI({action:"fetch_journal", targetEmail: email});
+            const b = document.getElementById("modalBody");
+            if(r.status==="success" && r.data.length>0) {
+                b.innerHTML = r.data.map(d => `
+                    <tr class="border-b border-slate-50 bg-white hover:bg-slate-50 transition">
+                        <td class="p-4 align-top w-32">
+                            <span class="block text-xs font-bold text-slate-700">${d.tgl}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <p class="text-sm text-slate-800">${d.kegiatan}</p>
+                        </td>
+                    </tr>`).join("");
+            } else { b.innerHTML = `<tr><td colspan="2" class="p-8 text-center text-slate-400 text-sm italic">Belum ada data jurnal yang terekam.</td></tr>`; }
         }
-        function prevPage(){if(currentPage>1){currentPage--; renderTable();}} function nextPage(){if(currentPage<Math.ceil(filteredJournalData.length/ITEMS_PER_PAGE)){currentPage++; renderTable();}}
-        
-        async function inspectGuru(e,n) { document.getElementById("modalKS").classList.remove("hidden"); document.getElementById("modalTitle").innerText = n; document.getElementById("modalBody").innerHTML="Loading..."; const r = await fetchAPI({action:"fetch_journal", targetEmail:e}); document.getElementById("modalBody").innerHTML = r.status==="success" && r.data.length>0 ? r.data.map(d=>`<tr class="border-b"><td class="p-3 text-xs w-24 font-bold">${d.tgl}</td><td class="p-3 text-sm">${d.kegiatan}</td></tr>`).join("") : "Kosong"; }
+
         function closeModal() { document.getElementById("modalKS").classList.add("hidden"); }
-        function previewFile(){const f=document.getElementById("fileInput").files[0]; if(f){document.getElementById("dropzone").classList.add("hidden"); document.getElementById("filePreview").classList.remove("hidden"); document.getElementById("fileName").innerText=f.name; document.getElementById("fileSize").innerText=(f.size/1024).toFixed(1)+" KB"; document.getElementById("btnUpload").disabled=false; document.getElementById("btnUpload").className="mt-6 w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 shadow-lg";}}
-        function clearFile(){document.getElementById("fileInput").value=""; document.getElementById("dropzone").classList.remove("hidden"); document.getElementById("filePreview").classList.add("hidden"); document.getElementById("btnUpload").disabled=true; document.getElementById("btnUpload").className="mt-6 w-full bg-slate-200 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed";}
-        async function handleUpload(){const f=document.getElementById("fileInput").files[0]; if(!(await Swal.fire({title:'Kirim?',icon:'question',showCancelButton:true})).isConfirmed)return; setBtnLoading("btnUpload",true); const r=new FileReader(); r.onload=async(e)=>{const res=await fetchAPI({action:"upload",email:currentUser.user.email,fileName:f.name,fileData:e.target.result.split(",")[1]}); if(res.status==="success"){Swal.fire("Sukses",res.message,"success");clearFile();}else Swal.fire("Gagal",res.message,"error"); setBtnLoading("btnUpload",false,"Kirim Data");}; r.readAsDataURL(f);}
-        function toggleMonthSelect(){document.getElementById("monthContainer").className = document.getElementById("repType").value==="bulanan"?"flex gap-3":"hidden";}
-        async function downloadReport(){setBtnLoading("btnDownload",true); try{const r=await fetchAPI({action:"download_report",email:currentUser.user.email,type:document.getElementById("repType").value,month:document.getElementById("repMonth").value,year:document.getElementById("repYear").value}); if(r.status==="success")window.open(r.downloadUrl,"_blank"); else Swal.fire("Gagal",r.message,"warning");}catch(e){Swal.fire("Error","Gagal","error");}setBtnLoading("btnDownload",false,'Download XLSX');}
-        async function fetchAPI(d){const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(d)}); return await r.json();}
-        function setBtnLoading(id,l,t=""){const b=document.getElementById(id); if(l){b.disabled=true; b.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';}else{b.disabled=false; b.innerHTML=t;}}
+
+        // --- UPLOAD & FILE ---
+        function previewFile(){ const f=document.getElementById("fileInput").files[0]; if(f){ document.getElementById("dropzone").classList.add("hidden"); document.getElementById("filePreview").classList.remove("hidden"); document.getElementById("fileName").innerText=f.name; document.getElementById("btnUpload").disabled=false; document.getElementById("btnUpload").className="mt-8 w-full py-3.5 rounded-xl font-bold text-sm bg-slate-900 text-white hover:bg-slate-800 shadow-lg cursor-pointer transform active:scale-[0.99] transition"; document.getElementById("btnUpload").innerText="Kirim Data Sekarang"; } }
+        function clearFile(){ document.getElementById("fileInput").value=""; document.getElementById("dropzone").classList.remove("hidden"); document.getElementById("filePreview").classList.add("hidden"); document.getElementById("btnUpload").disabled=true; document.getElementById("btnUpload").className="mt-8 w-full py-3.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 transition cursor-not-allowed shadow-none"; document.getElementById("btnUpload").innerText="Kirim Data Sekarang"; }
+        async function handleUpload(){ const f=document.getElementById("fileInput").files[0]; if(!f)return; if(!(await Swal.fire({title:'Kirim Jurnal?',text:'Pastikan data sudah benar',icon:'question',showCancelButton:true,confirmButtonColor:'#0f172a',confirmButtonText:'Ya, Kirim'})).isConfirmed)return; setBtnLoading("btnUpload",true); const r=new FileReader(); r.onload=async(e)=>{ const res=await fetchAPI({action:"upload",email:currentUser.user.email,fileName:f.name,fileData:e.target.result.split(",")[1]}); if(res.status==="success"){Swal.fire("Berhasil","Data jurnal tersimpan.","success");clearFile();}else Swal.fire("Gagal",res.message,"error"); setBtnLoading("btnUpload",false,"Kirim Data Sekarang"); }; r.readAsDataURL(f); }
+        
+        function toggleMonthSelect(){ document.getElementById("monthContainer").className = document.getElementById("repType").value==="bulanan"?"flex gap-3":"hidden"; }
+        async function downloadReport(){ setBtnLoading("btnDownload",true); try{ const r=await fetchAPI({action:"download_report",email:currentUser.user.email,type:document.getElementById("repType").value,month:document.getElementById("repMonth").value,year:document.getElementById("repYear").value}); if(r.status==="success")window.open(r.downloadUrl,"_blank"); else Swal.fire("Gagal",r.message,"warning"); }catch(e){Swal.fire("Error","Terjadi kesalahan jaringan","error");} setBtnLoading("btnDownload",false,'<i class="fas fa-download"></i> Download Excel'); }
+        async function fetchAPI(d){ const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(d)}); return await r.json(); }
     </script>
 </body>
 </html>
