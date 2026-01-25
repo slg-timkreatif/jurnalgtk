@@ -3,27 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Database Jurnal</title>
+    <title>Database Jurnal Mobile</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; padding-bottom: 90px; -webkit-tap-highlight-color: transparent; }
+        
+        /* Animasi */
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Navigation Bar Styles */
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; z-index: 50; display: flex; justify-content: space-around; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.02); }
         .nav-item { padding: 12px 0; width: 100%; text-align: center; color: #94a3b8; transition: all 0.3s; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-item.active { color: #2563eb; }
+        .nav-item.active { color: #2563eb; transform: translateY(-2px); }
         .nav-item.active::after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; background: #2563eb; border-radius: 0 0 4px 4px; }
+        
+        /* Card Styles */
         .journal-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; margin-bottom: 12px; }
-        .btn-loading { opacity: 0.75; cursor: not-allowed; pointer-events: none; }
+        
+        /* Utility */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-slate-800 antialiased">
+
     <script>
-        // GANTI URL INI
+        // --- KONFIGURASI URL BACKEND ---
+        // GANTI URL INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
+        
+        const CACHE_KEY = "gtk_journal_cache_vPro"; // Key untuk penyimpanan offline
+        
+        // --- STATE VARIABLES ---
+        let currentUser = null;
+        let allJournalData = [];
+        let filteredJournalData = [];
+        let displayedCount = 0;
+        const ITEMS_PER_BATCH = 10;
+        let searchTimeout = null;
+
+        // --- INIT ---
+        window.onload = () => {
+            const savedUser = localStorage.getItem("gtk_v7_ent_mobile");
+            if(savedUser){
+                currentUser = JSON.parse(savedUser);
+                initApp();
+            }
+            document.getElementById("repMonth").value = String(new Date().getMonth()+1).padStart(2,'0');
+            setupInfiniteScroll();
+        };
+
+        function setupInfiniteScroll() {
+            const observer = new IntersectionObserver((entries) => {
+                if(entries[0].isIntersecting) {
+                    if (displayedCount < filteredJournalData.length) {
+                        loadMoreData();
+                    }
+                }
+            }, { rootMargin: '150px' });
+
+            const sentinel = document.createElement('div');
+            sentinel.id = 'scroll-sentinel';
+            sentinel.className = 'h-12 w-full flex justify-center items-center text-xs text-slate-300 pb-20';
+            document.getElementById('view-data').appendChild(sentinel);
+            observer.observe(sentinel);
+        }
+
+        // --- NAVIGATION ---
+        function switchTab(name){
+            document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
+            document.getElementById("view-"+name).classList.remove("hidden");
+            document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+            document.getElementById("nav-"+name).classList.add("active");
+            if(name !== 'data') window.scrollTo(0,0);
+        }
+
+        function initApp(){
+            document.getElementById("loginPage").classList.add("hidden"); 
+            document.getElementById("dashboardPage").classList.remove("hidden");
+            document.getElementById("headerName").innerText = currentUser.user.nama; 
+            document.getElementById("headerUnit").innerText = currentUser.user.unit;
+            
+            if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
+                document.getElementById("nav-monitoring").classList.remove("hidden");
+            }
+            switchTab('upload');
+        }
+
+        // --- AUTH ---
+        async function handleLogin(e){
+            e.preventDefault(); 
+            const btn = document.getElementById("btnLogin"); 
+            const ori = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memuat...';
+            try{
+                const res = await fetchAPI({
+                    action: "login",
+                    email: document.getElementById("email").value,
+                    pin: document.getElementById("pin").value
+                });
+                if(res.status === "success"){
+                    currentUser = res;
+                    localStorage.setItem("gtk_v7_ent_mobile", JSON.stringify(res));
+                    initApp();
+                    fetchJournalData(true); // Prefetch data
+                } else {
+                    Swal.fire("Gagal", res.message, "error");
+                }
+            } catch(err){ Swal.fire("Error", "Koneksi Bermasalah", "error"); }
+            btn.innerHTML = ori;
+        }
+
+        function confirmLogout(){
+            Swal.fire({title:'Keluar?', icon:'warning', showCancelButton:true, confirmButtonColor:'#0f172a', confirmButtonText:'Ya'}).then((r)=>{
+                if(r.isConfirmed){
+                    localStorage.removeItem("gtk_v7_ent_mobile");
+                    localStorage.removeItem(CACHE_KEY);
+                    location.reload();
+                }
+            });
+        }
+
+        // --- DATA ENGINE (OPTIMIZED) ---
+        async function loadJournalData(){
+            switchTab("data");
+            // Cache-First Strategy
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const parsedCache = JSON.parse(cached);
+                processData(parsedCache);
+            } else {
+                document.getElementById("journalList").innerHTML = `
+                    <div class="animate-pulse space-y-4 mt-2">
+                        <div class="h-24 bg-slate-200 rounded-2xl"></div>
+                        <div class="h-24 bg-slate-200 rounded-2xl"></div>
+                    </div>`;
+            }
+            await fetchJournalData();
+        }
+
+        async function fetchJournalData(isBackground = false) {
+            const refreshBtn = document.getElementById('btnRefreshIcon');
+            if(refreshBtn) refreshBtn.classList.add('fa-spin');
+
+            try {
+                const r = await fetchAPI({action: "fetch_journal", dbId: currentUser.user.dbId});
+                if(r.status === "success"){
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(r.data));
+                    processData(r.data);
+                    if(!isBackground) {
+                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 1500});
+                        Toast.fire({icon: 'success', title: 'Data diperbarui'});
+                    }
+                }
+            } catch(e) { console.error(e); }
+            if(refreshBtn) refreshBtn.classList.remove('fa-spin');
+        }
+
+        function processData(rawData) {
+            allJournalData = rawData;
+            // Sorting: Tanggal DESC, lalu Jam DESC
+            allJournalData.sort((a,b) => {
+                const dateA = parseIndoDate(a.tgl);
+                const dateB = parseIndoDate(b.tgl);
+                const diffDate = dateB - dateA;
+                if(diffDate !== 0) return diffDate; 
+                
+                const timeA = (a.waktu || "").toString().replace('.', ':').trim().padStart(5, '0');
+                const timeB = (b.waktu || "").toString().replace('.', ':').trim().padStart(5, '0');
+                if (timeB > timeA) return 1;
+                if (timeB < timeA) return -1;
+                return 0;
+            });
+            populateYear();
+            applyFilter(true);
+        }
+
+        function onSearchChange() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => applyFilter(true), 300); // Debounce 300ms
+        }
+
+        function applyFilter(reset = false) {
+            const fY = document.getElementById("filterYear").value;
+            const fM = document.getElementById("filterMonth").value;
+            const fS = document.getElementById("searchData").value.toLowerCase();
+            const map = {"jan":"01","feb":"02","mar":"03","apr":"04","mei":"05","jun":"06","jul":"07","agu":"08","sep":"09","okt":"10","nov":"11","des":"12","januari":"01","februari":"02","maret":"03","april":"04","juni":"06","juli":"07","agustus":"08","september":"09","oktober":"10","november":"11","desember":"12"};
+            
+            filteredJournalData = allJournalData.filter(i => {
+                let parts = i.tgl.split(/[\s/-]/);
+                if(parts.length < 3) return true;
+                let m = map[parts[1].toLowerCase()] || parts[1];
+                return ((fY === "all" || parts[2] === fY) && (fM === "all" || m === fM) && (i.kegiatan.toLowerCase().includes(fS)));
+            });
+
+            if (reset) {
+                document.getElementById("journalList").innerHTML = "";
+                displayedCount = 0;
+                loadMoreData();
+            }
+        }
+
+        function loadMoreData() {
+            const list = document.getElementById("journalList");
+            const sentinel = document.getElementById("scroll-sentinel");
+            
+            if (displayedCount >= filteredJournalData.length) {
+                if(sentinel) sentinel.innerHTML = filteredJournalData.length === 0 ? "" : "<span class='opacity-50'>Semua data dimuat</span>";
+                return;
+            }
+
+            const nextBatch = filteredJournalData.slice(displayedCount, displayedCount + ITEMS_PER_BATCH);
+            const fragment = document.createDocumentFragment();
+            
+            nextBatch.forEach((r, index) => {
+                const div = document.createElement('div');
+                div.style.animationDelay = `${index * 50}ms`;
+                div.className = "journal-card relative pl-4 border-l-4 border-l-blue-500 fade-in mb-3";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1 inline-block uppercase tracking-wider">${r.tgl}</span>
+                            <div class="text-[10px] text-slate-400 font-mono">${r.waktu||'-'}</div>
+                        </div>
+                        ${r.dok && r.dok.length > 5 ? `<a href="${r.dok}" target="_blank" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-blue-600 active:scale-95 transition border border-blue-100"><i class="fas fa-link text-xs"></i></a>` : ''}
+                    </div>
+                    <p class="text-sm font-bold text-slate-800 mb-1 leading-snug">${r.kegiatan}</p>
+                    <p class="text-xs text-slate-500 line-clamp-2">${r.hasil||'-'}</p>
+                `;
+                fragment.appendChild(div);
+            });
+
+            list.insertBefore(fragment, null);
+            displayedCount += nextBatch.length;
+
+            if (filteredJournalData.length === 0) {
+                list.innerHTML = `<div class="text-center py-20 text-slate-400 flex flex-col items-center"><i class="fas fa-inbox text-4xl mb-3 opacity-20"></i><span>Tidak ada data</span></div>`;
+            }
+        }
+
+        // --- UTILS ---
+        async function fetchAPI(data){
+            const r = await fetch(GAS_API_URL, {method:"POST", body:JSON.stringify(data)});
+            return await r.json();
+        }
+
+        function parseIndoDate(dStr){
+            let clean = String(dStr).split(",")[1] || String(dStr); clean = clean.trim(); 
+            const parts = clean.split(/[\s/-]+/); if(parts.length < 3) return new Date();
+            const map = {'januari':0,'februari':1,'maret':2,'april':3,'mei':4,'juni':5,'juli':6,'agustus':7,'september':8,'oktober':9,'november':10,'desember':11,'jan':0,'feb':1,'mar':2,'apr':3,'jun':5,'jul':6,'agu':7,'sep':8,'okt':9,'nov':10,'des':11};
+            return new Date(parseInt(parts[2]), map[parts[1].toLowerCase()]||0, parseInt(parts[0]));
+        }
+
+        function populateYear(){
+            const s = new Set(); allJournalData.forEach(i => { let p = i.tgl.split(/[\s/-]/); if(p.length >= 3) s.add(p[2]); });
+            const el = document.getElementById("filterYear"); const val = el.value;
+            el.innerHTML = '<option value="all">Tahun</option>';
+            Array.from(s).sort().reverse().forEach(v => el.innerHTML += `<option value="${v}">${v}</option>`);
+            el.value = val;
+        }
+
+        // --- UPLOAD & REPORT ---
+        function previewFile(){
+            const f = document.getElementById("fileInput").files[0];
+            if(f){
+                document.getElementById("dropzone").classList.add("hidden");
+                document.getElementById("filePreview").classList.remove("hidden");
+                document.getElementById("fileName").innerText = f.name;
+                const btn = document.getElementById("btnUpload");
+                btn.disabled = false;
+                btn.className = "mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-900 text-white shadow-xl transform active:scale-95 transition-all";
+                btn.innerText = "Kirim Data Sekarang";
+            }
+        }
+        function clearFile(){
+            document.getElementById("fileInput").value = "";
+            document.getElementById("dropzone").classList.remove("hidden");
+            document.getElementById("filePreview").classList.add("hidden");
+            const btn = document.getElementById("btnUpload");
+            btn.disabled = true;
+            btn.className = "mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400";
+            btn.innerText = "Kirim Data";
+        }
+        async function handleUpload(){
+            const f = document.getElementById("fileInput").files[0]; if(!f) return;
+            const c = await Swal.fire({title:'Kirim?',icon:'question',showCancelButton:true,confirmButtonText:'Ya'}); if(!c.isConfirmed) return;
+            const btn = document.getElementById("btnUpload"); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+            const r = new FileReader(); r.onload = async(e) => {
+                try {
+                    const res = await fetchAPI({action:"upload", email:currentUser.user.email, fileName:f.name, fileData:e.target.result.split(",")[1]});
+                    if(res.status === "success"){ Swal.fire("Berhasil", "Data Terkirim", "success"); clearFile(); fetchJournalData(true); } else { Swal.fire("Gagal", res.message, "error"); }
+                } catch(err) { Swal.fire("Error", "Gagal upload", "error"); }
+                btn.innerHTML = "Kirim Data Sekarang";
+            }; r.readAsDataURL(f);
+        }
+        function toggleMonthSelect(){ document.getElementById("monthContainer").className = document.getElementById("repType").value === "bulanan" ? "flex gap-3" : "hidden"; }
+        async function downloadReport(){
+            const btn = document.getElementById("btnDownload"); const ori = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            try{ const r = await fetchAPI({action:"download_report", email:currentUser.user.email, type:document.getElementById("repType").value, month:document.getElementById("repMonth").value, year:document.getElementById("repYear").value});
+                if(r.status === "success") window.open(r.downloadUrl, "_blank"); else Swal.fire("Gagal", r.message, "warning");
+            } catch(e){} btn.innerHTML = ori;
+        }
+
+        // --- ADMIN ---
+        async function loadMonitoringData(){
+            switchTab("monitoring");
+            const area = document.getElementById("ksListArea");
+            area.innerHTML = '<div class="text-center py-10 text-slate-400"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>';
+            const res = await fetchAPI({action:"fetch_school_data", unit:currentUser.user.unit, email:currentUser.user.email, role:currentUser.user.role, filterUnit:"all"});
+            if(res.status === "success"){ allTeachers = res.teachers; renderTeacherList(allTeachers); }
+        }
+        function renderTeacherList(l){
+            const a = document.getElementById("ksListArea"); if(l.length === 0){ a.innerHTML = "<div class='text-center text-slate-400'>Kosong</div>"; return; }
+            a.innerHTML = l.map(t => `<div class="bg-white border p-4 rounded-xl flex justify-between shadow-sm items-center"><div><h4 class="font-bold text-sm text-slate-700">${t.nama}</h4><p class="text-xs text-slate-400">${t.unit}</p></div><span class="text-[10px] font-bold px-2 py-1 rounded ${t.hasDb?'bg-green-100 text-green-700':'bg-red-50 text-red-500'}">${t.hasDb?'AKTIF':'BELUM'}</span></div>`).join("");
+        }
+        function filterTeachers(){ renderTeacherList(allTeachers.filter(t => t.nama.toLowerCase().includes(document.getElementById("searchGuru").value.toLowerCase()))); }
     </script>
 
     <section id="loginPage" class="fixed inset-0 z-[60] bg-slate-900 flex items-center justify-center p-5">
@@ -71,12 +371,13 @@
             <div id="view-data" class="view-section hidden fade-in">
                 <div class="sticky top-[70px] z-30 bg-[#f8fafc] pb-4 pt-1">
                     <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 mb-3 flex gap-2">
-                        <div class="flex-1 relative"><i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400 text-xs"></i><input type="text" id="searchData" onkeyup="applyFilter()" placeholder="Cari kegiatan..." class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium outline-none"></div>
-                        <button onclick="loadJournalData()" class="w-10 bg-slate-100 rounded-xl text-slate-500 hover:text-blue-600"><i class="fas fa-sync-alt"></i></button>
+                        <div class="flex-1 relative"><i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchData" onkeyup="onSearchChange()" placeholder="Cari kegiatan..." class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium outline-none"></div>
+                        <button onclick="fetchJournalData()" class="w-10 bg-slate-100 rounded-xl text-slate-500 hover:text-blue-600 flex items-center justify-center"><i id="btnRefreshIcon" class="fas fa-sync-alt"></i></button>
                     </div>
                     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                         <select id="filterMonth" onchange="applyFilter()" class="flex-1 min-w-[130px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Semua Bulan</option><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option><option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option><option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select>
-                        <select id="filterYear" onchange="applyFilter()" class="flex-1 min-w-[100px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Tahun</option></select>
+                         <select id="filterMonth" onchange="applyFilter(true)" class="flex-1 min-w-[130px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Semua Bulan</option><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option><option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option><option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select>
+                        <select id="filterYear" onchange="applyFilter(true)" class="flex-1 min-w-[100px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Tahun</option></select>
                     </div>
                 </div>
                 <div id="journalList" class="pb-4 min-h-[300px]"></div>
@@ -107,107 +408,5 @@
             <div onclick="loadMonitoringData()" id="nav-monitoring" class="nav-item hidden"><i class="fas fa-users-cog"></i><span>Admin</span></div>
         </nav>
     </div>
-
-    <script>
-        let currentUser=null, allJournalData=[], filteredJournalData=[], allTeachers=[], displayLimit=10;
-        window.onload=()=>{
-            const saved=localStorage.getItem("gtk_v7_ent_mobile");
-            if(saved){currentUser=JSON.parse(saved);initApp();}
-            document.getElementById("repMonth").value=String(new Date().getMonth()+1).padStart(2,'0');
-        };
-
-        function switchTab(name){
-            document.querySelectorAll(".view-section").forEach(el=>el.classList.add("hidden"));
-            document.getElementById("view-"+name).classList.remove("hidden");
-            document.querySelectorAll(".nav-item").forEach(el=>el.classList.remove("active"));
-            document.getElementById("nav-"+name).classList.add("active");
-            window.scrollTo(0,0);
-        }
-
-        async function handleLogin(e){
-            e.preventDefault(); const btn=document.getElementById("btnLogin"); btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';
-            try{
-                const res=await fetchAPI({action:"login",email:document.getElementById("email").value,pin:document.getElementById("pin").value});
-                if(res.status==="success"){currentUser=res;localStorage.setItem("gtk_v7_ent_mobile",JSON.stringify(res));initApp();}
-                else Swal.fire("Gagal",res.message,"error");
-            }catch(err){Swal.fire("Error","Koneksi Bermasalah","error");}
-            btn.innerHTML="Masuk Aplikasi";
-        }
-
-        function initApp(){
-            document.getElementById("loginPage").classList.add("hidden"); document.getElementById("dashboardPage").classList.remove("hidden");
-            document.getElementById("headerName").innerText=currentUser.user.nama; document.getElementById("headerUnit").innerText=currentUser.user.unit;
-            if(currentUser.user.role==="Kepala Sekolah"||currentUser.user.role==="Admin") document.getElementById("nav-monitoring").classList.remove("hidden");
-            switchTab('upload');
-        }
-        function confirmLogout(){Swal.fire({title:'Keluar?',icon:'warning',showCancelButton:true,confirmButtonColor:'#0f172a',confirmButtonText:'Ya'}).then((r)=>{if(r.isConfirmed){localStorage.removeItem("gtk_v7_ent_mobile");location.reload();}});}
-        async function fetchAPI(data){const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(data)});return await r.json();}
-
-        // SORTING: DESCENDING (TERBARU + JAM)
-        async function loadJournalData(){
-            switchTab("data"); const list=document.getElementById("journalList");
-            list.innerHTML=`<div class="animate-pulse space-y-3"><div class="h-24 bg-slate-200 rounded-2xl"></div><div class="h-24 bg-slate-200 rounded-2xl"></div></div>`;
-            const r=await fetchAPI({action:"fetch_journal",dbId:currentUser.user.dbId});
-            if(r.status==="success"){
-                allJournalData=r.data;
-                
-                // SORT DESCENDING TANGGAL + WAKTU
-                allJournalData.sort((a,b)=>{
-                    const dateA = parseIndoDate(a.tgl);
-                    const dateB = parseIndoDate(b.tgl);
-                    const diffDate = dateB - dateA;
-
-                    if(diffDate !== 0) return diffDate; // Bedakan berdasarkan tanggal
-
-                    // Jika tanggal sama, bedakan berdasarkan jam string
-                    const timeA = (a.waktu || "").toString().replace('.', ':').trim().padStart(5, '0');
-                    const timeB = (b.waktu || "").toString().replace('.', ':').trim().padStart(5, '0');
-                    if (timeB > timeA) return 1;
-                    if (timeB < timeA) return -1;
-                    return 0;
-                });
-
-                populateYear(); applyFilter();
-            } else list.innerHTML=`<div class="text-center py-10 text-red-400">Gagal data</div>`;
-        }
-
-        function parseIndoDate(dStr){
-            let clean=String(dStr).split(",")[1]||String(dStr); clean=clean.trim(); const parts=clean.split(/[\s/-]+/);
-            if(parts.length<3)return new Date();
-            const map={'januari':0,'februari':1,'maret':2,'april':3,'mei':4,'juni':5,'juli':6,'agustus':7,'september':8,'oktober':9,'november':10,'desember':11,'jan':0,'feb':1,'mar':2,'apr':3,'jun':5,'jul':6,'agu':7,'sep':8,'okt':9,'nov':10,'des':11};
-            return new Date(parseInt(parts[2]), map[parts[1].toLowerCase()]||0, parseInt(parts[0]));
-        }
-
-        function populateYear(){const s=new Set();allJournalData.forEach(i=>{let p=i.tgl.split(/[\s/-]/);if(p.length>=3)s.add(p[2]);});const el=document.getElementById("filterYear");el.innerHTML='<option value="all">Tahun</option>';Array.from(s).sort().reverse().forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`);}
-        function applyFilter(){
-            const fY=document.getElementById("filterYear").value, fM=document.getElementById("filterMonth").value, fS=document.getElementById("searchData").value.toLowerCase();
-            const map={"jan":"01","feb":"02","mar":"03","apr":"04","mei":"05","jun":"06","jul":"07","agu":"08","sep":"09","okt":"10","nov":"11","des":"12","januari":"01","februari":"02","maret":"03","april":"04","juni":"06","juli":"07","agustus":"08","september":"09","oktober":"10","november":"11","desember":"12"};
-            filteredJournalData=allJournalData.filter(i=>{
-                let parts=i.tgl.split(/[\s/-]/); if(parts.length<3)return true;
-                let m=map[parts[1].toLowerCase()]||parts[1];
-                return ((fY==="all"||parts[2]===fY)&&(fM==="all"||m===fM)&&(i.kegiatan.toLowerCase().includes(fS)));
-            });
-            displayLimit=10; renderList();
-        }
-        function loadMoreData(){displayLimit+=10;renderList();}
-        function renderList(){
-            const list=document.getElementById("journalList");
-            if(filteredJournalData.length===0){list.innerHTML=`<div class="text-center py-12 text-slate-400">Kosong</div>`;return;}
-            const show=filteredJournalData.slice(0,displayLimit), rem=filteredJournalData.length-displayLimit;
-            let html=show.map(r=>`<div class="journal-card relative pl-4 border-l-4 border-l-blue-500 fade-in"><div class="flex justify-between items-start mb-2"><div><span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1 inline-block uppercase tracking-wider">${r.tgl}</span><div class="text-[10px] text-slate-400 font-mono">${r.waktu||'-'}</div></div>${r.dok&&r.dok.length>5?`<a href="${r.dok}" target="_blank" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-blue-600"><i class="fas fa-link text-xs"></i></a>`:''}</div><p class="text-sm font-bold text-slate-800 mb-1 leading-snug">${r.kegiatan}</p><p class="text-xs text-slate-500 line-clamp-2">${r.hasil||'-'}</p></div>`).join("");
-            if(rem>0) html+=`<div class="mt-4 pb-4 text-center"><button onclick="loadMoreData()" class="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 text-xs font-bold">Muat Lebih Banyak (${rem})</button></div>`;
-            list.innerHTML=html;
-        }
-
-        function previewFile(){const f=document.getElementById("fileInput").files[0];if(f){document.getElementById("dropzone").classList.add("hidden");document.getElementById("filePreview").classList.remove("hidden");document.getElementById("fileName").innerText=f.name;document.getElementById("btnUpload").disabled=false;document.getElementById("btnUpload").className="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-900 text-white shadow-xl";document.getElementById("btnUpload").innerText="Kirim Data Sekarang";}}
-        function clearFile(){document.getElementById("fileInput").value="";document.getElementById("dropzone").classList.remove("hidden");document.getElementById("filePreview").classList.add("hidden");document.getElementById("btnUpload").disabled=true;document.getElementById("btnUpload").className="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400";document.getElementById("btnUpload").innerText="Kirim Data";}
-        async function handleUpload(){const f=document.getElementById("fileInput").files[0];if(!f)return;const c=await Swal.fire({title:'Kirim?',icon:'question',showCancelButton:true,confirmButtonText:'Ya'});if(!c.isConfirmed)return;const btn=document.getElementById("btnUpload");btn.innerHTML='Mengirim...';const r=new FileReader();r.onload=async(e)=>{const res=await fetchAPI({action:"upload",email:currentUser.user.email,fileName:f.name,fileData:e.target.result.split(",")[1]});if(res.status==="success"){Swal.fire("Berhasil","Terkirim","success");clearFile();}else Swal.fire("Gagal",res.message,"error");btn.innerHTML="Kirim Data Sekarang";};r.readAsDataURL(f);}
-        
-        function toggleMonthSelect(){document.getElementById("monthContainer").className=document.getElementById("repType").value==="bulanan"?"flex gap-3":"hidden";}
-        async function downloadReport(){const btn=document.getElementById("btnDownload");btn.innerHTML='Generating...';try{const r=await fetchAPI({action:"download_report",email:currentUser.user.email,type:document.getElementById("repType").value,month:document.getElementById("repMonth").value,year:document.getElementById("repYear").value});if(r.status==="success")window.open(r.downloadUrl,"_blank");else Swal.fire("Gagal",r.message,"warning");}catch(e){}btn.innerHTML='Download Excel';}
-        async function loadMonitoringData(){switchTab("monitoring");const area=document.getElementById("ksListArea");area.innerHTML='Loading...';const res=await fetchAPI({action:"fetch_school_data",unit:currentUser.user.unit,email:currentUser.user.email,role:currentUser.user.role,filterUnit:"all"});if(res.status==="success"){allTeachers=res.teachers;renderTeacherList(allTeachers);}}
-        function renderTeacherList(l){const a=document.getElementById("ksListArea");if(l.length===0){a.innerHTML="Kosong";return;}a.innerHTML=l.map(t=>`<div class="bg-white border p-4 rounded-xl flex justify-between shadow-sm"><div><h4 class="font-bold text-sm">${t.nama}</h4><p class="text-xs text-slate-400">${t.unit}</p></div><span class="text-xs font-bold ${t.hasDb?'text-green-600':'text-red-500'}">${t.hasDb?'AKTIF':'BELUM'}</span></div>`).join("");}
-        function filterTeachers(){renderTeacherList(allTeachers.filter(t=>t.nama.toLowerCase().includes(document.getElementById("searchGuru").value.toLowerCase())));}
-    </script>
 </body>
 </html>
