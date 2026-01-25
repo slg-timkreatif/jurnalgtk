@@ -30,17 +30,26 @@
 
         .sidebar-active { background-color: #eff6ff; color: #2563eb; border-right: 3px solid #2563eb; }
         .btn-loading { pointer-events: none; opacity: 0.7; }
+        
+        /* Glass Effect untuk Login */
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="text-slate-800">
 
     <script>
-        // PASTE URL WEB APP ANDA DISINI
+        // --- KONFIGURASI URL ---
+        // GANTI DENGAN URL WEB APP ANDA SENDIRI
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
     </script>
 
-    <div id="loginPage" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden fade-in">
+    <div id="loginPage" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-3xl"></div>
+            <div class="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-3xl"></div>
+        </div>
+
+        <div class="glass-panel rounded-2xl shadow-2xl w-full max-w-md overflow-hidden fade-in relative z-10">
             <div class="bg-blue-600 p-8 text-center relative overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-full bg-white opacity-10 transform -skew-y-6 scale-150"></div>
                 <div class="relative z-10">
@@ -78,7 +87,7 @@
 
     <div id="dashboardPage" class="flex h-screen overflow-hidden hidden">
         
-        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm">
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm transition-all duration-300">
             <div class="p-6 flex items-center gap-3 border-b border-slate-100">
                 <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-md">
                     <i class="fas fa-database text-xs"></i>
@@ -86,9 +95,9 @@
                 <h1 class="font-bold text-slate-800 text-lg tracking-tight">DB Jurnal</h1>
             </div>
 
-            <div class="p-4">
+            <div class="p-4 flex-1 overflow-y-auto">
                 <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 mb-6 flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold border border-blue-200 text-sm" id="avatarInitial">U</div>
+                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold border border-blue-200 text-sm shadow-sm" id="avatarInitial">U</div>
                     <div class="overflow-hidden">
                         <h4 class="font-bold text-slate-800 text-sm truncate" id="userName">User Name</h4>
                         <p class="text-xs text-slate-500 truncate" id="userUnit">Unit Kerja</p>
@@ -99,7 +108,7 @@
                     <a onclick="switchTab('upload')" id="nav-upload" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition sidebar-active">
                         <i class="fas fa-cloud-upload-alt w-5"></i> Upload
                     </a>
-                    <a onclick="loadData()" id="nav-data" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <a onclick="switchTab('data')" id="nav-data" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition">
                         <i class="fas fa-table w-5"></i> Data Jurnal
                     </a>
                     <a onclick="switchTab('report')" id="nav-report" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer transition">
@@ -111,27 +120,27 @@
                 </nav>
             </div>
 
-            <div class="mt-auto p-4 border-t border-slate-100">
+            <div class="p-4 border-t border-slate-100">
                 <button onclick="doLogout()" class="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 transition">
                     <i class="fas fa-sign-out-alt w-5"></i> Keluar
                 </button>
             </div>
         </aside>
 
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-8 relative">
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-8 relative scroll-smooth">
             
-            <div id="view-upload" class="view-section fade-in max-w-3xl mx-auto">
+            <div id="view-upload" class="view-section fade-in max-w-4xl mx-auto">
                 <div class="mb-8">
                     <h2 class="text-2xl font-bold text-slate-800">Upload Jurnal</h2>
                     <p class="text-slate-500 text-sm">Upload file Excel kegiatan harian Anda disini.</p>
                 </div>
 
                 <div class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center">
-                    <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-2xl p-10 bg-slate-50 hover:bg-blue-50 hover:border-blue-400 transition cursor-pointer relative group">
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-2xl p-12 bg-slate-50 hover:bg-blue-50 hover:border-blue-400 transition cursor-pointer relative group">
                         <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".xlsx" onchange="handleFileSelect(this)">
                         
-                        <div class="pointer-events-none group-hover:scale-110 transition duration-300">
-                            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-blue-500 text-4xl">
+                        <div class="pointer-events-none group-hover:scale-105 transition duration-300">
+                            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-blue-500 text-4xl border border-blue-50">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
                             <h3 class="font-bold text-slate-700 text-lg">Klik atau Tarik File Excel</h3>
@@ -139,9 +148,9 @@
                         </div>
                     </div>
 
-                    <div id="fileInfo" class="hidden mt-6 bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between text-left">
+                    <div id="fileInfo" class="hidden mt-6 bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between text-left animate-pulse-once">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-green-600 shadow-sm text-xl">
+                            <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-green-600 shadow-sm text-xl border border-green-100">
                                 <i class="fas fa-file-excel"></i>
                             </div>
                             <div>
@@ -160,15 +169,15 @@
                 </div>
             </div>
 
-            <div id="view-data" class="view-section hidden fade-in">
+            <div id="view-data" class="view-section hidden fade-in max-w-6xl mx-auto">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Data Jurnal</h2>
                         <p class="text-slate-500 text-sm">Riwayat kegiatan yang telah tersimpan.</p>
                     </div>
                     <div class="flex gap-2">
-                         <button onclick="loadData()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition shadow-sm">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                         <button onclick="loadData()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-sync-alt"></i> Refresh Data
                         </button>
                     </div>
                 </div>
@@ -177,17 +186,17 @@
                     <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4">
                         <div class="relative flex-1">
                             <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
-                            <input type="text" id="searchData" onkeyup="filterData()" placeholder="Cari kegiatan..." class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="searchData" onkeyup="filterData()" placeholder="Cari kegiatan..." class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm">
                         </div>
                         <div class="flex gap-2">
-                            <select id="filterMonth" onchange="filterData()" class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <select id="filterMonth" onchange="filterData()" class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm min-w-[150px]">
                                 <option value="all">Semua Bulan</option>
                                 <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
                                 <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
                                 <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
                                 <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
                             </select>
-                            <select id="filterYear" onchange="filterData()" class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <select id="filterYear" onchange="filterData()" class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm">
                                 <option value="all">Tahun</option>
                             </select>
                         </div>
@@ -195,7 +204,7 @@
 
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm text-slate-600">
-                            <thead class="bg-slate-50 text-slate-800 font-bold uppercase text-xs tracking-wider border-b border-slate-200">
+                            <thead class="bg-slate-50 text-slate-700 font-bold uppercase text-xs tracking-wider border-b border-slate-200">
                                 <tr>
                                     <th class="p-5 w-40">Tanggal</th>
                                     <th class="p-5 w-32">Waktu</th>
@@ -203,8 +212,8 @@
                                     <th class="p-5 w-24 text-center">Bukti</th>
                                 </tr>
                             </thead>
-                            <tbody id="tableBody" class="divide-y divide-slate-100">
-                                <tr><td colspan="4" class="p-8 text-center text-slate-400">Silakan klik tombol Refresh untuk memuat data.</td></tr>
+                            <tbody id="tableBody" class="divide-y divide-slate-100 bg-white">
+                                <tr><td colspan="4" class="p-8 text-center text-slate-400">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -212,8 +221,8 @@
                     <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <p class="text-xs text-slate-500 font-medium" id="pageInfo">Menampilkan 0-0 dari 0 data</p>
                         <div class="flex gap-2">
-                            <button onclick="prevPage()" id="btnPrev" disabled class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:opacity-50">Prev</button>
-                            <button onclick="nextPage()" id="btnNext" disabled class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:opacity-50">Next</button>
+                            <button onclick="prevPage()" id="btnPrev" disabled class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Prev</button>
+                            <button onclick="nextPage()" id="btnNext" disabled class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Next</button>
                         </div>
                     </div>
                 </div>
@@ -227,46 +236,58 @@
 
                 <div class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
                     <div class="mb-6">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Jenis Laporan</label>
-                        <select id="repType" onchange="toggleMonthSelect()" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-green-500 transition">
-                            <option value="bulanan">Laporan Bulanan</option>
-                            <option value="tahunan">Laporan Tahunan (Rekap)</option>
-                        </select>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Jenis Laporan</label>
+                        <div class="relative">
+                            <select id="repType" onchange="toggleMonthSelect()" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-green-500 transition appearance-none">
+                                <option value="bulanan">Laporan Bulanan</option>
+                                <option value="tahunan">Laporan Tahunan (Rekap)</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none"></i>
+                        </div>
                     </div>
 
                     <div id="monthContainer" class="flex gap-4 mb-8">
                         <div class="flex-1">
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Bulan</label>
-                            <select id="repMonth" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-green-500 transition">
-                                <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                                <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                                <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                            </select>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Bulan</label>
+                            <div class="relative">
+                                <select id="repMonth" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-green-500 transition appearance-none">
+                                    <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
+                                    <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                                    <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
+                                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none"></i>
+                            </div>
                         </div>
                         <div class="w-32">
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tahun</label>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Tahun</label>
                             <input type="number" id="repYear" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-center outline-none focus:ring-2 focus:ring-green-500 transition" value="2026">
                         </div>
                     </div>
 
-                    <button onclick="downloadReport()" id="btnDownload" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition flex items-center justify-center gap-2">
+                    <button onclick="downloadReport()" id="btnDownload" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition flex items-center justify-center gap-2 active:scale-[0.98]">
                         <i class="fas fa-file-excel"></i> Download File Excel
                     </button>
                 </div>
             </div>
 
-            <div id="view-monitoring" class="view-section hidden fade-in">
+            <div id="view-monitoring" class="view-section hidden fade-in max-w-5xl mx-auto">
                 <div class="mb-6">
                     <h2 class="text-2xl font-bold text-slate-800">Monitoring Guru</h2>
                     <p class="text-slate-500 text-sm">Status database guru di unit kerja Anda.</p>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <input type="text" id="searchGuru" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="relative mb-6">
+                        <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                        <input type="text" id="searchGuru" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="ksListArea">
-                        <div class="text-center p-8 text-slate-400 col-span-full">Memuat data...</div>
+                        <div class="text-center p-12 text-slate-400 col-span-full">
+                            <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                            <p>Memuat data guru...</p>
+                        </div>
                     </div>
                 </div>
              </div>
@@ -297,17 +318,27 @@
 
         // --- NAVIGATION ---
         function switchTab(tabId) {
+            // 1. Sembunyikan semua view
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById('view-' + tabId).classList.remove('hidden');
             
-            // Sidebar Active State
+            // 2. Tampilkan view target
+            const target = document.getElementById('view-' + tabId);
+            if(target) target.classList.remove('hidden');
+            
+            // 3. Update Sidebar Active State
             const navIds = ['nav-upload', 'nav-data', 'nav-report', 'nav-monitoring'];
-            navIds.forEach(id => document.getElementById(id).classList.remove('sidebar-active', 'text-blue-600', 'bg-blue-50'));
+            navIds.forEach(id => {
+                const nav = document.getElementById(id);
+                if(nav) nav.classList.remove('sidebar-active', 'text-blue-600', 'bg-blue-50');
+            });
             
             const activeNav = document.getElementById('nav-' + tabId);
             if(activeNav) activeNav.classList.add('sidebar-active', 'text-blue-600', 'bg-blue-50');
 
-            if (tabId === 'data' && allData.length === 0) loadData();
+            // 4. KHUSUS TAB DATA: Load data jika belum ada
+            if (tabId === 'data' && allData.length === 0) {
+                loadData();
+            }
         }
 
         // --- AUTH ---
@@ -353,6 +384,7 @@
                 document.getElementById("nav-monitoring").classList.remove("hidden");
             }
 
+            // Default Tab
             switchTab('upload');
         }
 
@@ -440,6 +472,8 @@
                         if (res.status === "success") {
                             Swal.fire("Berhasil", res.message, "success");
                             resetFile();
+                            // Reset data agar reload saat buka tab data lagi
+                            allData = []; 
                         } else {
                             Swal.fire("Gagal", res.message, "error");
                         }
@@ -454,8 +488,9 @@
 
         // --- DATA & PAGINATION ---
         async function loadData() {
+            // Tampilkan loading di tabel
             const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center"><i class="fas fa-spinner fa-spin text-blue-500 text-2xl"></i><p class="mt-2 text-slate-400">Memuat data...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center"><i class="fas fa-circle-notch fa-spin text-blue-500 text-2xl"></i><p class="mt-2 text-slate-400">Sedang mengambil data...</p></td></tr>';
             
             const res = await fetchAPI({ action: "fetch_journal", dbId: currentUser.dbId });
             
@@ -518,30 +553,31 @@
             const pageData = filteredData.slice(start, end);
 
             // Render Info
-            document.getElementById("pageInfo").innerText = `Menampilkan ${Math.min(start + 1, filteredData.length)}-${Math.min(end, filteredData.length)} dari ${filteredData.length} data`;
+            const total = filteredData.length;
+            document.getElementById("pageInfo").innerText = total === 0 ? "Menampilkan 0 data" : `Menampilkan ${start + 1}-${Math.min(end, total)} dari ${total} data`;
             
             // Render Buttons
             document.getElementById("btnPrev").disabled = currentPage === 1;
-            document.getElementById("btnNext").disabled = end >= filteredData.length;
+            document.getElementById("btnNext").disabled = end >= total;
 
             if(pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-400">Data tidak ditemukan</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="p-12 text-center text-slate-400 bg-slate-50 rounded-xl"><i class="fas fa-folder-open text-4xl mb-2 opacity-50"></i><p>Data tidak ditemukan</p></td></tr>';
                 return;
             }
 
             let html = "";
             pageData.forEach(row => {
                 html += `
-                <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                    <td class="p-5 font-bold text-slate-700">${row.tgl}</td>
-                    <td class="p-5 font-mono text-xs">${row.waktu || '-'}</td>
-                    <td class="p-5">
-                        <div class="font-bold text-slate-800 mb-1">${row.kegiatan}</div>
-                        <div class="text-xs text-slate-500 line-clamp-1">${row.hasil || '-'}</div>
+                <tr class="border-b border-slate-50 hover:bg-slate-50 transition group">
+                    <td class="p-5 font-bold text-blue-600 bg-white group-hover:bg-slate-50 align-top whitespace-nowrap">${row.tgl}</td>
+                    <td class="p-5 font-mono text-xs text-slate-500 bg-white group-hover:bg-slate-50 align-top">${row.waktu || '-'}</td>
+                    <td class="p-5 bg-white group-hover:bg-slate-50 align-top">
+                        <div class="font-bold text-slate-800 mb-1 leading-snug">${row.kegiatan}</div>
+                        <div class="text-xs text-slate-500 line-clamp-2">${row.hasil || '-'}</div>
                     </td>
-                    <td class="p-5 text-center">
+                    <td class="p-5 text-center bg-white group-hover:bg-slate-50 align-top">
                         ${row.dok && row.dok.length > 5 
-                            ? `<a href="${row.dok}" target="_blank" class="inline-block w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition"><i class="fas fa-link"></i></a>` 
+                            ? `<a href="${row.dok}" target="_blank" class="inline-flex w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white items-center justify-center transition shadow-sm border border-blue-100"><i class="fas fa-link text-xs"></i></a>` 
                             : '<span class="text-slate-300">-</span>'}
                     </td>
                 </tr>`;
@@ -587,11 +623,11 @@
             setBtnLoading("btnDownload", false, '<i class="fas fa-file-excel"></i> Download File Excel');
         }
 
-        // --- MONITORING ---
+        // --- MONITORING (ADMIN) ---
         async function loadMonitoring() {
             switchTab('monitoring');
             const area = document.getElementById("ksListArea");
-            area.innerHTML = '<div class="col-span-full text-center p-8 text-slate-400">Loading...</div>';
+            area.innerHTML = '<div class="col-span-full text-center p-12 text-slate-400"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><p>Sedang mengambil data guru...</p></div>';
             
             const res = await fetchAPI({ 
                 action: "fetch_school_data", unit: currentUser.unit, 
@@ -606,15 +642,20 @@
 
         function renderTeachers(list) {
             const area = document.getElementById("ksListArea");
-            if(list.length === 0) { area.innerHTML = "Kosong"; return; }
+            if(list.length === 0) { area.innerHTML = '<div class="col-span-full text-center p-8 text-slate-400">Data tidak ditemukan</div>'; return; }
             
             area.innerHTML = list.map(t => `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div>
-                        <h4 class="font-bold text-slate-700 text-sm">${t.nama}</h4>
-                        <p class="text-xs text-slate-400">${t.unit}</p>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center text-sm group-hover:bg-blue-600 group-hover:text-white transition">
+                            ${t.nama.substring(0,2).toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-700 text-sm group-hover:text-blue-600 transition">${t.nama}</h4>
+                            <p class="text-xs text-slate-400">${t.unit}</p>
+                        </div>
                     </div>
-                    <span class="px-2 py-1 rounded text-[10px] font-bold ${t.hasDb ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}">
+                    <span class="px-3 py-1 rounded-lg text-[10px] font-bold tracking-wide ${t.hasDb ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}">
                         ${t.hasDb ? 'AKTIF' : 'BELUM'}
                     </span>
                 </div>
