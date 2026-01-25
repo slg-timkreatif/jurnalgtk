@@ -3,671 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Database Jurnal Mobile</title>
-    
+    <title>Database Jurnal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; padding-bottom: 90px; /* Ruang untuk Bottom Nav */ -webkit-tap-highlight-color: transparent; }
-        
-        /* Animasi Halus */
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; padding-bottom: 90px; -webkit-tap-highlight-color: transparent; }
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Bottom Navigation Styling */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid #e2e8f0;
-            z-index: 50;
-            display: flex; justify-content: space-around;
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.02);
-        }
-        .nav-item {
-            padding: 12px 0; width: 100%; text-align: center;
-            color: #94a3b8; transition: all 0.3s; position: relative;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .nav-item i { font-size: 1.25rem; margin-bottom: 2px; transition: transform 0.2s; }
-        .nav-item span { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.02em; }
-        
-        /* Active State Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; z-index: 50; display: flex; justify-content: space-around; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.02); }
+        .nav-item { padding: 12px 0; width: 100%; text-align: center; color: #94a3b8; transition: all 0.3s; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .nav-item.active { color: #2563eb; }
-        .nav-item.active i { transform: translateY(-2px); }
-        .nav-item.active::after {
-            content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: 24px; height: 3px; background: #2563eb; border-radius: 0 0 4px 4px;
-        }
-
-        /* Card Styling */
-        .journal-card {
-            background: white; border-radius: 16px; padding: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #f1f5f9;
-            margin-bottom: 12px; transition: transform 0.1s, box-shadow 0.1s;
-        }
-        .journal-card:active { transform: scale(0.98); background-color: #fafafa; }
-        
-        /* Loading Button */
+        .nav-item.active::after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; background: #2563eb; border-radius: 0 0 4px 4px; }
+        .journal-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; margin-bottom: 12px; }
         .btn-loading { opacity: 0.75; cursor: not-allowed; pointer-events: none; }
     </style>
 </head>
 <body class="text-slate-800 antialiased">
-
     <script>
-        // --- KONFIGURASI URL ---
-        // Ganti URL ini dengan URL Web App Anda yang berakhiran /exec
+        // GANTI URL INI
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
     </script>
 
     <section id="loginPage" class="fixed inset-0 z-[60] bg-slate-900 flex items-center justify-center p-5">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden fade-in">
-            <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-8 text-center relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-full opacity-10">
-                    <i class="fas fa-shapes absolute -top-10 -left-10 text-9xl text-white"></i>
-                </div>
-                
+            <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-8 text-center relative">
                 <div class="relative z-10">
-                    <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg border border-white/20">
-                        <i class="fas fa-book-open text-3xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white tracking-tight">E-Jurnal Guru</h2>
+                    <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg border border-white/20"><i class="fas fa-database text-3xl"></i></div>
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Database Jurnal</h2>
                     <p class="text-blue-100 text-xs mt-1 font-medium tracking-wide">Akses Mobile</p>
                 </div>
             </div>
-            
             <form onsubmit="handleLogin(event)" class="p-8 pt-10">
                 <div class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Email Dinas</label>
-                        <div class="relative">
-                            <i class="fas fa-envelope absolute left-4 top-3.5 text-slate-400"></i>
-                            <input type="email" id="email" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none text-sm transition-all font-medium" placeholder="nama@sekolah.id" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">PIN Akses</label>
-                        <div class="relative">
-                            <i class="fas fa-lock absolute left-4 top-3.5 text-slate-400"></i>
-                            <input type="password" id="pin" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none text-sm transition-all font-bold tracking-widest" placeholder="••••" required>
-                        </div>
-                    </div>
+                    <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Email Dinas</label><input type="email" id="email" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" placeholder="nama@sekolah.id" required></div>
+                    <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">PIN Akses</label><input type="password" id="pin" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold tracking-widest" placeholder="••••" required></div>
                 </div>
-                
-                <button type="submit" id="btnLogin" class="w-full mt-8 bg-slate-900 text-white py-4 rounded-xl font-bold text-sm hover:bg-slate-800 active:scale-[0.98] transition shadow-xl shadow-slate-900/20">
-                    Masuk Aplikasi
-                </button>
-                
-                <p class="text-center text-[10px] text-slate-400 mt-6 font-medium">
-                    &copy; 2026 Tim Kreatif Selogiri
-                </p>
+                <button type="submit" id="btnLogin" class="w-full mt-8 bg-slate-900 text-white py-4 rounded-xl font-bold text-sm hover:bg-slate-800 transition shadow-xl">Masuk Aplikasi</button>
             </form>
         </div>
     </section>
 
     <div id="dashboardPage" class="hidden">
-        
         <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-5 py-3 sticky top-0 z-40 flex justify-between items-center shadow-sm">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs shadow-md shadow-blue-200">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="leading-tight">
-                    <h1 class="font-bold text-slate-800 text-sm truncate max-w-[180px]" id="headerName">User</h1>
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wide truncate max-w-[180px]" id="headerUnit">Unit Kerja</p>
-                </div>
+                <div class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs shadow-md"><i class="fas fa-user"></i></div>
+                <div class="leading-tight"><h1 class="font-bold text-slate-800 text-sm truncate max-w-[180px]" id="headerName">User</h1><p class="text-[10px] text-slate-500 font-bold uppercase tracking-wide truncate max-w-[180px]" id="headerUnit">Unit Kerja</p></div>
             </div>
-            <button onclick="confirmLogout()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition border border-slate-100">
-                <i class="fas fa-power-off text-sm"></i>
-            </button>
+            <button onclick="confirmLogout()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition border border-slate-100"><i class="fas fa-power-off text-sm"></i></button>
         </header>
 
         <main class="p-4 pt-6">
-            
             <div id="view-upload" class="view-section fade-in">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-4 opacity-5">
-                        <i class="fas fa-cloud-upload-alt text-8xl"></i>
-                    </div>
-                    
                     <h2 class="text-lg font-bold text-slate-800 mb-1 relative z-10">Kirim Jurnal</h2>
                     <p class="text-xs text-slate-500 mb-6 relative z-10">Upload file Excel kegiatan harian.</p>
-
                     <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center relative bg-slate-50 active:bg-blue-50 active:border-blue-400 transition-colors">
                         <input type="file" id="fileInput" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 z-20" onchange="previewFile()">
-                        <div class="relative z-10 pointer-events-none">
-                            <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-blue-500 text-xl">
-                                <i class="fas fa-plus"></i>
-                            </div>
-                            <span class="text-sm font-bold text-slate-600 block">Pilih File Excel</span>
-                            <span class="text-[10px] text-slate-400 block mt-1">Maksimal 5 MB (.xlsx)</span>
-                        </div>
+                        <div class="relative z-10 pointer-events-none"><div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-blue-500 text-xl"><i class="fas fa-plus"></i></div><span class="text-sm font-bold text-slate-600 block">Pilih File Excel</span></div>
                     </div>
-
-                    <div id="filePreview" class="hidden mt-4 bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between animate-pulse-once">
-                        <div class="flex items-center gap-3 overflow-hidden">
-                            <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-green-600 shadow-sm border border-green-100">
-                                <i class="fas fa-file-excel text-lg"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-xs text-slate-700 truncate w-40" id="fileName">File.xlsx</p>
-                                <p class="text-[10px] text-blue-600 font-medium">Siap diupload</p>
-                            </div>
-                        </div>
-                        <button onclick="clearFile()" class="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-red-500 flex items-center justify-center shadow-sm">
-                            <i class="fas fa-times text-xs"></i>
-                        </button>
-                    </div>
-
-                    <button onclick="handleUpload()" id="btnUpload" disabled class="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 transition-all shadow-none">
-                        Kirim Data
-                    </button>
-                </div>
-                
-                <div class="mt-6 px-4">
-                    <div class="flex gap-3">
-                        <i class="fas fa-info-circle text-blue-400 mt-0.5"></i>
-                        <p class="text-xs text-slate-500 leading-relaxed">
-                            Pastikan format kolom Excel sesuai template. Kolom Tanggal, Kegiatan, dan Dokumentasi wajib terisi.
-                        </p>
-                    </div>
+                    <div id="filePreview" class="hidden mt-4 bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between"><div class="flex items-center gap-3 overflow-hidden"><div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-green-600 shadow-sm"><i class="fas fa-file-excel text-lg"></i></div><div><p class="font-bold text-xs text-slate-700 truncate w-40" id="fileName">File.xlsx</p><p class="text-[10px] text-blue-600 font-medium">Siap diupload</p></div></div><button onclick="clearFile()" class="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-red-500 flex items-center justify-center shadow-sm"><i class="fas fa-times text-xs"></i></button></div>
+                    <button onclick="handleUpload()" id="btnUpload" disabled class="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 transition-all shadow-none">Kirim Data</button>
                 </div>
             </div>
 
             <div id="view-data" class="view-section hidden fade-in">
                 <div class="sticky top-[70px] z-30 bg-[#f8fafc] pb-4 pt-1">
                     <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 mb-3 flex gap-2">
-                        <div class="flex-1 relative">
-                            <i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
-                            <input type="text" id="searchData" onkeyup="applyFilter()" placeholder="Cari kegiatan..." class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium outline-none focus:bg-blue-50/50 transition-colors">
-                        </div>
-                        <button onclick="loadJournalData()" class="w-10 bg-slate-100 rounded-xl text-slate-500 hover:text-blue-600 active:bg-blue-100 transition">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
+                        <div class="flex-1 relative"><i class="fas fa-search absolute left-3.5 top-3.5 text-slate-400 text-xs"></i><input type="text" id="searchData" onkeyup="applyFilter()" placeholder="Cari kegiatan..." class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-medium outline-none"></div>
+                        <button onclick="loadJournalData()" class="w-10 bg-slate-100 rounded-xl text-slate-500 hover:text-blue-600"><i class="fas fa-sync-alt"></i></button>
                     </div>
-                    
                     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                         <select id="filterMonth" onchange="applyFilter()" class="flex-1 min-w-[130px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none focus:border-blue-400">
-                            <option value="all">Semua Bulan</option>
-                            <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                            <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                            <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                            <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                        </select>
-                        <select id="filterYear" onchange="applyFilter()" class="flex-1 min-w-[100px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none focus:border-blue-400">
-                            <option value="all">Tahun</option>
-                        </select>
+                         <select id="filterMonth" onchange="applyFilter()" class="flex-1 min-w-[130px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Semua Bulan</option><option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option><option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option><option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option></select>
+                        <select id="filterYear" onchange="applyFilter()" class="flex-1 min-w-[100px] px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm outline-none"><option value="all">Tahun</option></select>
                     </div>
                 </div>
-
-                <div id="journalList" class="pb-4 min-h-[300px]">
-                    </div>
+                <div id="journalList" class="pb-4 min-h-[300px]"></div>
             </div>
 
             <div id="view-report" class="view-section hidden fade-in">
                 <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mb-4">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
-                            <i class="fas fa-file-invoice text-xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="font-bold text-slate-800 text-lg">Cetak Laporan</h2>
-                            <p class="text-xs text-slate-500 font-medium">Download format .xlsx</p>
-                        </div>
-                    </div>
-
+                    <div class="flex items-center gap-4 mb-8"><div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 shadow-sm"><i class="fas fa-file-invoice text-xl"></i></div><div><h2 class="font-bold text-slate-800 text-lg">Cetak Laporan</h2><p class="text-xs text-slate-500 font-medium">Download format .xlsx</p></div></div>
                     <div class="space-y-5">
-                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Jenis Laporan</label>
-                            <select id="repType" onchange="toggleMonthSelect()" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
-                                <option value="bulanan">Laporan Bulanan</option>
-                                <option value="tahunan">Rekap Satu Tahun</option>
-                            </select>
-                        </div>
-                        
-                        <div id="monthContainer" class="flex gap-3">
-                            <div class="flex-1">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Bulan</label>
-                                <select id="repMonth" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 outline-none">
-                                    <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>
-                                    <option value="04">Apr</option><option value="05">Mei</option><option value="06">Jun</option>
-                                    <option value="07">Jul</option><option value="08">Agu</option><option value="09">Sep</option>
-                                    <option value="10">Okt</option><option value="11">Nov</option><option value="12">Des</option>
-                                </select>
-                            </div>
-                            <div class="w-28">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Tahun</label>
-                                <input type="number" id="repYear" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 text-center outline-none" value="2026">
-                            </div>
-                        </div>
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Jenis Laporan</label><select id="repType" onchange="toggleMonthSelect()" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 outline-none"><option value="bulanan">Laporan Bulanan</option><option value="tahunan">Rekap Satu Tahun</option></select></div>
+                        <div id="monthContainer" class="flex gap-3"><div class="flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Bulan</label><select id="repMonth" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 outline-none"><option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option><option value="04">Apr</option><option value="05">Mei</option><option value="06">Jun</option><option value="07">Jul</option><option value="08">Agu</option><option value="09">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Des</option></select></div><div class="w-28"><label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Tahun</label><input type="number" id="repYear" class="w-full bg-white p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 text-center outline-none" value="2026"></div></div>
                     </div>
-
-                    <button onclick="downloadReport()" id="btnDownload" class="mt-8 w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-slate-200 flex items-center justify-center gap-2 active:scale-[0.98] transition">
-                        <i class="fas fa-download"></i> Download Excel
-                    </button>
+                    <button onclick="downloadReport()" id="btnDownload" class="mt-8 w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition"><i class="fas fa-download"></i> Download Excel</button>
                 </div>
             </div>
 
-             <div id="view-monitoring" class="view-section hidden fade-in">
-                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 mb-5 text-white shadow-lg shadow-indigo-200">
-                    <h2 class="font-bold text-lg mb-1">Monitoring Guru</h2>
-                    <p class="text-xs text-indigo-100 opacity-90">Pantau status database guru di unit kerja.</p>
-                </div>
-                
-                <div class="bg-white p-2 rounded-2xl border border-slate-200 mb-4 shadow-sm">
-                    <input type="text" id="searchGuru" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full px-4 py-2 bg-transparent text-sm font-medium outline-none">
-                </div>
-                
-                <div id="ksListArea" class="grid grid-cols-1 gap-3 pb-4">
-                    </div>
+            <div id="view-monitoring" class="view-section hidden fade-in">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 mb-5 text-white shadow-lg"><h2 class="font-bold text-lg mb-1">Monitoring Guru</h2><p class="text-xs text-indigo-100 opacity-90">Pantau status database guru.</p></div>
+                <div class="bg-white p-2 rounded-2xl border border-slate-200 mb-4 shadow-sm"><input type="text" id="searchGuru" onkeyup="filterTeachers()" placeholder="Cari Nama Guru..." class="w-full px-4 py-2 bg-transparent text-sm font-medium outline-none"></div>
+                <div id="ksListArea" class="grid grid-cols-1 gap-3 pb-4"></div>
             </div>
-
         </main>
 
         <nav class="bottom-nav">
-            <div onclick="switchTab('upload')" id="nav-upload" class="nav-item active">
-                <i class="fas fa-paper-plane"></i>
-                <span>Kirim</span>
-            </div>
-            <div onclick="loadJournalData()" id="nav-data" class="nav-item">
-                <i class="fas fa-list-ul"></i>
-                <span>Data</span>
-            </div>
-            <div onclick="switchTab('report')" id="nav-report" class="nav-item">
-                <i class="fas fa-file-export"></i>
-                <span>Cetak</span>
-            </div>
-            <div onclick="loadMonitoringData()" id="nav-monitoring" class="nav-item hidden">
-                <i class="fas fa-users-cog"></i>
-                <span>Admin</span>
-            </div>
+            <div onclick="switchTab('upload')" id="nav-upload" class="nav-item active"><i class="fas fa-paper-plane"></i><span>Kirim</span></div>
+            <div onclick="loadJournalData()" id="nav-data" class="nav-item"><i class="fas fa-list-ul"></i><span>Data</span></div>
+            <div onclick="switchTab('report')" id="nav-report" class="nav-item"><i class="fas fa-file-export"></i><span>Cetak</span></div>
+            <div onclick="loadMonitoringData()" id="nav-monitoring" class="nav-item hidden"><i class="fas fa-users-cog"></i><span>Admin</span></div>
         </nav>
-
     </div>
 
     <script>
-        // State Variables
-        let currentUser = null;
-        let allJournalData = [];
-        let filteredJournalData = [];
-        let allTeachers = [];
-        let displayLimit = 10; // Jumlah data yang ditampilkan pertama kali (Pagination)
-
-        // Init
-        window.onload = () => {
-            const saved = localStorage.getItem("gtk_v7_ent_mobile");
-            if (saved) { 
-                currentUser = JSON.parse(saved); 
-                initApp(); 
-            }
-            // Set Default Month
-            document.getElementById("repMonth").value = String(new Date().getMonth() + 1).padStart(2, '0');
+        let currentUser=null, allJournalData=[], filteredJournalData=[], allTeachers=[], displayLimit=10;
+        window.onload=()=>{
+            const saved=localStorage.getItem("gtk_v7_ent_mobile");
+            if(saved){currentUser=JSON.parse(saved);initApp();}
+            document.getElementById("repMonth").value=String(new Date().getMonth()+1).padStart(2,'0');
         };
 
-        // --- NAVIGATION ---
-        function switchTab(name) {
-            // Hide all views
-            document.querySelectorAll(".view-section").forEach(el => el.classList.add("hidden"));
-            // Show target view
-            document.getElementById("view-" + name).classList.remove("hidden");
-            
-            // Update Nav Active State
-            document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
-            
-            // Mapping ID karena ID nav sedikit beda (nav-data vs view-data aman, tapi jaga2)
-            const navId = "nav-" + name;
-            const navEl = document.getElementById(navId);
-            if(navEl) navEl.classList.add("active");
-            
-            // Scroll to top
+        function switchTab(name){
+            document.querySelectorAll(".view-section").forEach(el=>el.classList.add("hidden"));
+            document.getElementById("view-"+name).classList.remove("hidden");
+            document.querySelectorAll(".nav-item").forEach(el=>el.classList.remove("active"));
+            document.getElementById("nav-"+name).classList.add("active");
             window.scrollTo(0,0);
         }
 
-        // --- AUTHENTICATION ---
-        async function handleLogin(e) {
-            e.preventDefault(); 
-            const btn = document.getElementById("btnLogin");
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memproses...';
-            btn.classList.add("btn-loading");
-
-            try {
-                const res = await fetchAPI({ 
-                    action: "login", 
-                    email: document.getElementById("email").value, 
-                    pin: document.getElementById("pin").value 
-                });
-                
-                if (res.status === "success") { 
-                    currentUser = res; 
-                    localStorage.setItem("gtk_v7_ent_mobile", JSON.stringify(res)); 
-                    initApp(); 
-                    Swal.fire({
-                        icon: 'success', title: 'Berhasil Masuk',
-                        text: `Selamat datang, ${res.user.nama}`,
-                        timer: 1500, showConfirmButton: false
-                    });
-                } else { 
-                    Swal.fire("Gagal", res.message, "error"); 
-                }
-            } catch (err) { 
-                Swal.fire("Error", "Koneksi Bermasalah", "error"); 
-            }
-            
-            btn.innerHTML = "Masuk Aplikasi";
-            btn.classList.remove("btn-loading");
+        async function handleLogin(e){
+            e.preventDefault(); const btn=document.getElementById("btnLogin"); btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i>';
+            try{
+                const res=await fetchAPI({action:"login",email:document.getElementById("email").value,pin:document.getElementById("pin").value});
+                if(res.status==="success"){currentUser=res;localStorage.setItem("gtk_v7_ent_mobile",JSON.stringify(res));initApp();}
+                else Swal.fire("Gagal",res.message,"error");
+            }catch(err){Swal.fire("Error","Koneksi Bermasalah","error");}
+            btn.innerHTML="Masuk Aplikasi";
         }
 
-        function initApp() {
-            document.getElementById("loginPage").classList.add("hidden");
-            document.getElementById("dashboardPage").classList.remove("hidden");
-            
-            // Set Header Info
-            document.getElementById("headerName").innerText = currentUser.user.nama;
-            document.getElementById("headerUnit").innerText = currentUser.user.unit;
-
-            // Show Admin Menu if applicable
-            if(currentUser.user.role === "Kepala Sekolah" || currentUser.user.role === "Admin") {
-                document.getElementById("nav-monitoring").classList.remove("hidden");
-            }
-            
+        function initApp(){
+            document.getElementById("loginPage").classList.add("hidden"); document.getElementById("dashboardPage").classList.remove("hidden");
+            document.getElementById("headerName").innerText=currentUser.user.nama; document.getElementById("headerUnit").innerText=currentUser.user.unit;
+            if(currentUser.user.role==="Kepala Sekolah"||currentUser.user.role==="Admin") document.getElementById("nav-monitoring").classList.remove("hidden");
             switchTab('upload');
         }
+        function confirmLogout(){Swal.fire({title:'Keluar?',icon:'warning',showCancelButton:true,confirmButtonColor:'#0f172a',confirmButtonText:'Ya'}).then((r)=>{if(r.isConfirmed){localStorage.removeItem("gtk_v7_ent_mobile");location.reload();}});}
+        async function fetchAPI(data){const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(data)});return await r.json();}
 
-        function confirmLogout() {
-            Swal.fire({ 
-                title: 'Keluar Aplikasi?', 
-                text: "Anda perlu login ulang nanti.",
-                icon: 'warning', 
-                showCancelButton: true, 
-                confirmButtonColor: '#0f172a', 
-                confirmButtonText: 'Ya, Keluar' 
-            }).then((r)=>{
-                if(r.isConfirmed){
-                    localStorage.removeItem("gtk_v7_ent_mobile");
-                    location.reload();
-                }
+        // SORTING: DESCENDING (TERBARU DI ATAS)
+        async function loadJournalData(){
+            switchTab("data"); const list=document.getElementById("journalList");
+            list.innerHTML=`<div class="animate-pulse space-y-3"><div class="h-24 bg-slate-200 rounded-2xl"></div><div class="h-24 bg-slate-200 rounded-2xl"></div></div>`;
+            const r=await fetchAPI({action:"fetch_journal",dbId:currentUser.user.dbId});
+            if(r.status==="success"){
+                allJournalData=r.data;
+                // SORT DESC
+                allJournalData.sort((a,b)=>parseIndoDate(b.tgl)-parseIndoDate(a.tgl));
+                populateYear(); applyFilter();
+            } else list.innerHTML=`<div class="text-center py-10 text-red-400">Gagal data</div>`;
+        }
+
+        function parseIndoDate(dStr){
+            let clean=String(dStr).split(",")[1]||String(dStr); clean=clean.trim(); const parts=clean.split(/[\s/-]+/);
+            if(parts.length<3)return new Date();
+            const map={'januari':0,'februari':1,'maret':2,'april':3,'mei':4,'juni':5,'juli':6,'agustus':7,'september':8,'oktober':9,'november':10,'desember':11,'jan':0,'feb':1,'mar':2,'apr':3,'jun':5,'jul':6,'agu':7,'sep':8,'okt':9,'nov':10,'des':11};
+            return new Date(parseInt(parts[2]), map[parts[1].toLowerCase()]||0, parseInt(parts[0]));
+        }
+
+        function populateYear(){const s=new Set();allJournalData.forEach(i=>{let p=i.tgl.split(/[\s/-]/);if(p.length>=3)s.add(p[2]);});const el=document.getElementById("filterYear");el.innerHTML='<option value="all">Tahun</option>';Array.from(s).sort().reverse().forEach(v=>el.innerHTML+=`<option value="${v}">${v}</option>`);}
+        function applyFilter(){
+            const fY=document.getElementById("filterYear").value, fM=document.getElementById("filterMonth").value, fS=document.getElementById("searchData").value.toLowerCase();
+            const map={"jan":"01","feb":"02","mar":"03","apr":"04","mei":"05","jun":"06","jul":"07","agu":"08","sep":"09","okt":"10","nov":"11","des":"12","januari":"01","februari":"02","maret":"03","april":"04","juni":"06","juli":"07","agustus":"08","september":"09","oktober":"10","november":"11","desember":"12"};
+            filteredJournalData=allJournalData.filter(i=>{
+                let parts=i.tgl.split(/[\s/-]/); if(parts.length<3)return true;
+                let m=map[parts[1].toLowerCase()]||parts[1];
+                return ((fY==="all"||parts[2]===fY)&&(fM==="all"||m===fM)&&(i.kegiatan.toLowerCase().includes(fS)));
             });
+            displayLimit=10; renderList();
+        }
+        function loadMoreData(){displayLimit+=10;renderList();}
+        function renderList(){
+            const list=document.getElementById("journalList");
+            if(filteredJournalData.length===0){list.innerHTML=`<div class="text-center py-12 text-slate-400">Kosong</div>`;return;}
+            const show=filteredJournalData.slice(0,displayLimit), rem=filteredJournalData.length-displayLimit;
+            let html=show.map(r=>`<div class="journal-card relative pl-4 border-l-4 border-l-blue-500 fade-in"><div class="flex justify-between items-start mb-2"><div><span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1 inline-block uppercase tracking-wider">${r.tgl}</span><div class="text-[10px] text-slate-400 font-mono">${r.waktu||'-'}</div></div>${r.dok&&r.dok.length>5?`<a href="${r.dok}" target="_blank" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-blue-600"><i class="fas fa-link text-xs"></i></a>`:''}</div><p class="text-sm font-bold text-slate-800 mb-1 leading-snug">${r.kegiatan}</p><p class="text-xs text-slate-500 line-clamp-2">${r.hasil||'-'}</p></div>`).join("");
+            if(rem>0) html+=`<div class="mt-4 pb-4 text-center"><button onclick="loadMoreData()" class="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 text-xs font-bold">Muat Lebih Banyak (${rem})</button></div>`;
+            list.innerHTML=html;
         }
 
-        // --- API HELPER ---
-        async function fetchAPI(data){ 
-            const r = await fetch(GAS_API_URL, {
-                method: "POST", 
-                body: JSON.stringify(data)
-            }); 
-            return await r.json(); 
-        }
-
-        // --- DATA JURNAL (LOAD MORE SYSTEM) ---
-        async function loadJournalData() {
-            switchTab("data");
-            const list = document.getElementById("journalList");
-            
-            // Skeleton Loading
-            list.innerHTML = `
-                <div class="animate-pulse space-y-3">
-                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
-                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
-                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
-                </div>`;
-            
-            const r = await fetchAPI({action:"fetch_journal", dbId:currentUser.user.dbId});
-            
-            if(r.status === "success"){ 
-                allJournalData = r.data; 
-                populateYear(); 
-                applyFilter(); // Ini akan trigger renderList
-            } else { 
-                list.innerHTML = `<div class="text-center py-10 text-red-400 font-medium">Gagal mengambil data</div>`;
-            }
-        }
-
-        function populateYear() {
-            const s = new Set(); 
-            allJournalData.forEach(i=> { 
-                let p=i.tgl.split(/[\s/-]/); 
-                if(p.length>=3) s.add(p[2]); // Ambil Tahun
-            });
-            const el = document.getElementById("filterYear"); 
-            el.innerHTML='<option value="all">Tahun</option>';
-            Array.from(s).sort().reverse().forEach(v => el.innerHTML+=`<option value="${v}">${v}</option>`);
-        }
-
-        function applyFilter() {
-            const fY = document.getElementById("filterYear").value;
-            const fM = document.getElementById("filterMonth").value;
-            const fS = document.getElementById("searchData").value.toLowerCase();
-            
-            const monthMap = { "jan":"01", "feb":"02", "mar":"03", "apr":"04", "may":"05", "jun":"06", "jul":"07", "aug":"08", "sep":"09", "oct":"10", "nov":"11", "dec":"12", "mei":"05", "agt":"08", "agu":"08", "okt":"10", "des":"12", "januari":"01", "februari":"02", "maret":"03", "juni":"06", "juli":"07", "agustus":"08", "oktober":"10", "desember":"12" };
-
-            filteredJournalData = allJournalData.filter(i => {
-                let parts = i.tgl.split(/[\s/-]/);
-                if (parts.length < 3) return true;
-                let m = monthMap[parts[1].toLowerCase()] || parts[1];
-                return ((fY==="all" || parts[2]===fY) && (fM==="all" || m===fM) && (i.kegiatan.toLowerCase().includes(fS)));
-            });
-
-            displayLimit = 10; // Reset pagination setiap filter berubah
-            renderList();
-        }
-
-        function loadMoreData() {
-            displayLimit += 10;
-            renderList();
-        }
-
-        function renderList() {
-            const list = document.getElementById("journalList");
-            
-            if(filteredJournalData.length === 0){ 
-                list.innerHTML=`
-                    <div class="flex flex-col items-center justify-center py-12 text-slate-400">
-                        <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
-                        <p class="text-xs font-medium">Tidak ada data ditemukan</p>
-                    </div>`; 
-                return;
-            }
-            
-            const dataToShow = filteredJournalData.slice(0, displayLimit);
-            const remaining = filteredJournalData.length - displayLimit;
-
-            let html = dataToShow.map(r => `
-                <div class="journal-card relative pl-4 border-l-4 border-l-blue-500 fade-in">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mb-1 inline-block uppercase tracking-wider">
-                                ${r.tgl}
-                            </span>
-                            <div class="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                                <i class="far fa-clock"></i> ${r.waktu||'-'}
-                            </div>
-                        </div>
-                        ${r.dok && r.dok.length > 5 ? `
-                        <a href="${r.dok}" target="_blank" class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm border border-slate-100">
-                            <i class="fas fa-link text-xs"></i>
-                        </a>` : ''}
-                    </div>
-                    <p class="text-sm font-bold text-slate-800 mb-1 leading-snug">${r.kegiatan}</p>
-                    <p class="text-xs text-slate-500 line-clamp-2">${r.hasil||'-'}</p>
-                </div>`).join("");
-
-            // Load More Button Logic
-            if (remaining > 0) {
-                html += `
-                    <div class="mt-4 pb-4 text-center">
-                        <p class="text-[10px] text-slate-400 mb-2">Menampilkan ${dataToShow.length} dari ${filteredJournalData.length} data</p>
-                        <button onclick="loadMoreData()" class="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 text-xs font-bold hover:bg-white hover:border-blue-400 hover:text-blue-500 transition active:scale-[0.98]">
-                            Muat Lebih Banyak (${remaining} lagi) <i class="fas fa-chevron-down ms-1"></i>
-                        </button>
-                    </div>
-                `;
-            } else if (filteredJournalData.length > 10) {
-                html += `
-                    <div class="mt-6 pb-8 text-center border-t border-slate-100 pt-4">
-                        <p class="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-                            Semua data ditampilkan
-                        </p>
-                    </div>
-                `;
-            }
-
-            list.innerHTML = html;
-        }
-
-        // --- UPLOAD FUNCTION ---
-        function previewFile(){ 
-            const f = document.getElementById("fileInput").files[0]; 
-            if(f){ 
-                document.getElementById("dropzone").classList.add("hidden"); 
-                document.getElementById("filePreview").classList.remove("hidden"); 
-                document.getElementById("fileName").innerText = f.name; 
-                
-                const btn = document.getElementById("btnUpload");
-                btn.disabled = false; 
-                btn.className = "mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-900 text-white shadow-xl shadow-slate-200 active:scale-[0.98] transition-all"; 
-                btn.innerText = "Kirim Data Sekarang"; 
-            } 
-        }
+        function previewFile(){const f=document.getElementById("fileInput").files[0];if(f){document.getElementById("dropzone").classList.add("hidden");document.getElementById("filePreview").classList.remove("hidden");document.getElementById("fileName").innerText=f.name;document.getElementById("btnUpload").disabled=false;document.getElementById("btnUpload").className="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-900 text-white shadow-xl";document.getElementById("btnUpload").innerText="Kirim Data Sekarang";}}
+        function clearFile(){document.getElementById("fileInput").value="";document.getElementById("dropzone").classList.remove("hidden");document.getElementById("filePreview").classList.add("hidden");document.getElementById("btnUpload").disabled=true;document.getElementById("btnUpload").className="mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400";document.getElementById("btnUpload").innerText="Kirim Data";}
+        async function handleUpload(){const f=document.getElementById("fileInput").files[0];if(!f)return;const c=await Swal.fire({title:'Kirim?',icon:'question',showCancelButton:true,confirmButtonText:'Ya'});if(!c.isConfirmed)return;const btn=document.getElementById("btnUpload");btn.innerHTML='Mengirim...';const r=new FileReader();r.onload=async(e)=>{const res=await fetchAPI({action:"upload",email:currentUser.user.email,fileName:f.name,fileData:e.target.result.split(",")[1]});if(res.status==="success"){Swal.fire("Berhasil","Terkirim","success");clearFile();}else Swal.fire("Gagal",res.message,"error");btn.innerHTML="Kirim Data Sekarang";};r.readAsDataURL(f);}
         
-        function clearFile(){ 
-            document.getElementById("fileInput").value=""; 
-            document.getElementById("dropzone").classList.remove("hidden"); 
-            document.getElementById("filePreview").classList.add("hidden"); 
-            
-            const btn = document.getElementById("btnUpload");
-            btn.disabled = true; 
-            btn.className = "mt-6 w-full py-4 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 transition-all shadow-none";
-            btn.innerText = "Kirim Data"; 
-        }
-        
-        async function handleUpload(){ 
-            const f = document.getElementById("fileInput").files[0]; 
-            if(!f) return; 
-
-            // Konfirmasi dulu
-            const confirm = await Swal.fire({
-                title: 'Kirim Jurnal?',
-                text: 'Pastikan data sudah benar',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#0f172a',
-                confirmButtonText: 'Ya, Kirim'
-            });
-
-            if(!confirm.isConfirmed) return;
-
-            const btn = document.getElementById("btnUpload");
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengirim...';
-            btn.classList.add("btn-loading");
-            
-            const r = new FileReader(); 
-            r.onload = async(e) => { 
-                const res = await fetchAPI({
-                    action: "upload",
-                    email: currentUser.user.email,
-                    fileName: f.name,
-                    fileData: e.target.result.split(",")[1]
-                }); 
-                
-                if(res.status === "success"){
-                    Swal.fire("Berhasil", "Data jurnal tersimpan.", "success");
-                    clearFile();
-                } else {
-                    Swal.fire("Gagal", res.message, "error");
-                }
-                
-                btn.innerHTML = "Kirim Data Sekarang";
-                btn.classList.remove("btn-loading");
-            }; 
-            r.readAsDataURL(f); 
-        }
-
-        // --- LAPORAN ---
-        function toggleMonthSelect(){ 
-            const isMonthly = document.getElementById("repType").value === "bulanan";
-            document.getElementById("monthContainer").className = isMonthly ? "flex gap-3" : "hidden"; 
-        }
-        
-        async function downloadReport(){ 
-            const btn = document.getElementById("btnDownload");
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generate File...';
-            btn.classList.add("btn-loading");
-
-            try { 
-                const r = await fetchAPI({
-                    action: "download_report",
-                    email: currentUser.user.email,
-                    type: document.getElementById("repType").value,
-                    month: document.getElementById("repMonth").value,
-                    year: document.getElementById("repYear").value
-                }); 
-                
-                if(r.status === "success") {
-                    window.open(r.downloadUrl, "_blank");
-                } else {
-                    Swal.fire("Gagal", r.message, "warning"); 
-                }
-            } catch(e) {
-                Swal.fire("Error", "Terjadi kesalahan jaringan", "error");
-            } 
-            
-            btn.innerHTML = '<i class="fas fa-download"></i> Download Excel';
-            btn.classList.remove("btn-loading");
-        }
-
-        // --- MONITORING (ADMIN) ---
-        async function loadMonitoringData() {
-            switchTab("monitoring");
-            const area = document.getElementById("ksListArea");
-            area.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fas fa-circle-notch fa-spin"></i><p class="text-xs mt-2">Mengambil data guru...</p></div>`;
-            
-            const res = await fetchAPI({ 
-                action: "fetch_school_data", 
-                unit: currentUser.user.unit, 
-                email: currentUser.user.email, 
-                role: currentUser.user.role, 
-                filterUnit: "all" 
-            });
-            
-            if(res.status === "success") { 
-                allTeachers = res.teachers; 
-                renderTeacherList(allTeachers); 
-            }
-        }
-
-        function renderTeacherList(list) {
-            const area = document.getElementById("ksListArea");
-            if(list.length === 0) { 
-                area.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Data tidak ditemukan.</div>`; 
-                return; 
-            }
-            
-            area.innerHTML = list.map(t => `
-                <div class="bg-white border border-slate-200 p-4 rounded-xl flex justify-between items-center shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">
-                            ${t.nama.substring(0,2).toUpperCase()}
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-slate-800 text-sm truncate w-40">${t.nama}</h4>
-                            <p class="text-[10px] text-slate-400">${t.unit}</p>
-                        </div>
-                    </div>
-                    <span class="text-[10px] px-2.5 py-1 rounded-md ${t.hasDb ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'} font-bold tracking-wide">
-                        ${t.hasDb ? 'AKTIF' : 'BELUM'}
-                    </span>
-                </div>`).join("");
-        }
-        
-        function filterTeachers() { 
-            const k = document.getElementById("searchGuru").value.toLowerCase(); 
-            renderTeacherList(allTeachers.filter(t => t.nama.toLowerCase().includes(k))); 
-        }
-
+        function toggleMonthSelect(){document.getElementById("monthContainer").className=document.getElementById("repType").value==="bulanan"?"flex gap-3":"hidden";}
+        async function downloadReport(){const btn=document.getElementById("btnDownload");btn.innerHTML='Generating...';try{const r=await fetchAPI({action:"download_report",email:currentUser.user.email,type:document.getElementById("repType").value,month:document.getElementById("repMonth").value,year:document.getElementById("repYear").value});if(r.status==="success")window.open(r.downloadUrl,"_blank");else Swal.fire("Gagal",r.message,"warning");}catch(e){}btn.innerHTML='Download Excel';}
+        async function loadMonitoringData(){switchTab("monitoring");const area=document.getElementById("ksListArea");area.innerHTML='Loading...';const res=await fetchAPI({action:"fetch_school_data",unit:currentUser.user.unit,email:currentUser.user.email,role:currentUser.user.role,filterUnit:"all"});if(res.status==="success"){allTeachers=res.teachers;renderTeacherList(allTeachers);}}
+        function renderTeacherList(l){const a=document.getElementById("ksListArea");if(l.length===0){a.innerHTML="Kosong";return;}a.innerHTML=l.map(t=>`<div class="bg-white border p-4 rounded-xl flex justify-between shadow-sm"><div><h4 class="font-bold text-sm">${t.nama}</h4><p class="text-xs text-slate-400">${t.unit}</p></div><span class="text-xs font-bold ${t.hasDb?'text-green-600':'text-red-500'}">${t.hasDb?'AKTIF':'BELUM'}</span></div>`).join("");}
+        function filterTeachers(){renderTeacherList(allTeachers.filter(t=>t.nama.toLowerCase().includes(document.getElementById("searchGuru").value.toLowerCase())));}
     </script>
 </body>
 </html>
