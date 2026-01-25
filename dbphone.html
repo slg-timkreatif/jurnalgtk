@@ -22,7 +22,7 @@
 </head>
 <body class="text-slate-800 antialiased">
     <script>
-        // GANTI URL INI
+        // --- KONFIGURASI URL ---
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxbM1rg16AfiadnhG5X3FAqXAmiRKxgdjuFbOd4XKUNfDLOIf8V56hEAqehV-xrCFyU/exec"; 
     </script>
 
@@ -143,7 +143,7 @@
         function confirmLogout(){Swal.fire({title:'Keluar?',icon:'warning',showCancelButton:true,confirmButtonColor:'#0f172a',confirmButtonText:'Ya'}).then((r)=>{if(r.isConfirmed){localStorage.removeItem("gtk_v7_ent_mobile");location.reload();}});}
         async function fetchAPI(data){const r=await fetch(GAS_API_URL,{method:"POST",body:JSON.stringify(data)});return await r.json();}
 
-        // SORTING: DESCENDING (TERBARU DI ATAS)
+        // SORTING: DESCENDING (DATE + TIME)
         async function loadJournalData(){
             switchTab("data"); const list=document.getElementById("journalList");
             list.innerHTML=`<div class="animate-pulse space-y-3"><div class="h-24 bg-slate-200 rounded-2xl"></div><div class="h-24 bg-slate-200 rounded-2xl"></div></div>`;
@@ -151,7 +151,12 @@
             if(r.status==="success"){
                 allJournalData=r.data;
                 // SORT DESC
-                allJournalData.sort((a,b)=>parseIndoDate(b.tgl)-parseIndoDate(a.tgl));
+                allJournalData.sort((a,b)=>{
+                    const dateDiff = parseIndoDate(b.tgl) - parseIndoDate(a.tgl);
+                    if (dateDiff !== 0) return dateDiff;
+                    // Sort Time Descending
+                    return String(b.waktu).localeCompare(String(a.waktu), undefined, {numeric: true});
+                });
                 populateYear(); applyFilter();
             } else list.innerHTML=`<div class="text-center py-10 text-red-400">Gagal data</div>`;
         }
